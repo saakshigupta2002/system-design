@@ -1,11 +1,66 @@
 "use client";
 
 import { useEffect } from "react";
-import { X, BookOpen, Lightbulb } from "lucide-react";
+import { X, BookOpen, Lightbulb, AlertTriangle, Sparkles, Info } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { getProblemById } from "@/data/problems";
-import { getEditorial } from "@/data/editorials";
+import { getEditorial, type EditorialCallout, type EditorialTable } from "@/data/editorials";
 import { ArchitectureDiagram } from "./ArchitectureDiagram";
+
+const CALLOUT_STYLES: Record<
+  EditorialCallout["kind"],
+  { border: string; bg: string; icon: typeof Lightbulb; iconColor: string; label: string }
+> = {
+  tip: { border: "border-cyan-500/25", bg: "bg-cyan-500/[0.06]", icon: Lightbulb, iconColor: "text-cyan-400", label: "Tip" },
+  warning: { border: "border-amber-500/25", bg: "bg-amber-500/[0.06]", icon: AlertTriangle, iconColor: "text-amber-400", label: "Common mistake" },
+  analogy: { border: "border-violet-500/25", bg: "bg-violet-500/[0.06]", icon: Sparkles, iconColor: "text-violet-400", label: "In plain English" },
+  note: { border: "border-zinc-700", bg: "bg-zinc-800/40", icon: Info, iconColor: "text-zinc-400", label: "Jargon" },
+};
+
+function Callout({ callout }: { callout: EditorialCallout }) {
+  const s = CALLOUT_STYLES[callout.kind];
+  const Icon = s.icon;
+  return (
+    <div className={`flex gap-2.5 rounded-lg border ${s.border} ${s.bg} px-3.5 py-3`}>
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${s.iconColor}`} />
+      <div>
+        <p className={`mb-0.5 text-[11px] font-semibold uppercase tracking-wider ${s.iconColor} opacity-80`}>
+          {s.label}
+        </p>
+        <p className="text-sm leading-7 text-zinc-300">{callout.text}</p>
+      </div>
+    </div>
+  );
+}
+
+function ComparisonTable({ table }: { table: EditorialTable }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-zinc-800">
+      <table className="w-full border-collapse text-left text-[13px]">
+        <thead>
+          <tr className="bg-zinc-900">
+            {table.headers.map((h, i) => (
+              <th key={i} className="px-3 py-2 font-semibold text-zinc-200">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, i) => (
+            <tr key={i} className="border-t border-zinc-800">
+              {row.map((cell, j) => (
+                <td key={j} className={`px-3 py-2 align-top leading-relaxed ${j === 0 ? "font-medium text-zinc-200" : "text-zinc-400"}`}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 interface EditorialDialogProps {
   open: boolean;
@@ -91,7 +146,7 @@ export function EditorialDialog({ open, onClose }: EditorialDialogProps) {
                     <h3 className="mb-2.5 border-l-2 border-cyan-500/60 pl-2.5 text-[15px] font-semibold text-zinc-50">
                       {section.heading}
                     </h3>
-                    <div className="space-y-2.5 pl-2.5">
+                    <div className="space-y-3 pl-2.5">
                       {section.body?.map((p, j) => (
                         <p key={j} className="text-sm leading-7 text-zinc-300">
                           {p}
@@ -107,19 +162,18 @@ export function EditorialDialog({ open, onClose }: EditorialDialogProps) {
                           ))}
                         </ul>
                       )}
+                      {section.table && <ComparisonTable table={section.table} />}
                       {section.code && (
                         <pre className="mt-1 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-zinc-300">
                           {section.code}
                         </pre>
                       )}
+                      {section.callouts?.map((c, j) => (
+                        <Callout key={j} callout={c} />
+                      ))}
                     </div>
                   </section>
                 ))}
-
-                <p className="border-t border-zinc-800 pt-4 text-xs leading-relaxed text-zinc-500">
-                  Read this before you start to learn the method, or after to check your design
-                  against the reference.
-                </p>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
