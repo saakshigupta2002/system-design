@@ -22,6 +22,7 @@ import { InterviewStartDialog } from "@/components/interview/InterviewStartDialo
 import { CreateProblemDialog } from "@/components/dialogs/CreateProblemDialog";
 import { CreateComponentDialog } from "@/components/dialogs/CreateComponentDialog";
 import { SupportDialog } from "@/components/dialogs/SupportDialog";
+import { EditorialDialog } from "@/components/dialogs/EditorialDialog";
 import { useInterviewStore } from "@/store/interviewStore";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 
@@ -42,6 +43,7 @@ export function AppShell() {
   const [createProblemDialogOpen, setCreateProblemDialogOpen] = useState(false);
   const [createComponentDialogOpen, setCreateComponentDialogOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
+  const [editorialDialogOpen, setEditorialDialogOpen] = useState(false);
 
   // Auto-open support dialog when URL has ?support=1 (used by the README link)
   useEffect(() => {
@@ -224,6 +226,7 @@ export function AppShell() {
           onStartInterview={() => setInterviewDialogOpen(true)}
           onCreateProblem={() => setCreateProblemDialogOpen(true)}
           onOpenSupport={() => setSupportDialogOpen(true)}
+          onOpenEditorial={() => setEditorialDialogOpen(true)}
           onToggleLeft={handleToggleLeft}
           onToggleRight={handleToggleRight}
         />
@@ -334,6 +337,7 @@ export function AppShell() {
         <CreateProblemDialog open={createProblemDialogOpen} onClose={() => setCreateProblemDialogOpen(false)} />
         <CreateComponentDialog open={createComponentDialogOpen} onClose={() => setCreateComponentDialogOpen(false)} />
         <SupportDialog open={supportDialogOpen} onClose={() => setSupportDialogOpen(false)} />
+        <EditorialDialog open={editorialDialogOpen} onClose={() => setEditorialDialogOpen(false)} />
       </div>
     </ReactFlowProvider>
   );

@@ -22,6 +22,7 @@ import {
   MoreHorizontal,
   Heart,
   Coffee,
+  BookOpen,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useCanvasStore } from "@/store/canvasStore";
@@ -41,11 +42,12 @@ interface TopBarProps {
   onStartInterview: () => void;
   onCreateProblem: () => void;
   onOpenSupport: () => void;
+  onOpenEditorial: () => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
 }
 
-export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onStartInterview, onCreateProblem, onOpenSupport, onToggleLeft, onToggleRight }: TopBarProps) {
+export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onStartInterview, onCreateProblem, onOpenSupport, onOpenEditorial, onToggleLeft, onToggleRight }: TopBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -233,6 +235,17 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
 
         {!selectedProblemId.startsWith("custom-") && (
           <button
+            onClick={onOpenEditorial}
+            className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 md:flex"
+            title="Read the editorial — how to approach and solve this problem"
+          >
+            <BookOpen className="h-3 w-3" />
+            Editorial
+          </button>
+        )}
+
+        {!selectedProblemId.startsWith("custom-") && (
+          <button
             onClick={loadReference}
             className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 md:flex"
             title="Load reference solution"
@@ -279,6 +292,15 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
               <div className="fixed inset-0 z-40" onClick={() => setMobileMoreOpen(false)} />
               <div className="absolute left-0 top-full z-50 mt-1 w-60 rounded-md border border-zinc-700 bg-zinc-900 py-1 shadow-lg">
                 {/* Design actions */}
+                {!selectedProblemId.startsWith("custom-") && (
+                  <button
+                    onClick={() => { setMobileMoreOpen(false); onOpenEditorial(); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
+                  >
+                    <BookOpen className="h-3.5 w-3.5 text-zinc-500" />
+                    Read editorial
+                  </button>
+                )}
                 {!selectedProblemId.startsWith("custom-") && (
                   <button
                     onClick={() => { setMobileMoreOpen(false); loadReference(); }}
