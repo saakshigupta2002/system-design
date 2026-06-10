@@ -19,8 +19,6 @@ interface SimulationState {
 
 const defaultConfig: SimulationConfig = {
   requestsPerSec: 10000,
-  durationSec: 10,
-  rampUp: true,
 };
 
 export const useSimulationStore = create<SimulationState>((set) => ({

@@ -55,7 +55,7 @@ export function scoreLatency(
     );
   }
 
-  // Minimal hops — fewer than 6 layers (3 pts)
+  // Minimal hops — 4 or fewer layers for full points (3 pts)
   const maxDepth = computeMaxDepth(nodes, edges);
   if (maxDepth <= 4) {
     score += 3;

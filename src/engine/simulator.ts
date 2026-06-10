@@ -44,8 +44,13 @@ export function runSimulation(
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
 
-  // Find entry nodes (no inbound edges)
-  const entryNodes = nodes.filter((n) => (inDegree.get(n.id) ?? 0) === 0);
+  // Find entry nodes: no inbound edges AND at least one outbound edge.
+  // Isolated nodes (no edges at all) are NOT entry points — otherwise they'd
+  // siphon a share of the incoming traffic away from the real entry points.
+  // They fall through to the idle-node handling below.
+  const entryNodes = nodes.filter(
+    (n) => (inDegree.get(n.id) ?? 0) === 0 && (adjacency.get(n.id)?.length ?? 0) > 0
+  );
 
   // Initialize incoming QPS for entry nodes
   const incomingQPS = new Map<string, number>();
@@ -217,7 +222,10 @@ function computeLongestPathLatency(
   const remaining = new Map(inDegree);
 
   const dist = new Map<string, number>();
-  const entryNodes = nodes.filter((n) => (inDegree.get(n.id) ?? 0) === 0);
+  // Mirror runSimulation's entry definition: isolated nodes don't start a path.
+  const entryNodes = nodes.filter(
+    (n) => (inDegree.get(n.id) ?? 0) === 0 && (adjacency.get(n.id)?.length ?? 0) > 0
+  );
 
   for (const entry of entryNodes) {
     dist.set(entry.id, metrics.get(entry.id)?.latencyMs ?? 0);

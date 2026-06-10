@@ -90,7 +90,9 @@ export function exportAsJSON(
   const blob = new Blob([payload], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   triggerDownload(url, filename);
-  URL.revokeObjectURL(url);
+  // Defer revoke: revoking synchronously can cancel the download in
+  // Firefox/Safari before the browser starts reading the blob URL.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function slugify(text: string): string {

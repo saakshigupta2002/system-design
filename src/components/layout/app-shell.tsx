@@ -160,7 +160,10 @@ export function AppShell() {
       const comp = getComponentById(ref.componentId);
       if (!comp) return;
       const nodeId = `${comp.id}-ref-${index}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      nodeIdMap.set(`${ref.componentId}-${index}`, nodeId);
+      // Map componentId -> first node id. Edges in the schema reference
+      // endpoints by componentId, so exact-match keeps lookups unambiguous
+      // (no prefix collisions like "app" matching "app-server").
+      if (!nodeIdMap.has(ref.componentId)) nodeIdMap.set(ref.componentId, nodeId);
       refNodes.push({
         id: nodeId,
         type: "component",
@@ -180,14 +183,8 @@ export function AppShell() {
 
     const refEdges: Edge[] = [];
     for (const ref of problem.referenceSolution.edges) {
-      const findIdByComponent = (cid: string) => {
-        for (const [key, value] of nodeIdMap) {
-          if (key.startsWith(`${cid}-`)) return value;
-        }
-        return undefined;
-      };
-      const sourceId = findIdByComponent(ref.source);
-      const targetId = findIdByComponent(ref.target);
+      const sourceId = nodeIdMap.get(ref.source);
+      const targetId = nodeIdMap.get(ref.target);
       if (sourceId && targetId) {
         refEdges.push({
           id: `e-${sourceId}-${targetId}`,

@@ -21,6 +21,4 @@ export interface SimulationResult {
 
 export interface SimulationConfig {
   requestsPerSec: number;
-  durationSec: number;
-  rampUp: boolean;
 }

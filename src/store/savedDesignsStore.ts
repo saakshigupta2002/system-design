@@ -171,6 +171,7 @@ export const useSavedDesignsStore = create<SavedDesignsState>()(
             targetHandle: e.targetHandle ?? undefined,
           })),
           selectedNodeId: null,
+          selectedEdgeId: null,
         });
 
         usePenStore.getState().setStrokes(design.strokes ?? []);

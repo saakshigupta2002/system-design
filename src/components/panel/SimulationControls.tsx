@@ -63,8 +63,8 @@ export function SimulationControls({ onSimulate }: SimulationControlsProps) {
           />
         </div>
 
-        {/* Duration slider removed: the simulation engine performs a single-snapshot
-            calculation (not a time-series simulation), so durationSec has no effect. */}
+        {/* No duration control: the engine performs a single-snapshot
+            calculation (not a time-series simulation), so duration is irrelevant. */}
       </div>
 
       <Separator className="bg-zinc-800" />
