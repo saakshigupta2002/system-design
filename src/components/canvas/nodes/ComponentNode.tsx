@@ -140,16 +140,18 @@ function ComponentNodeInner({ id, data, selected }: NodeProps<ComponentNode>) {
         </div>
       )}
 
-      {/* Handles */}
+      {/* Handles — larger hit area + hover feedback make them easy to grab.
+          connectionMode="loose" (set on the canvas) lets either side start
+          or receive a connection. */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!h-2 !w-2 !rounded-full !border !border-zinc-600 !bg-zinc-400"
+        className="!h-3.5 !w-3.5 !rounded-full !border-2 !border-zinc-500 !bg-zinc-300 transition-all hover:!scale-150 hover:!border-cyan-400 hover:!bg-cyan-400"
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="!h-2 !w-2 !rounded-full !border !border-zinc-600 !bg-zinc-400"
+        className="!h-3.5 !w-3.5 !rounded-full !border-2 !border-zinc-500 !bg-zinc-300 transition-all hover:!scale-150 hover:!border-cyan-400 hover:!bg-cyan-400"
       />
     </div>
   );

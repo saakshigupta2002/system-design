@@ -7,6 +7,7 @@ import {
   MiniMap,
   Background,
   BackgroundVariant,
+  ConnectionMode,
   useReactFlow,
   type Node,
   type Edge,
@@ -149,6 +150,8 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={{ type: "animated" }}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={45}
         fitView
         proOptions={{ hideAttribution: true }}
         panOnDrag={!penActive}
