@@ -25,6 +25,7 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
   const [icon, setIcon] = useState<string>("Box");
   const [maxQPS, setMaxQPS] = useState(5000);
   const [latencyMs, setLatencyMs] = useState(20);
+  const [monthlyCost, setMonthlyCost] = useState(100);
   const [scalable, setScalable] = useState(true);
   const [stateful, setStateful] = useState(false);
   const [description, setDescription] = useState("");
@@ -36,6 +37,7 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
       setIcon("Box");
       setMaxQPS(5000);
       setLatencyMs(20);
+      setMonthlyCost(100);
       setScalable(true);
       setStateful(false);
       setDescription("");
@@ -55,6 +57,7 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
       icon,
       maxQPS: Number.isFinite(maxQPS) && maxQPS > 0 ? maxQPS : 1000,
       latencyMs: Number.isFinite(latencyMs) && latencyMs >= 0 ? latencyMs : 0,
+      monthlyCost: Number.isFinite(monthlyCost) && monthlyCost >= 0 ? monthlyCost : 0,
       scalable,
       stateful,
       description: description.trim(),
@@ -162,6 +165,16 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
                 min={0}
                 value={latencyMs}
                 onChange={(e) => setLatencyMs(Number(e.target.value) || 0)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="mb-0.5 block text-[11px] text-zinc-500">Cost ($/mo per instance)</label>
+              <input
+                type="number"
+                min={0}
+                value={monthlyCost}
+                onChange={(e) => setMonthlyCost(Number(e.target.value) || 0)}
                 className={inputClass}
               />
             </div>

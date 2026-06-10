@@ -10,6 +10,7 @@ import { Info, Trash2, Lightbulb, ChevronDown, ChevronRight, CheckSquare, BookOp
 import { useCanvasStore, type ComponentNodeData, type CustomEdgeData } from "@/store/canvasStore";
 import { useAppStore } from "@/store/appStore";
 import { getProblemById } from "@/data/problems";
+import { getComponentById } from "@/data/components";
 import { getConceptByComponentId } from "@/data/conceptLibrary";
 import { SimulationControls } from "./SimulationControls";
 import { MetricsDisplay } from "./MetricsDisplay";
@@ -333,10 +334,23 @@ function PropertiesTab() {
 
             {/* Info */}
             <div className="space-y-1">
-              {[
-                { label: "Base Latency", value: `${data.latencyMs}ms` },
-                { label: "Scalable", value: data.scalable ? "Yes" : "No" },
-              ].map((item) => (
+              {(() => {
+                const comp = getComponentById(data.componentId as string);
+                const unitCost = comp?.monthlyCost;
+                const replicas = (data.replicas as number) || 1;
+                const costValue =
+                  unitCost == null
+                    ? "—"
+                    : replicas > 1
+                      ? `$${unitCost}/mo × ${replicas} = $${unitCost * replicas}/mo`
+                      : `$${unitCost}/mo`;
+                return [
+                  { label: "Base Latency", value: `${data.latencyMs}ms` },
+                  { label: "Est. Cost", value: costValue },
+                  { label: "Scalable", value: data.scalable ? "Yes" : "No" },
+                  { label: "Stateful", value: comp?.stateful ? "Yes" : "No" },
+                ];
+              })().map((item) => (
                 <div
                   key={item.label}
                   className="flex items-center justify-between text-xs"

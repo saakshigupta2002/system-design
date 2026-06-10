@@ -137,11 +137,15 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
             className="w-full rounded-md border border-zinc-700 bg-zinc-800 py-2 pl-8 pr-3 text-xs text-zinc-200 placeholder:text-zinc-500 outline-none transition-colors focus:border-cyan-500"
           />
         </div>
-        {query && (
+        {query ? (
           <p className="mt-1.5 text-[10px] text-zinc-500">
             {totalMatches === 0
               ? "No matches"
               : `${totalMatches} component${totalMatches === 1 ? "" : "s"} match "${search}"`}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[10px] leading-tight text-zinc-600">
+            <span className="text-zinc-500">qps</span> = max throughput per instance (illustrative)
           </p>
         )}
       </div>
@@ -202,8 +206,12 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
                                 Custom
                               </span>
                             )}
-                            <span className="shrink-0 text-[11px] text-zinc-400">
+                            <span
+                              className="shrink-0 text-[11px] tabular-nums text-zinc-400"
+                              title="Max throughput per instance (queries/sec, illustrative)"
+                            >
                               {item.maxQPS === Infinity ? "\u221e" : `${(item.maxQPS / 1000).toFixed(0)}k`}
+                              <span className="ml-0.5 text-[9px] text-zinc-500">qps</span>
                             </span>
                             <button
                               onClick={(e) => {

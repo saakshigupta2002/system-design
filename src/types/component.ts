@@ -14,5 +14,7 @@ export interface SystemComponent {
   latencyMs: number;
   scalable: boolean;
   stateful: boolean;
+  /** Illustrative relative infrastructure cost, USD per instance per month. */
+  monthlyCost?: number;
   description: string;
 }

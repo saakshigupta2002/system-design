@@ -1,6 +1,7 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
 import type { CategoryScore } from "@/types/scoring";
+import { getComponentById } from "@/data/components";
 
 export function scoreCost(
   nodes: Node<ComponentNodeData>[],
@@ -11,6 +12,18 @@ export function scoreCost(
   let score = 0;
 
   const componentIds = nodes.map((n) => n.data.componentId);
+
+  // Informational: estimated monthly infrastructure cost (sum of per-instance
+  // cost × replicas). Illustrative figures — surfaces the cost of the design.
+  const totalMonthlyCost = nodes.reduce((sum, n) => {
+    const unit = getComponentById(n.data.componentId)?.monthlyCost ?? 0;
+    return sum + unit * ((n.data.replicas as number) || 1);
+  }, 0);
+  if (totalMonthlyCost > 0) {
+    passed.push(
+      `Estimated infrastructure cost: ~$${totalMonthlyCost.toLocaleString("en-US")}/month across ${nodes.length} component${nodes.length === 1 ? "" : "s"} (illustrative, includes replicas)`
+    );
+  }
 
   // Not over-provisioned (3 pts) — total component count reasonable
   if (nodes.length >= 3 && nodes.length <= 25) {

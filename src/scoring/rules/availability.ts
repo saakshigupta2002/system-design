@@ -1,6 +1,7 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
 import type { CategoryScore } from "@/types/scoring";
+import { getComponentById } from "@/data/components";
 
 export function scoreAvailability(
   nodes: Node<ComponentNodeData>[],
@@ -24,17 +25,27 @@ export function scoreAvailability(
     );
   }
 
-  // Check DB redundancy (3 pts)
-  const hasReplicatedStorage = nodes.some(
-    (n) => n.data.category === "storage" && (n.data.replicas || 1) > 1
-  );
-  if (hasReplicatedStorage) {
-    score += 3;
-    passed.push("Database replication provides real redundancy — failover to replica if primary goes down");
-  } else {
+  // Check stateful redundancy (3 pts) — stateful components are SPOFs without replicas
+  const statefulNodes = nodes.filter((n) => getComponentById(n.data.componentId)?.stateful);
+  if (statefulNodes.length === 0) {
     feedback.push(
-      "Add database replication (replicas > 1) to at least one storage component. Having multiple different storage types (e.g., Redis + PostgreSQL) isn't redundancy — if PostgreSQL goes down, Redis can't replace it. True redundancy means replicas of the same data store ready to take over on failure."
+      "No stateful components (database, cache, queue) in your design. Most real systems need at least a persistent datastore — add one and run more than one replica so a failover instance can take over."
     );
+  } else {
+    const replicated = statefulNodes.filter((n) => (n.data.replicas || 1) > 1);
+    if (replicated.length === statefulNodes.length) {
+      score += 3;
+      passed.push("Every stateful component (database, cache, queue) runs multiple replicas — no stateful single points of failure");
+    } else if (replicated.length > 0) {
+      score += 1;
+      feedback.push(
+        `${statefulNodes.length - replicated.length} stateful component(s) run a single replica. Stateful services (databases, caches, queues) lose data or availability when their only instance fails — set replicas > 1 on each so a standby can take over.`
+      );
+    } else {
+      feedback.push(
+        "All your stateful components (databases, caches, queues) run a single replica, making each a single point of failure. Stateless services can be cloned freely, but stateful ones need explicit replication — set replicas > 1 on them."
+      );
+    }
   }
 
   // Check multi-path (3 pts)
