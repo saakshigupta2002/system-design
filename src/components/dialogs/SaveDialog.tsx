@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useSavedDesignsStore } from "@/store/savedDesignsStore";
-import { PROBLEMS } from "@/data/problems";
+import { getProblemById } from "@/data/problems";
 
 interface SaveDialogProps {
   open: boolean;
@@ -17,7 +17,7 @@ export function SaveDialog({ open, onClose }: SaveDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const problemTitle =
-    PROBLEMS.find((p) => p.id === selectedProblemId)?.title ?? "Design";
+    getProblemById(selectedProblemId)?.title ?? "Design";
   const defaultName = `${problemTitle} - ${new Date().toLocaleString()}`;
 
   const [name, setName] = useState(defaultName);
@@ -25,10 +25,7 @@ export function SaveDialog({ open, onClose }: SaveDialogProps) {
 
   // Reset name and focus input when dialog opens
   if (open && !prevOpen) {
-    const title =
-      PROBLEMS.find(
-        (p) => p.id === selectedProblemId
-      )?.title ?? "Design";
+    const title = getProblemById(selectedProblemId)?.title ?? "Design";
     setName(`${title} - ${new Date().toLocaleString()}`);
     setPrevOpen(true);
   } else if (!open && prevOpen) {

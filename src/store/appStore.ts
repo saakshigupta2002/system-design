@@ -14,7 +14,6 @@ interface AppState {
   rightPanelOpen: boolean;
   activeLeftTab: "components" | "problems" | "learn";
   activeRightTab: "properties" | "simulation" | "score" | "capacity" | "tradeoffs";
-  theme: "dark" | "light";
   toast: ToastData | null;
 
   setSelectedProblem: (id: string) => void;
@@ -23,7 +22,6 @@ interface AppState {
   setLeftSidebarOpen: (open: boolean) => void;
   setActiveLeftTab: (tab: AppState["activeLeftTab"]) => void;
   setActiveRightTab: (tab: AppState["activeRightTab"]) => void;
-  toggleTheme: () => void;
   showToast: (message: string, type: ToastType) => void;
   clearToast: () => void;
 }
@@ -38,7 +36,6 @@ export const useAppStore = create<AppState>()(
       rightPanelOpen: true,
       activeLeftTab: "components",
       activeRightTab: "properties",
-      theme: "dark",
       toast: null,
 
       setSelectedProblem: (id) => set({ selectedProblemId: id }),
@@ -49,11 +46,6 @@ export const useAppStore = create<AppState>()(
       setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open }),
       setActiveLeftTab: (tab) => set({ activeLeftTab: tab }),
       setActiveRightTab: (tab) => set({ activeRightTab: tab }),
-      toggleTheme: () =>
-        set((s) => {
-          const newTheme = s.theme === "dark" ? "light" : "dark";
-          return { theme: newTheme };
-        }),
       showToast: (message, type) => {
         if (toastTimeoutId !== null) {
           clearTimeout(toastTimeoutId);
@@ -76,15 +68,7 @@ export const useAppStore = create<AppState>()(
       name: "systemdesign-app",
       partialize: (state) => ({
         selectedProblemId: state.selectedProblemId,
-        theme: state.theme,
       }),
     }
   )
 );
-
-// Side effect: sync theme changes to document.documentElement
-useAppStore.subscribe((state, prevState) => {
-  if (state.theme !== prevState.theme && typeof document !== "undefined") {
-    document.documentElement.classList.toggle("dark", state.theme === "dark");
-  }
-});

@@ -85,6 +85,7 @@ export function CapacityCalculator() {
           label="Write Ratio"
           value={writeRatio}
           onChange={setWriteRatio}
+          format={(v) => `${(v * 100).toFixed(0)}%`}
           presets={[
             { label: "10%", value: 0.1 },
             { label: "20%", value: 0.2 },
@@ -126,6 +127,10 @@ export function CapacityCalculator() {
           label="Peak QPS (3× avg)"
           value={formatNumber(estimates.peakQps)}
           highlight
+        />
+        <ResultRow
+          label="Write QPS"
+          value={formatNumber(estimates.writeQPS)}
         />
       </div>
 
@@ -174,16 +179,17 @@ interface InputFieldProps {
   value: number;
   onChange: (v: number) => void;
   presets: { label: string; value: number }[];
+  format?: (v: number) => string;
 }
 
-function InputField({ label, value, onChange, presets }: InputFieldProps) {
+function InputField({ label, value, onChange, presets, format }: InputFieldProps) {
   const inputId = `capacity-${label.replace(/\s+/g, "-").toLowerCase()}`;
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
         <label htmlFor={inputId} className="text-xs text-zinc-400">{label}</label>
         <span className="font-mono text-xs text-cyan-500">
-          {formatNumber(value)}
+          {(format ?? formatNumber)(value)}
         </span>
       </div>
       <input

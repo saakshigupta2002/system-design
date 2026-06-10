@@ -85,6 +85,16 @@ const VERDICT_BG: Record<string, string> = {
   "text-zinc-500": "bg-zinc-500/5",
 };
 
+// Ring stroke keyed by the same verdict color as the badge, so they always agree.
+const VERDICT_STROKE: Record<string, string> = {
+  "text-emerald-400": "#34d399",
+  "text-cyan-400": "#22d3ee",
+  "text-blue-400": "#60a5fa",
+  "text-amber-400": "#f59e0b",
+  "text-rose-400": "#fb7185",
+  "text-zinc-500": "#71717a",
+};
+
 function verdictBorderClass(verdictColor: string): string {
   return VERDICT_BORDER[verdictColor] ?? "border-zinc-500/30";
 }
@@ -131,7 +141,7 @@ export function ScoreReport() {
               const radius = 38;
               const circumference = 2 * Math.PI * radius;
               const progress = (scoreResult.total / 100) * circumference;
-              const strokeColor = scoreResult.total >= 71 ? '#10b981' : scoreResult.total >= 51 ? '#22d3ee' : scoreResult.total >= 31 ? '#f59e0b' : '#ef4444';
+              const strokeColor = VERDICT_STROKE[scoreResult.verdictColor] ?? "#22d3ee";
               return (
                 <svg width="96" height="96" className="-rotate-90">
                   <circle cx="48" cy="48" r={radius} fill="none" stroke="rgb(39,39,42)" strokeWidth="6" />

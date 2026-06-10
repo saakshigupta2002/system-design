@@ -28,10 +28,9 @@ import { useCanvasStore } from "@/store/canvasStore";
 import { usePenStore } from "@/store/penStore";
 import { PROBLEMS } from "@/data/problems";
 import { useCustomProblemsStore } from "@/store/customProblemsStore";
-import { type Node, type Edge, useReactFlow } from "@xyflow/react";
-import { getComponentById } from "@/data/components";
-import type { ComponentNodeData } from "@/store/canvasStore";
+import { type Node, useReactFlow } from "@xyflow/react";
 import { exportAsPng, exportAsSvg, exportAsJSON } from "@/lib/exportCanvas";
+import { openReferenceSolution } from "@/lib/referenceSolution";
 
 interface TopBarProps {
   onSimulate: () => void;
@@ -126,61 +125,10 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
   }, [handleExportPng]);
 
   const loadReference = useCallback(() => {
-    const problem = PROBLEMS.find((p) => p.id === selectedProblemId);
-    if (!problem) return;
-
-    // Build reference nodes
-    const nodeIdMap = new Map<string, string>();
-    const refNodes: Node<ComponentNodeData>[] = [];
-
-    problem.referenceSolution.nodes.forEach((ref, index) => {
-      const comp = getComponentById(ref.componentId);
-      if (!comp) return;
-
-      const nodeId = `${comp.id}-ref-${index}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      nodeIdMap.set(`${ref.componentId}-${index}`, nodeId);
-
-      refNodes.push({
-        id: nodeId,
-        type: "component",
-        position: { x: ref.x, y: ref.y },
-        data: {
-          componentId: comp.id,
-          label: comp.label,
-          icon: comp.icon,
-          category: comp.category,
-          replicas: 1,
-          maxQPS: comp.maxQPS,
-          latencyMs: comp.latencyMs,
-          scalable: comp.scalable,
-        },
-      });
-    });
-
-    const refEdges: Edge[] = [];
-    for (const ref of problem.referenceSolution.edges) {
-      const sourceId = findNodeIdByComponent(nodeIdMap, ref.source);
-      const targetId = findNodeIdByComponent(nodeIdMap, ref.target);
-      if (sourceId && targetId) {
-        refEdges.push({
-          id: `e-${sourceId}-${targetId}`,
-          source: sourceId,
-          target: targetId,
-          type: "animated",
-        });
-      }
-    }
-
     // Open reference in a NEW tab — user's design stays in "My Design" tab
-    useCanvasStore.getState().addTab({
-      id: `ref-${problem.id}`,
-      label: `${problem.title} (Reference)`,
-      nodes: refNodes,
-      edges: refEdges,
-      readOnly: true,
-    });
-
-    useAppStore.getState().showToast("Reference opened in new tab — your design is safe", "success");
+    if (openReferenceSolution(selectedProblemId)) {
+      useAppStore.getState().showToast("Reference opened in new tab — your design is safe", "success");
+    }
   }, [selectedProblemId]);
 
   return (
@@ -545,9 +493,3 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
 }
 
 /** Find the first node ID in the map whose key starts with the given componentId. */
-function findNodeIdByComponent(nodeIdMap: Map<string, string>, componentId: string): string | undefined {
-  for (const [key, value] of nodeIdMap) {
-    if (key.startsWith(`${componentId}-`)) return value;
-  }
-  return undefined;
-}

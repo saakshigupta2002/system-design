@@ -13,9 +13,7 @@ import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
 import { useSimulationStore } from "@/store/simulationStore";
 import { runSimulation } from "@/engine/simulator";
 import { scoreDesign } from "@/scoring/scorer";
-import { PROBLEMS } from "@/data/problems";
-import { getComponentById } from "@/data/components";
-import type { Edge } from "@xyflow/react";
+import { openReferenceSolution } from "@/lib/referenceSolution";
 import { Toast } from "@/components/ui/Toast";
 import { SaveDialog } from "@/components/dialogs/SaveDialog";
 import { LoadDialog } from "@/components/dialogs/LoadDialog";
@@ -146,63 +144,16 @@ export function AppShell() {
 
   const handleLoadReference = useCallback(() => {
     const problemId = useAppStore.getState().selectedProblemId;
-    const problem = PROBLEMS.find((p) => p.id === problemId);
-    if (!problem) {
-      useAppStore.getState().showToast("Pick a problem first", "info");
-      handlePickProblem();
+    if (problemId.startsWith("custom-")) {
+      useAppStore.getState().showToast("Custom problems don't have a reference solution", "info");
       return;
     }
-
-    const nodeIdMap = new Map<string, string>();
-    const refNodes: Node<ComponentNodeData>[] = [];
-
-    problem.referenceSolution.nodes.forEach((ref, index) => {
-      const comp = getComponentById(ref.componentId);
-      if (!comp) return;
-      const nodeId = `${comp.id}-ref-${index}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      // Map componentId -> first node id. Edges in the schema reference
-      // endpoints by componentId, so exact-match keeps lookups unambiguous
-      // (no prefix collisions like "app" matching "app-server").
-      if (!nodeIdMap.has(ref.componentId)) nodeIdMap.set(ref.componentId, nodeId);
-      refNodes.push({
-        id: nodeId,
-        type: "component",
-        position: { x: ref.x, y: ref.y },
-        data: {
-          componentId: comp.id,
-          label: comp.label,
-          icon: comp.icon,
-          category: comp.category,
-          replicas: 1,
-          maxQPS: comp.maxQPS,
-          latencyMs: comp.latencyMs,
-          scalable: comp.scalable,
-        },
-      });
-    });
-
-    const refEdges: Edge[] = [];
-    for (const ref of problem.referenceSolution.edges) {
-      const sourceId = nodeIdMap.get(ref.source);
-      const targetId = nodeIdMap.get(ref.target);
-      if (sourceId && targetId) {
-        refEdges.push({
-          id: `e-${sourceId}-${targetId}`,
-          source: sourceId,
-          target: targetId,
-          type: "animated",
-        });
-      }
+    if (openReferenceSolution(problemId)) {
+      useAppStore.getState().showToast("Reference opened in new tab", "success");
+    } else {
+      useAppStore.getState().showToast("Pick a problem first", "info");
+      handlePickProblem();
     }
-
-    useCanvasStore.getState().addTab({
-      id: `ref-${problem.id}`,
-      label: `${problem.title} (Reference)`,
-      nodes: refNodes,
-      edges: refEdges,
-      readOnly: true,
-    });
-    useAppStore.getState().showToast("Reference opened in new tab", "success");
   }, [handlePickProblem]);
 
   // Keyboard shortcuts

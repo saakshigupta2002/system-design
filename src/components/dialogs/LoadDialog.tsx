@@ -101,7 +101,9 @@ export function LoadDialog({ open, onClose }: LoadDialogProps) {
     a.href = url;
     a.download = `${name.replace(/[^a-zA-Z0-9-_ ]/g, "")}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    // Defer revoke: revoking synchronously can cancel the download in
+    // Firefox/Safari before the browser starts reading the blob URL.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const handleImport = () => {
