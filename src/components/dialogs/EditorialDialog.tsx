@@ -130,11 +130,14 @@ export function EditorialDialog({ open, onClose }: EditorialDialogProps) {
             {/* Architecture diagram (shown whenever a reference exists) */}
             {hasReference && (
               <figure className="mb-7">
-                <ArchitectureDiagram problemId={selectedProblemId} />
-                <figcaption className="mt-2 text-center text-xs text-zinc-500">
-                  Reference architecture — one valid design (open it on the canvas with
-                  &ldquo;Reference&rdquo;)
+                <figcaption className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Reference architecture
                 </figcaption>
+                <ArchitectureDiagram problemId={selectedProblemId} notes={editorial?.componentNotes} />
+                <p className="mt-2 text-xs text-zinc-500">
+                  One valid design — open it on the canvas with the &ldquo;Reference&rdquo; button to
+                  explore it.
+                </p>
               </figure>
             )}
 

@@ -31,6 +31,8 @@ export interface EditorialSection {
 export interface Editorial {
   /** One-paragraph, plain-English intuition — the key insight. */
   summary: string;
+  /** Plain "why is this here" line per componentId, shown as a diagram legend. */
+  componentNotes?: Record<string, string>;
   sections: EditorialSection[];
 }
 
@@ -38,6 +40,16 @@ export const EDITORIALS: Record<string, Editorial> = {
   "url-shortener": {
     summary:
       "When someone clicks a short link, they must be bounced to the original URL in well under a tenth of a second — and there are roughly 100 clicks for every link created. So the whole design comes down to two things: making short, unique codes, and serving redirects from a cache so the database is barely touched.",
+    componentNotes: {
+      dns: "Turns the domain name into a server address — the first stop for every request.",
+      cdn: "Serves unchanging content from servers near the user so it loads fast.",
+      "load-balancer": "Spreads incoming traffic evenly across the app servers.",
+      "rate-limiter": "Caps how many links one client can create, to stop abuse.",
+      "app-server": "Runs the logic — creates short codes and resolves redirects.",
+      cache: "Keeps recent code→URL lookups in memory so redirects return in ~1ms.",
+      "nosql-db": "Stores every code→URL mapping; built to handle billions of rows.",
+      monitoring: "Watches system health and fires alerts when something breaks.",
+    },
     sections: [
       {
         heading: "1. Understand the problem",
@@ -129,6 +141,15 @@ export const EDITORIALS: Record<string, Editorial> = {
   "rate-limiter": {
     summary:
       "A rate limiter makes a tiny yes/no decision (allow or block) on the busiest path in your system, so it must be extremely fast and agree across many servers at once. The design is about which counting method you use and how you share the count without races.",
+    componentNotes: {
+      dns: "Turns the domain name into a server address.",
+      "load-balancer": "Spreads incoming traffic across instances.",
+      "rate-limiter": "The star here — decides allow/block before any real work happens.",
+      "api-gateway": "The single front door, and a natural place to run the limit check.",
+      "app-server": "Runs the actual business logic for requests that are allowed through.",
+      cache: "Redis holds the shared per-client counters every instance reads and updates atomically.",
+      monitoring: "Tracks rejection rates and latency so you can tune the limits.",
+    },
     sections: [
       {
         heading: "1. Understand the problem",
@@ -203,6 +224,16 @@ export const EDITORIALS: Record<string, Editorial> = {
   "parking-lot": {
     summary:
       "A smart parking lot hides two hard problems: keeping availability accurate in real time, and never letting two drivers book the same spot. The trick is to treat 'availability' and 'reservations' as two different problems with two different consistency needs.",
+    componentNotes: {
+      dns: "Turns the domain name into a server address.",
+      "load-balancer": "Spreads incoming traffic across app servers.",
+      "api-gateway": "Single entry point for the app and partner integrations.",
+      "app-server": "Runs reservations, pricing, and availability logic.",
+      cache: "Redis holds live availability counts so the map loads instantly.",
+      "message-queue": "Buffers bursty IoT entry/exit events for a worker to process.",
+      "sql-db": "Stores reservations and payments with real transactions — the no-double-booking guarantee.",
+      monitoring: "Tracks occupancy, revenue, and overall system health.",
+    },
     sections: [
       {
         heading: "1. Understand the problem",

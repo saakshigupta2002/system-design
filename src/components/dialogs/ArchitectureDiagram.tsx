@@ -24,13 +24,44 @@ interface Placed {
   color: string;
 }
 
+/** First sentence of a component's description, as a fallback legend note. */
+function shortDescription(text: string | undefined): string {
+  if (!text) return "";
+  const first = text.split(". ")[0];
+  return first.length > 110 ? first.slice(0, 107) + "…" : first;
+}
+
 /**
  * Renders a problem's reference solution as a small architecture diagram,
- * derived from the same node positions + edges used on the canvas.
+ * derived from the same node positions + edges used on the canvas, plus a
+ * plain-language legend explaining what each component is and why it's there.
  */
-export function ArchitectureDiagram({ problemId }: { problemId: string }) {
+export function ArchitectureDiagram({
+  problemId,
+  notes,
+}: {
+  problemId: string;
+  notes?: Record<string, string>;
+}) {
   const ref = getProblemById(problemId)?.referenceSolution;
   if (!ref || ref.nodes.length === 0) return null;
+
+  // Unique components in the order they appear, for the legend.
+  const seen = new Set<string>();
+  const legend = ref.nodes
+    .filter((n) => {
+      if (seen.has(n.componentId)) return false;
+      seen.add(n.componentId);
+      return true;
+    })
+    .map((n) => {
+      const comp = getComponentById(n.componentId);
+      return {
+        label: comp?.label ?? n.componentId,
+        color: CATEGORY_STROKE[comp?.category ?? ""] ?? "#71717a",
+        why: notes?.[n.componentId] ?? shortDescription(comp?.description),
+      };
+    });
 
   const xs = ref.nodes.map((n) => n.x);
   const ys = ref.nodes.map((n) => n.y);
@@ -73,7 +104,8 @@ export function ArchitectureDiagram({ problemId }: { problemId: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40">
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40">
       <svg viewBox={`0 0 ${VIEW_W} ${viewH}`} className="h-auto w-full" role="img" aria-label="Reference architecture diagram">
         <defs>
           <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -129,6 +161,25 @@ export function ArchitectureDiagram({ problemId }: { problemId: string }) {
           </g>
         ))}
       </svg>
+      </div>
+
+      {/* Legend — what each component is and why it's here */}
+      {legend.length > 0 && (
+        <ul className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+          {legend.map((item, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed">
+              <span
+                className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-sm"
+                style={{ backgroundColor: item.color }}
+              />
+              <span>
+                <span className="font-medium text-zinc-200">{item.label}</span>
+                {item.why && <span className="text-zinc-400"> — {item.why}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
