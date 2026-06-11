@@ -3,9 +3,8 @@
 // an editorial show a "coming soon" state in the UI.
 
 export interface EditorialCallout {
-  /** tip = helpful pointer, warning = common mistake, analogy = plain-English
-   *  comparison, note = define a jargon term. */
-  kind: "tip" | "warning" | "analogy" | "note";
+  /** tip = helpful pointer, warning = common mistake, note = a term defined. */
+  kind: "tip" | "warning" | "note";
   text: string;
 }
 
@@ -53,12 +52,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Think of a coat check. You hand in a long coat (the URL) and get a small numbered tag (the short code). Later you show the tag and get your coat back instantly. The hard parts: making sure no two coats get the same tag, and finding the right coat fast when thousands of people show tags at once.",
-          },
+        body: [
+          "The entire workload is a key→value mapping: store a long URL under a short code, then resolve that code on every click. The difficulty is the 100:1 read-to-write ratio — codes must be generated without collisions, and lookups must return in milliseconds without overloading the database.",
         ],
         bullets: [
           "What it must do: turn a long URL into a short code, redirect that code to the original, support custom aliases, expiry, and click analytics.",
@@ -153,12 +148,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Picture a bouncer at a club who must remember how many times each guest has entered in the last minute — across several doors at once. The challenge isn't the counting; it's that all the doors must share one accurate tally instantly, without slowing the line down.",
-          },
+        body: [
+          "Every API request must pass an allow/deny check before any real work happens. The difficulty is that the request count per client must stay accurate across many limiter instances at once, while adding well under a millisecond of overhead to each request.",
         ],
         bullets: [
           "What it must do: given a key (user / IP / API key), decide allow or block; return HTTP 429 with how long to wait and how much quota is left.",
@@ -237,12 +228,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "It's like booking a seat for a movie. The seat map can be a moment out of date and nobody minds — but the actual booking must be rock-solid: two people can never end up holding the same seat.",
-          },
+        body: [
+          "Two different guarantees coexist in one system: the availability display can tolerate being a second or two stale, but a reservation must be exact — the same spot can never be booked twice for the same time window. Designing each part to its own consistency requirement is the core of the problem.",
         ],
         bullets: [
           "What it must do: track entry/exit, show real-time availability, reserve a spot for a time slot, dynamic pricing, payments, a multi-lot dashboard.",
@@ -309,12 +296,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Think of a mailroom. People drop off letters (requests) and walk away instantly. Inside, sorters route each letter to the right courier (email / SMS / push), and if a courier is busy they try again later. The sender never waits for delivery.",
-          },
+        body: [
+          "Delivery to email, SMS, and push providers is slow and unreliable, so the API must never wait on it. The design accepts a request, persists it to a queue, and returns immediately — per-channel workers then handle delivery, retries, and failures independently.",
         ],
         bullets: [
           "What it must do: accept a notification, pick the right channel(s), respect user preferences and quiet hours, deliver reliably with retries, and de-duplicate.",
@@ -369,12 +352,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "It's like a phone's predictive keyboard. It doesn't 'think' about every possible word as you type — it has already learned the most likely next words and just looks them up instantly.",
-          },
+        body: [
+          "There is no time to compute suggestions at request time — responses must arrive within ~50ms on every keystroke. All ranking work therefore happens offline; the request path reduces to a single lookup of precomputed results.",
         ],
         bullets: [
           "What it must do: as the user types a prefix, return the top few completions ranked by popularity.",
@@ -435,12 +414,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Imagine a coat check too big for one counter, so you split it across many counters by the first letter of the name. Everyone knows which counter holds which names, so lookups are instant — and if a counter closes, a backup counter has copies.",
-          },
+        body: [
+          "Data is partitioned across many cache nodes, so two decisions define the design: how keys map to nodes — consistent hashing, so cluster changes don't invalidate the whole cache — and how data survives a node failure, which is replication.",
         ],
         bullets: [
           "What it must do: get/set/delete keys with ~1-2ms latency, scale beyond one machine, and survive node failures.",
@@ -503,12 +478,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Think of a personalized newspaper printed for each subscriber. Rather than assembling your paper the moment you open it, the presses pre-print each person's edition as news comes in — so opening it is instant.",
-          },
+        body: [
+          "Reads outnumber writes by a large factor. Images are stored once in object storage and served through a CDN; the real engineering effort is assembling each user's feed quickly, which means precomputing it when posts are created rather than when the feed is read.",
         ],
         bullets: [
           "What it must do: upload photos, follow people, and load a personalized home feed.",
@@ -571,12 +542,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a global radio network with a personal DJ. The songs are stored centrally but broadcast from towers near you (the CDN), and a DJ quietly learns your taste from what you play.",
-          },
+        body: [
+          "Audio delivery is fundamentally a CDN problem: files are stored once, encoded at several bitrates, and streamed in chunks from edge servers near the listener. The application layer focuses on metadata, playlists, and processing the play-event stream for recommendations.",
         ],
         bullets: [
           "What it must do: stream audio without buffering, manage playlists, and recommend tracks.",
@@ -626,12 +593,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a personalized newspaper per reader. For most authors you can pre-insert their story into each subscriber's edition. But a globally-famous columnist with 50 million subscribers would jam the presses — so their column is merged in only when each reader opens their paper.",
-          },
+        body: [
+          "When a user posts, the tweet must appear in millions of follower timelines within seconds. Precomputing timelines at write time makes reads fast, but breaks down for accounts with millions of followers — the design hinges on handling those two cases differently.",
         ],
         bullets: [
           "What it must do: post tweets, follow people, and show a ranked home timeline.",
@@ -690,12 +653,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "A regular API call is like mailing a letter and waiting for a reply. Chat needs an open phone line (a WebSocket) so either side can talk the instant they want to — no redialing.",
-          },
+        body: [
+          "HTTP request/response cannot push a message to a recipient, so each client holds a persistent WebSocket connection instead. The core problem becomes routing: finding which server currently holds the recipient's connection and delivering through it within milliseconds.",
         ],
         bullets: [
           "What it must do: 1:1 and group messages, delivery/read receipts, presence (online/offline), and offline delivery.",
@@ -751,12 +710,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like exploring a huge maze by leaving a trail. You keep a to-do list of corridors (URLs), mark rooms you've already visited so you don't loop forever, and avoid knocking on any one door too often.",
-          },
+        body: [
+          "A crawler is a continuous loop over a queue of URLs: fetch the page, store it, extract links, enqueue the new ones. The engineering is in the constraints — never fetch the same URL twice, never overload any single domain, and avoid traps like infinite or duplicate pages.",
         ],
         bullets: [
           "What it must do: fetch pages, extract and enqueue new links, store content, and avoid duplicates.",
@@ -813,12 +768,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Editing a shared document: instead of re-sending the whole book every time you fix a typo, you only send the changed page. Files are split into 'pages' (blocks) and only changed blocks move.",
-          },
+        body: [
+          "Re-uploading an entire file on every change is unusable for large files. Splitting files into content-hashed blocks means only changed blocks are transferred, identical blocks are stored once across all users, and syncing a device reduces to comparing block lists.",
         ],
         bullets: [
           "What it must do: upload/download files, sync across devices, and share folders.",
@@ -885,12 +836,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "A massive shop: the showroom (browsing) can show slightly old signs and that's fine, but the cash register (checkout) must be exact — two customers can never both buy the last unit.",
-          },
+        body: [
+          "Browsing and checkout have opposite requirements: the catalog is read-heavy and tolerates slightly stale data, while inventory and payment must be transactionally exact. Keeping those two paths separate — cache-backed reads, SQL-backed checkout — is the central design decision.",
         ],
         bullets: [
           "What it must do: browse/search products, manage a cart, check out, and track orders.",
@@ -951,12 +898,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a taxi dispatcher with a live map full of moving pins. When you call, they glance at the pins near you and send the closest cab — they don't scan the whole city.",
-          },
+        body: [
+          "Drivers stream GPS updates continuously, and a ride request must find nearby drivers in well under a second. A geospatial index over live locations turns “who is near this rider” from a scan of every driver into a lookup of a few map cells.",
         ],
         bullets: [
           "What it must do: track drivers in real time, match a rider to nearby drivers, run the trip, and bill it.",
@@ -1022,12 +965,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a film studio plus a global cinema chain. Uploading is the studio: the master is processed into many formats. Watching is the cinemas: copies are pre-shipped to theaters (CDN edges) near every audience.",
-          },
+        body: [
+          "Upload and playback are two separate systems: an asynchronous pipeline transcodes each upload into chunked, multi-bitrate files, and a CDN serves those chunks worldwide. Origin servers only handle metadata — the CDN carries virtually all of the bandwidth.",
         ],
         bullets: [
           "What it must do: upload + process videos, then stream them smoothly to billions.",
@@ -1084,12 +1023,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a bank teller with a strict logbook. Every move is written down before it happens, and if the teller faints mid-transaction, the next teller reads the log and finishes it exactly once — never twice.",
-          },
+        body: [
+          "Money cannot be lost or double-charged, so correctness dominates every other concern. Each payment is a persisted state machine, every request carries an idempotency key so retries are safe, and the ledger lives in an ACID database.",
         ],
         bullets: [
           "What it must do: charge, capture, refund, and settle payments across providers.",
@@ -1150,12 +1085,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like the doors opening for a blockbuster concert: a crowd sprints for the same seats. You need a bouncer (waiting room), a way to put a 'reserved' sticker on a seat while someone pays, and an ironclad rule that one seat = one buyer.",
-          },
+        body: [
+          "An on-sale event sends an enormous burst of users competing for the same few thousand seats. The system must hold a seat exclusively while a buyer pays, release it automatically if they don't, and absorb the surge without letting it reach the database.",
         ],
         bullets: [
           "What it must do: browse seats, temporarily hold a seat during checkout, and confirm the booking.",
@@ -1215,12 +1146,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Two people writing on the same whiteboard at once. If both insert a word at position 5 simultaneously, you need a rule that lands both edits sensibly instead of overwriting one — and everyone must end up seeing the exact same board.",
-          },
+        body: [
+          "Multiple users edit the same document at the same time, and naive last-write-wins silently destroys someone's work. The core of the design is a merge algorithm — OT or CRDT — that guarantees every client converges to the same document regardless of the order edits arrive.",
         ],
         bullets: [
           "What it must do: real-time multi-user editing, live cursors/presence, and consistent merged state.",
@@ -1290,12 +1217,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a building of meeting rooms (channels). People come and go; conversations are recorded; and months later someone needs to find 'that message about the budget' — so the archive and its search matter as much as live chat.",
-          },
+        body: [
+          "This is two systems in one product: real-time delivery over persistent connections, and a permanent, searchable archive of every message. Both are first-class requirements — the design must deliver instantly and index everything for later retrieval.",
         ],
         bullets: [
           "What it must do: channels/workspaces, real-time messages, threads, file sharing, and full-history search.",
@@ -1347,12 +1270,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like the flight recorders of a whole fleet streaming readings nonstop. You keep every second of the last hour, but for last year you only need a reading per minute — so you compress the past instead of storing it all at full detail.",
-          },
+        body: [
+          "Writes outnumber reads by orders of magnitude: thousands of servers emit time-stamped metrics continuously. A time-series database with downsampling keeps recent data fine-grained and old data cheap, while alert rules evaluate on the incoming stream rather than by polling.",
         ],
         bullets: [
           "What it must do: ingest metrics from many sources, store them, power dashboards, and fire alerts.",
@@ -1412,12 +1331,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a cinema chain that ships copies of every film to theaters near you before opening night. When you press play, the reel is already next door — no waiting for it to travel from headquarters.",
-          },
+        body: [
+          "Playback latency and bandwidth cost make serving video from origin servers infeasible. Titles are transcoded into chunked multi-bitrate files and pre-positioned on CDN edge caches near viewers; origin services only serve metadata, profiles, and personalization.",
         ],
         bullets: [
           "What it must do: browse a catalog, stream video smoothly, resume across devices, and recommend titles.",
@@ -1468,12 +1383,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a deck of cards dealt from people standing near you. You flip through (swipe), and if two people both keep each other's card, they're introduced.",
-          },
+        body: [
+          "Two queries define the product: “who is nearby”, answered by a geospatial index over user locations, and “did both users like each other”, which must be detected instantly at swipe time via a fast reverse-lookup of prior likes.",
         ],
         bullets: [
           "What it must do: show nearby profiles, record swipes, and detect mutual likes (matches).",
@@ -1525,12 +1436,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Two products in one: a printed atlas (pre-drawn map tiles you just fetch) and a GPS routing brain (find the fastest road path, adjusting for current traffic).",
-          },
+        body: [
+          "Rendering and routing are separate systems. The map itself is pre-rendered into image tiles served from a CDN; routing runs shortest-path queries over a continent-scale road graph, using precomputed shortcuts and live traffic data to answer in milliseconds.",
         ],
         bullets: [
           "What it must do: display the map, search places, and compute routes with live traffic.",
@@ -1581,12 +1488,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "A group phone call with video. If everyone sends their video to everyone directly, a big call drowns in connections. So a 'switchboard' (media server) takes each person's single feed and relays it to the rest.",
-          },
+        body: [
+          "Real-time video cannot tolerate the connection count of a full peer-to-peer mesh. Each participant uploads a single stream to a media server (an SFU) that forwards it to the others, while lightweight signaling runs separately over WebSockets.",
         ],
         bullets: [
           "What it must do: real-time audio/video for many participants, screen share, chat, and recording.",
@@ -1644,12 +1547,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a dispatcher juggling three groups at once: diners placing orders, kitchens cooking them, and drivers on a live map. The job is to keep all three in sync and pick the best driver for each order.",
-          },
+        body: [
+          "Three parties — customer, restaurant, and courier — must stay synchronized in real time. The design pairs a geospatial index for courier matching with an order state machine driven through a queue, keeping live location tracking separate from the transactional order record.",
         ],
         bullets: [
           "What it must do: browse/order food, route the order to the restaurant, match a courier, and track delivery live.",
@@ -1701,12 +1600,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like thousands of community bulletin boards. Each board ranks notes by a mix of votes and freshness, and notes grow branching threads of replies underneath them.",
-          },
+        body: [
+          "Feeds are ranked by a score that blends votes and recency, so scores are updated as votes arrive and ranked listings are served from cache. Comment threads are deeply nested, which makes the tree storage model — materialized paths instead of recursive queries — the other key decision.",
         ],
         bullets: [
           "What it must do: communities, posts, nested comments, voting, and ranked feeds.",
@@ -1759,12 +1654,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a hotel-booking desk for millions of independent rooms: you filter by area, dates, and amenities, then reserve specific dates — and no two guests can hold the same room for overlapping nights.",
-          },
+        body: [
+          "Discovery is a search problem — geography, dates, price, amenities — best served by a search index. Booking is a correctness problem: two guests must never reserve overlapping dates, which the database enforces transactionally at write time.",
         ],
         bullets: [
           "What it must do: search listings by location/dates/filters, view details, and book.",
@@ -1814,12 +1705,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "A global post office where most letters are delivered the instant they're sent (recipient online), and the rest are held at the local branch until the recipient comes back (offline). The key is finding which branch holds each person.",
-          },
+        body: [
+          "At a million messages per second the design stays deliberately minimal: a persistent connection per user, a routing map from user to server, store-and-forward for offline recipients, and deleting messages once delivered so storage stays small.",
         ],
         bullets: [
           "What it must do: 1:1 + group messaging, delivery/read receipts, offline delivery, media.",
@@ -1873,12 +1760,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like the index at the back of a giant library's worth of books. Instead of reading every book when you ask a question, you flip to the index that says 'this word appears in books 3, 17, 92' and jump straight there.",
-          },
+        body: [
+          "Answering a query by scanning documents is impossible at web scale. An offline pipeline crawls the web and builds a sharded inverted index — a map from each term to the documents containing it — so query time reduces to intersecting and ranking precomputed lists.",
         ],
         bullets: [
           "What it must do: crawl the web, index it, and return ranked results for a query fast.",
@@ -1935,12 +1818,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like asking a local 'good coffee near here, open now?'. They don't list every café in the city — they think of the few blocks around you and filter from there.",
-          },
+        body: [
+          "“What's near me, filtered and ranked” must return in milliseconds across tens of millions of places. Indexing businesses by geographic cell turns proximity search into a lookup of a few cells instead of computing distance to every row.",
         ],
         bullets: [
           "What it must do: search businesses by location + filters, view details and reviews.",
@@ -1986,12 +1865,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a TV channel that rewrites its lineup for you every few seconds based on what you just watched, lingered on, or skipped — and the next clip is always ready to play instantly.",
-          },
+        body: [
+          "The For You feed is the product: every watch, skip, and replay feeds a streaming pipeline that continuously refreshes each user's candidate videos. Clips are short and replayed heavily, which makes CDN caching and prefetching unusually effective.",
         ],
         bullets: [
           "What it must do: upload short videos and serve an endless personalized 'For You' feed.",
@@ -2037,12 +1912,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a long paper tape where every message is written in order, one after another. Writers only ever append to the end; readers each keep a bookmark and move it forward at their own speed — and can rewind to re-read.",
-          },
+        body: [
+          "A partitioned, append-only commit log is the core abstraction: producers append, the log persists messages in order, and each consumer advances its own offset independently. Partitioning provides parallelism; replication provides durability.",
         ],
         bullets: [
           "What it must do: accept messages from producers, store them durably, and let multiple consumer groups read independently.",
@@ -2103,12 +1974,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a bank ledger where every transfer is two entries — money out of one account, into another — recorded together. If only half is written, the books don't balance, so both must commit as one.",
-          },
+        body: [
+          "Every transfer moves money between two accounts and must be atomic: the debit and the credit commit together or not at all. Double-entry bookkeeping in an ACID ledger, idempotency keys on every request, and per-account locking keep that guarantee under failures and retries.",
         ],
         bullets: [
           "What it must do: hold balances and transfer money between accounts reliably.",
@@ -2163,12 +2030,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "A shared whiteboard you can also press 'run' on. Several people edit together, and the code runs in a sealed glass box so that whatever it does, it can't reach out and damage the room.",
-          },
+        body: [
+          "Two hard problems share one product: merging concurrent edits (the collaborative-editor problem), and executing untrusted user code — which must run inside isolated, resource-limited sandboxes that cannot reach your infrastructure or other users.",
         ],
         bullets: [
           "What it must do: collaborative editing, file management, and running user code with live output.",
@@ -2219,12 +2082,8 @@ export const EDITORIALS: Record<string, Editorial> = {
     sections: [
       {
         heading: "1. Understand the problem",
-        callouts: [
-          {
-            kind: "analogy",
-            text:
-              "Like a factory assembly line triggered whenever new parts arrive (a code push). Each item moves through stations — build, test, deploy — and only advances if the previous station passed.",
-          },
+        body: [
+          "Every push triggers a pipeline of build, test, and deploy stages. Modeling it as a job queue consumed by a pool of disposable, isolated workers absorbs bursty load, keeps builds reproducible, and lets each stage gate the next.",
         ],
         bullets: [
           "What it must do: trigger on push, run build/test/deploy stages on isolated workers, show live logs, store artifacts.",

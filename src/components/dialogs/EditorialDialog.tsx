@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { X, BookOpen, Lightbulb, AlertTriangle, Sparkles, Info } from "lucide-react";
+import { X, BookOpen, Lightbulb, AlertTriangle, Info } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { getProblemById } from "@/data/problems";
 import { getEditorial, type EditorialCallout, type EditorialTable } from "@/data/editorials";
@@ -13,8 +13,7 @@ const CALLOUT_STYLES: Record<
 > = {
   tip: { border: "border-cyan-500/25", bg: "bg-cyan-500/[0.06]", icon: Lightbulb, iconColor: "text-cyan-400", label: "Tip" },
   warning: { border: "border-amber-500/25", bg: "bg-amber-500/[0.06]", icon: AlertTriangle, iconColor: "text-amber-400", label: "Common mistake" },
-  analogy: { border: "border-violet-500/25", bg: "bg-violet-500/[0.06]", icon: Sparkles, iconColor: "text-violet-400", label: "In plain English" },
-  note: { border: "border-zinc-700", bg: "bg-zinc-800/40", icon: Info, iconColor: "text-zinc-400", label: "Jargon" },
+  note: { border: "border-zinc-700", bg: "bg-zinc-800/40", icon: Info, iconColor: "text-zinc-400", label: "Definition" },
 };
 
 function Callout({ callout }: { callout: EditorialCallout }) {

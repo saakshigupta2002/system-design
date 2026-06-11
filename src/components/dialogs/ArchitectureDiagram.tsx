@@ -14,8 +14,9 @@ const CATEGORY_STROKE: Record<string, string> = {
 
 const NODE_W = 104;
 const NODE_H = 40;
-const PAD = 20;
-const VIEW_W = 660;
+const H_GAP = 48;
+const V_GAP = 18;
+const PAD = 18;
 
 interface Placed {
   cx: number;
@@ -32,9 +33,11 @@ function shortDescription(text: string | undefined): string {
 }
 
 /**
- * Renders a problem's reference solution as a small architecture diagram,
- * derived from the same node positions + edges used on the canvas, plus a
- * plain-language legend explaining what each component is and why it's there.
+ * Renders a problem's reference solution as an architecture diagram with a
+ * plain-language legend. Nodes are laid out in dependency layers (each column
+ * is one hop deeper from the entry point) computed from the edges, so the
+ * diagram stays readable regardless of how the canvas positions were authored
+ * — large designs previously overlapped when their positions were scaled down.
  */
 export function ArchitectureDiagram({
   problemId,
@@ -46,49 +49,88 @@ export function ArchitectureDiagram({
   const ref = getProblemById(problemId)?.referenceSolution;
   if (!ref || ref.nodes.length === 0) return null;
 
-  // Unique components in the order they appear, for the legend.
-  const seen = new Set<string>();
-  const legend = ref.nodes
-    .filter((n) => {
-      if (seen.has(n.componentId)) return false;
-      seen.add(n.componentId);
-      return true;
-    })
-    .map((n) => {
-      const comp = getComponentById(n.componentId);
-      return {
-        label: comp?.label ?? n.componentId,
+  // Unique components in author order, remembering the authored y for stable
+  // row ordering within a column.
+  const ids: string[] = [];
+  const refY = new Map<string, number>();
+  for (const n of ref.nodes) {
+    if (!refY.has(n.componentId)) {
+      refY.set(n.componentId, n.y);
+      ids.push(n.componentId);
+    }
+  }
+
+  // Build the dependency graph (deduped; edges reference componentIds).
+  const adj = new Map<string, string[]>();
+  const indeg = new Map<string, number>();
+  for (const id of ids) {
+    adj.set(id, []);
+    indeg.set(id, 0);
+  }
+  const pairSeen = new Set<string>();
+  for (const e of ref.edges) {
+    if (!adj.has(e.source) || !adj.has(e.target)) continue;
+    const key = `${e.source}→${e.target}`;
+    if (pairSeen.has(key)) continue;
+    pairSeen.add(key);
+    adj.get(e.source)!.push(e.target);
+    indeg.set(e.target, (indeg.get(e.target) ?? 0) + 1);
+  }
+
+  // Longest-path layering (Kahn's): column = hops from the entry point.
+  const depth = new Map<string, number>();
+  const remaining = new Map(indeg);
+  const queue = ids.filter((id) => remaining.get(id) === 0);
+  for (const id of queue) depth.set(id, 0);
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    const d = depth.get(id) ?? 0;
+    for (const child of adj.get(id) ?? []) {
+      if ((depth.get(child) ?? -1) < d + 1) depth.set(child, d + 1);
+      const r = (remaining.get(child) ?? 1) - 1;
+      remaining.set(child, r);
+      if (r === 0) queue.push(child);
+    }
+  }
+  for (const id of ids) if (!depth.has(id)) depth.set(id, 0);
+
+  // Group into columns; order rows by the authored vertical position.
+  const cols = new Map<number, string[]>();
+  for (const id of ids) {
+    const d = depth.get(id)!;
+    if (!cols.has(d)) cols.set(d, []);
+    cols.get(d)!.push(id);
+  }
+  for (const colIds of cols.values()) {
+    colIds.sort((a, b) => (refY.get(a) ?? 0) - (refY.get(b) ?? 0));
+  }
+
+  const numCols = Math.max(...cols.keys()) + 1;
+  const maxRows = Math.max(...[...cols.values()].map((c) => c.length));
+  const viewW = PAD * 2 + numCols * NODE_W + (numCols - 1) * H_GAP;
+  const viewH = PAD * 2 + maxRows * NODE_H + (maxRows - 1) * V_GAP;
+
+  const placedById = new Map<string, Placed>();
+  for (const [d, colIds] of cols) {
+    const colH = colIds.length * NODE_H + (colIds.length - 1) * V_GAP;
+    colIds.forEach((id, i) => {
+      const comp = getComponentById(id);
+      placedById.set(id, {
+        cx: PAD + d * (NODE_W + H_GAP) + NODE_W / 2,
+        cy: PAD + (viewH - PAD * 2 - colH) / 2 + i * (NODE_H + V_GAP) + NODE_H / 2,
+        label: comp?.label ?? id,
         color: CATEGORY_STROKE[comp?.category ?? ""] ?? "#71717a",
-        why: notes?.[n.componentId] ?? shortDescription(comp?.description),
-      };
+      });
     });
+  }
 
-  const xs = ref.nodes.map((n) => n.x);
-  const ys = ref.nodes.map((n) => n.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const spanX = maxX - minX || 1;
-  const spanY = maxY - minY || 1;
-
-  const contentW = VIEW_W - PAD * 2 - NODE_W;
-  // Uniform scale so the layout keeps its shape; cap vertical growth.
-  const scale = Math.min(contentW / spanX, 300 / spanY);
-  const viewH = spanY * scale + NODE_H + PAD * 2;
-
-  // componentId -> first placed node (edges reference endpoints by componentId)
-  const byComponent = new Map<string, Placed>();
-  const placed: Placed[] = ref.nodes.map((n) => {
-    const comp = getComponentById(n.componentId);
-    const p: Placed = {
-      cx: PAD + (n.x - minX) * scale + NODE_W / 2,
-      cy: PAD + (n.y - minY) * scale + NODE_H / 2,
-      label: comp?.label ?? n.componentId,
+  const legend = ids.map((id) => {
+    const comp = getComponentById(id);
+    return {
+      label: comp?.label ?? id,
       color: CATEGORY_STROKE[comp?.category ?? ""] ?? "#71717a",
+      why: notes?.[id] ?? shortDescription(comp?.description),
     };
-    if (!byComponent.has(n.componentId)) byComponent.set(n.componentId, p);
-    return p;
   });
 
   // Trim an edge so the arrow tip lands on the target box border, not its center.
@@ -103,64 +145,82 @@ export function ArchitectureDiagram({
     return { x: to.cx + dx * s, y: to.cy + dy * s };
   }
 
+  const drawnEdges: { from: Placed; to: Placed }[] = [];
+  for (const key of pairSeen) {
+    const [source, target] = key.split("→");
+    const from = placedById.get(source);
+    const to = placedById.get(target);
+    if (from && to) drawnEdges.push({ from, to });
+  }
+
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40">
-      <svg viewBox={`0 0 ${VIEW_W} ${viewH}`} className="h-auto w-full" role="img" aria-label="Reference architecture diagram">
-        <defs>
-          <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#52525b" />
-          </marker>
-        </defs>
-
-        {/* Edges (drawn first, behind nodes) */}
-        {ref.edges.map((e, i) => {
-          const from = byComponent.get(e.source);
-          const to = byComponent.get(e.target);
-          if (!from || !to) return null;
-          const tip = borderPoint(from, to);
-          return (
-            <line
-              key={i}
-              x1={from.cx}
-              y1={from.cy}
-              x2={tip.x}
-              y2={tip.y}
-              stroke="#52525b"
-              strokeWidth={1.3}
-              markerEnd="url(#arch-arrow)"
-            />
-          );
-        })}
-
-        {/* Nodes */}
-        {placed.map((p, i) => (
-          <g key={i}>
-            <rect
-              x={p.cx - NODE_W / 2}
-              y={p.cy - NODE_H / 2}
-              width={NODE_W}
-              height={NODE_H}
-              rx={7}
-              fill="#18181b"
-              stroke={p.color}
-              strokeOpacity={0.5}
-              strokeWidth={1.2}
-            />
-            <text
-              x={p.cx}
-              y={p.cy}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={10}
-              fontFamily="system-ui, sans-serif"
-              fill="#e4e4e7"
+        <svg
+          viewBox={`0 0 ${viewW} ${viewH}`}
+          className="h-auto w-full"
+          role="img"
+          aria-label="Reference architecture diagram"
+        >
+          <defs>
+            <marker
+              id="arch-arrow"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
             >
-              {p.label.length > 16 ? p.label.slice(0, 15) + "…" : p.label}
-            </text>
-          </g>
-        ))}
-      </svg>
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#52525b" />
+            </marker>
+          </defs>
+
+          {/* Edges (drawn first, behind nodes) */}
+          {drawnEdges.map(({ from, to }, i) => {
+            const tip = borderPoint(from, to);
+            return (
+              <line
+                key={i}
+                x1={from.cx}
+                y1={from.cy}
+                x2={tip.x}
+                y2={tip.y}
+                stroke="#52525b"
+                strokeWidth={1.3}
+                markerEnd="url(#arch-arrow)"
+              />
+            );
+          })}
+
+          {/* Nodes */}
+          {[...placedById.values()].map((p, i) => (
+            <g key={i}>
+              <rect
+                x={p.cx - NODE_W / 2}
+                y={p.cy - NODE_H / 2}
+                width={NODE_W}
+                height={NODE_H}
+                rx={7}
+                fill="#18181b"
+                stroke={p.color}
+                strokeOpacity={0.5}
+                strokeWidth={1.2}
+              />
+              <text
+                x={p.cx}
+                y={p.cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={11}
+                fontFamily="system-ui, sans-serif"
+                fill="#e4e4e7"
+              >
+                {p.label.length > 16 ? p.label.slice(0, 15) + "…" : p.label}
+              </text>
+            </g>
+          ))}
+        </svg>
       </div>
 
       {/* Legend — what each component is and why it's here */}
