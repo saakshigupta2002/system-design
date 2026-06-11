@@ -10,6 +10,7 @@ import { RightPanel } from "@/components/panel/RightPanel";
 import { DesignCanvas } from "@/components/canvas/DesignCanvas";
 import { useAppStore } from "@/store/appStore";
 import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
+import { usePenStore } from "@/store/penStore";
 import { useSimulationStore } from "@/store/simulationStore";
 import { runSimulation } from "@/engine/simulator";
 import { scoreDesign } from "@/scoring/scorer";
@@ -135,6 +136,7 @@ export function AppShell() {
 
   const handleClearCanvas = useCallback(() => {
     useCanvasStore.getState().clearCanvas();
+    usePenStore.getState().clearAll();
     useAppStore.getState().showToast("Canvas cleared", "info");
   }, []);
 

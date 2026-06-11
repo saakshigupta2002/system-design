@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useCanvasStore, sanitizeEdges, type ComponentNodeData } from "./canvasStore";
 import { useAppStore } from "./appStore";
+import { useSimulationStore } from "./simulationStore";
 import { usePenStore, type Stroke } from "./penStore";
 import { PROBLEMS } from "@/data/problems";
 
@@ -139,6 +140,12 @@ export const useSavedDesignsStore = create<SavedDesignsState>()(
       loadDesign: (id: string) => {
         const design = get().designs.find((d) => d.id === id);
         if (!design) return;
+
+        // A past simulation/score described the previous canvas.
+        const sim = useSimulationStore.getState();
+        sim.setResult(null);
+        sim.setScoreResult(null);
+        sim.setShowScore(false);
 
         // Restore canvas state
         const restoredNodes = design.nodes.map((n) => {

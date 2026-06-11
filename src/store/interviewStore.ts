@@ -28,7 +28,7 @@ const PHASES: Phase[] = [
   },
   {
     name: "Data Model",
-    targetMinutes: 2,
+    targetMinutes: 5,
     description: "Design key entities and relationships",
     icon: "Database",
   },

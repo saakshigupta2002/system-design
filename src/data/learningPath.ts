@@ -19,6 +19,11 @@ export const LEARNING_PATH: LearningTier[] = [
       "distributed-cache",
       "instagram",
       "music-streaming",
+      "location-service",
+      "tinder",
+      "reddit",
+      "code-editor",
+      "cicd-pipeline",
     ],
   },
   {
@@ -30,6 +35,11 @@ export const LEARNING_PATH: LearningTier[] = [
       "web-crawler",
       "file-storage",
       "ecommerce",
+      "whatsapp",
+      "netflix",
+      "airbnb",
+      "food-delivery",
+      "zoom",
     ],
   },
   {
@@ -43,6 +53,11 @@ export const LEARNING_PATH: LearningTier[] = [
       "collaborative-editor",
       "team-messaging",
       "metrics-monitoring",
+      "google-maps",
+      "search-engine",
+      "tiktok",
+      "digital-wallet",
+      "message-queue-design",
     ],
   },
 ];
@@ -153,5 +168,80 @@ export const PROBLEM_CONCEPTS: ConceptPrerequisite[] = [
     problemId: "metrics-monitoring",
     concepts: ["time-series-db", "aggregation-pipeline", "alerting"],
     prerequisites: ["streaming-protocol", "async-processing", "message-queue"],
+  },
+  {
+    problemId: "location-service",
+    concepts: ["geospatial-indexing", "proximity-search", "caching"],
+    prerequisites: ["caching", "read-heavy-design"],
+  },
+  {
+    problemId: "tinder",
+    concepts: ["geospatial-indexing", "matching-algorithm", "swipe-deck"],
+    prerequisites: ["caching", "async-processing"],
+  },
+  {
+    problemId: "reddit",
+    concepts: ["ranking", "nested-comments", "voting"],
+    prerequisites: ["caching", "async-processing"],
+  },
+  {
+    problemId: "code-editor",
+    concepts: ["sandboxing", "operational-transform", "websocket"],
+    prerequisites: ["websocket", "async-processing"],
+  },
+  {
+    problemId: "cicd-pipeline",
+    concepts: ["job-queue", "worker-pool", "artifact-storage"],
+    prerequisites: ["message-queue", "async-processing"],
+  },
+  {
+    problemId: "whatsapp",
+    concepts: ["store-and-forward", "connection-routing", "websocket"],
+    prerequisites: ["websocket", "message-queue", "presence"],
+  },
+  {
+    problemId: "netflix",
+    concepts: ["edge-caching", "adaptive-bitrate", "recommendation"],
+    prerequisites: ["cdn", "streaming-protocol"],
+  },
+  {
+    problemId: "airbnb",
+    concepts: ["geo-search", "date-range-booking", "search-indexing"],
+    prerequisites: ["search-indexing", "caching", "concurrency"],
+  },
+  {
+    problemId: "food-delivery",
+    concepts: ["geospatial-indexing", "order-state-machine", "real-time-tracking"],
+    prerequisites: ["geospatial-indexing", "message-queue"],
+  },
+  {
+    problemId: "zoom",
+    concepts: ["sfu-topology", "webrtc", "signaling"],
+    prerequisites: ["websocket", "streaming-protocol"],
+  },
+  {
+    problemId: "google-maps",
+    concepts: ["map-tiles", "shortest-path", "traffic-streams"],
+    prerequisites: ["cdn", "geospatial-indexing", "time-series-db"],
+  },
+  {
+    problemId: "search-engine",
+    concepts: ["inverted-index", "crawling", "ranking"],
+    prerequisites: ["crawling", "sharding", "caching"],
+  },
+  {
+    problemId: "tiktok",
+    concepts: ["recommendation-pipeline", "edge-caching", "stream-processing"],
+    prerequisites: ["cdn", "message-queue", "recommendation"],
+  },
+  {
+    problemId: "digital-wallet",
+    concepts: ["double-entry-ledger", "idempotency", "atomic-transfer"],
+    prerequisites: ["idempotency", "ledger", "distributed-locking"],
+  },
+  {
+    problemId: "message-queue-design",
+    concepts: ["append-only-log", "partitioning", "consumer-offsets"],
+    prerequisites: ["replication", "consistent-hashing", "message-queue"],
   },
 ];

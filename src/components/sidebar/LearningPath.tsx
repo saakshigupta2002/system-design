@@ -8,7 +8,9 @@ import { LEARNING_PATH, PROBLEM_CONCEPTS } from "@/data/learningPath";
 import { PROBLEMS } from "@/data/problems";
 import { useAppStore } from "@/store/appStore";
 
-const STORAGE_KEY = "sds-completed-problems";
+const STORAGE_KEY = "systemdesign-completed-problems";
+// Pre-rename key — migrated on first read so progress isn't lost.
+const LEGACY_STORAGE_KEY = "sds-completed-problems";
 
 function getDifficultyColor(difficulty: string) {
   switch (difficulty) {
@@ -48,7 +50,16 @@ export function LearningPath() {
   const [completed, setCompleted] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      let stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) {
+        // Migrate progress saved under the old key.
+        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (legacy) {
+          localStorage.setItem(STORAGE_KEY, legacy);
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+          stored = legacy;
+        }
+      }
       return stored ? new Set(JSON.parse(stored)) : new Set();
     } catch {
       return new Set();

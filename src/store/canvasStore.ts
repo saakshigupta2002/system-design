@@ -10,6 +10,7 @@ import {
   applyEdgeChanges,
   addEdge,
 } from "@xyflow/react";
+import { useSimulationStore } from "./simulationStore";
 
 export interface ComponentNodeData {
   componentId: string;
@@ -52,6 +53,35 @@ export interface CanvasTab {
 // carry stale ids (e.g. "t-tgt") that no longer exist — those edges silently
 // fail to render while still poisoning the simulation graph.
 const VALID_HANDLE_IDS = new Set(["top", "right", "bottom", "left"]);
+
+/** Strip transient simulation results (utilization/status/bottleneck) from
+ *  node data — they describe one past run and shouldn't survive tab switches
+ *  or page reloads. */
+function stripSimData(nodes: Node[]): Node[] {
+  return nodes.map((n) =>
+    n.data &&
+    (n.data.utilization !== undefined ||
+      n.data.status !== undefined ||
+      n.data.isBottleneck !== undefined)
+      ? {
+          ...n,
+          data: { ...n.data, utilization: undefined, status: undefined, isBottleneck: undefined },
+        }
+      : n
+  );
+}
+
+/** A past simulation/score describes the canvas it ran on — clear it whenever
+ *  the visible canvas changes wholesale (tab switch, clear, load). */
+function clearSimResults() {
+  const sim = useSimulationStore.getState();
+  sim.setResult(null);
+  sim.setScoreResult(null);
+  sim.setShowScore(false);
+}
+
+const isActiveTabReadOnly = (state: { tabs: CanvasTab[]; activeTabId: string }) =>
+  state.tabs.find((t) => t.id === state.activeTabId)?.readOnly === true;
 
 /** Drop self-loops and normalize missing/stale handle ids to right→left. */
 export function sanitizeEdges(edges: Edge[] | undefined): Edge[] {
@@ -109,10 +139,13 @@ export const useCanvasStore = create<CanvasState>()(
       activeTabId: "my-design",
 
       addTab: (tab) => {
+        clearSimResults();
         set((state) => {
           // Save current tab state before switching
           const updatedTabs = state.tabs.map((t) =>
-            t.id === state.activeTabId ? { ...t, nodes: state.nodes, edges: state.edges } : t
+            t.id === state.activeTabId
+              ? { ...t, nodes: stripSimData(state.nodes), edges: state.edges }
+              : t
           );
           // Check if tab already exists (reuse it)
           const existing = updatedTabs.find((t) => t.id === tab.id);
@@ -141,14 +174,17 @@ export const useCanvasStore = create<CanvasState>()(
         set((state) => {
           const target = state.tabs.find((t) => t.id === tabId);
           if (!target || tabId === state.activeTabId) return state;
+          clearSimResults();
           // Save current tab state
           const updatedTabs = state.tabs.map((t) =>
-            t.id === state.activeTabId ? { ...t, nodes: state.nodes, edges: state.edges } : t
+            t.id === state.activeTabId
+              ? { ...t, nodes: stripSimData(state.nodes), edges: state.edges }
+              : t
           );
           return {
             tabs: updatedTabs,
             activeTabId: tabId,
-            nodes: target.nodes,
+            nodes: stripSimData(target.nodes),
             edges: target.edges,
             selectedNodeId: null,
             selectedEdgeId: null,
@@ -161,12 +197,13 @@ export const useCanvasStore = create<CanvasState>()(
           if (tabId === "my-design") return state; // Can't close the main tab
           const remaining = state.tabs.filter((t) => t.id !== tabId);
           if (state.activeTabId === tabId) {
+            clearSimResults();
             // Switch to my-design tab
             const myDesign = remaining.find((t) => t.id === "my-design") ?? remaining[0];
             return {
               tabs: remaining,
               activeTabId: myDesign.id,
-              nodes: myDesign.nodes,
+              nodes: stripSimData(myDesign.nodes),
               edges: myDesign.edges,
               selectedNodeId: null,
               selectedEdgeId: null,
@@ -194,15 +231,20 @@ export const useCanvasStore = create<CanvasState>()(
         // A node connected to itself adds an inbound edge that breaks entry-
         // point detection in the simulator — never useful, so block it.
         if (connection.source === connection.target) return;
-        set((state) => ({
-          edges: addEdge(
-            { ...connection, type: "animated", data: { label: '', protocol: 'http', async: false } satisfies CustomEdgeData },
-            state.edges
-          ),
-        }));
+        set((state) => {
+          if (isActiveTabReadOnly(state)) return state;
+          return {
+            edges: addEdge(
+              { ...connection, type: "animated", data: { label: '', protocol: 'http', async: false } satisfies CustomEdgeData },
+              state.edges
+            ),
+          };
+        });
       },
       addNode: (node) => {
-        set((state) => ({ nodes: [...state.nodes, node] }));
+        set((state) =>
+          isActiveTabReadOnly(state) ? state : { nodes: [...state.nodes, node] }
+        );
       },
       setSelectedNode: (id) => {
         set({ selectedNodeId: id, selectedEdgeId: null });
@@ -233,24 +275,31 @@ export const useCanvasStore = create<CanvasState>()(
         }));
       },
       clearCanvas: () => {
+        clearSimResults();
         set({ nodes: [], edges: [], selectedNodeId: null, selectedEdgeId: null });
       },
       deleteNode: (nodeId) => {
-        set((state) => ({
-          nodes: state.nodes.filter((n) => n.id !== nodeId),
-          edges: state.edges.filter(
-            (e) => e.source !== nodeId && e.target !== nodeId
-          ),
-          selectedNodeId:
-            state.selectedNodeId === nodeId ? null : state.selectedNodeId,
-        }));
+        set((state) => {
+          if (isActiveTabReadOnly(state)) return state;
+          return {
+            nodes: state.nodes.filter((n) => n.id !== nodeId),
+            edges: state.edges.filter(
+              (e) => e.source !== nodeId && e.target !== nodeId
+            ),
+            selectedNodeId:
+              state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+          };
+        });
       },
       deleteEdge: (edgeId) => {
-        set((state) => ({
-          edges: state.edges.filter((e) => e.id !== edgeId),
-          selectedEdgeId:
-            state.selectedEdgeId === edgeId ? null : state.selectedEdgeId,
-        }));
+        set((state) => {
+          if (isActiveTabReadOnly(state)) return state;
+          return {
+            edges: state.edges.filter((e) => e.id !== edgeId),
+            selectedEdgeId:
+              state.selectedEdgeId === edgeId ? null : state.selectedEdgeId,
+          };
+        });
       },
     }),
     {
@@ -272,9 +321,10 @@ export const useCanvasStore = create<CanvasState>()(
         };
       },
       partialize: (state) => ({
-        nodes: state.nodes,
+        // Simulation results are transient — don't persist them.
+        nodes: stripSimData(state.nodes),
         edges: state.edges,
-        tabs: state.tabs,
+        tabs: state.tabs.map((t) => ({ ...t, nodes: stripSimData(t.nodes) })),
         activeTabId: state.activeTabId,
       }),
     }

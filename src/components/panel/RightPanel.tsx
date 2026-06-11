@@ -320,11 +320,14 @@ function PropertiesTab() {
               </p>
             </div>
 
-            {/* Replicas slider */}
-            {data.scalable && (
+            {/* Replicas slider — scalable components scale horizontally;
+                stateful ones (e.g. SQL DB) replicate for redundancy/reads. */}
+            {(data.scalable || getComponentById(data.componentId as string)?.stateful) && (
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs text-zinc-400">Replicas</label>
+                  <label className="text-xs text-zinc-400">
+                    {data.scalable ? "Replicas" : "Replicas (replication)"}
+                  </label>
                   <span className="font-mono text-xs text-cyan-500">
                     {data.replicas as number}
                   </span>

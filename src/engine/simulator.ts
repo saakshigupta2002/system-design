@@ -6,10 +6,22 @@ import {
   UTILIZATION_CRITICAL,
   LATENCY_SPIKE_THRESHOLD,
   LATENCY_SPIKE_MULTIPLIER,
+  CACHE_HIT_RATE,
 } from "./constants";
 
-/** Component IDs that split (load-balance) traffic across children. */
-const LOAD_BALANCING_COMPONENTS = new Set(["load-balancer", "api-gateway"]);
+/** Component IDs that split (route) traffic across children instead of
+ *  duplicating it — routers/balancers send each request down ONE branch. */
+const LOAD_BALANCING_COMPONENTS = new Set([
+  "load-balancer",
+  "api-gateway",
+  "dns",
+  "reverse-proxy",
+  "origin-shield",
+]);
+
+/** Components that are out-of-band for user-facing request latency:
+ *  monitoring is observability, a queue hands work off asynchronously. */
+const OFF_PATH_COMPONENTS = new Set(["monitoring", "message-queue"]);
 
 function getStatus(utilization: number): NodeStatus {
   if (utilization > UTILIZATION_CRITICAL) return "critical";
@@ -34,12 +46,22 @@ export function runSimulation(
   const adjacency = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
 
+  // Parallel wires between the same pair (drawn via different sides) would
+  // double-count traffic — treat them as one connection.
+  const seenPairs = new Set<string>();
+  const uniqueEdges = edges.filter((e) => {
+    const key = `${e.source}→${e.target}`;
+    if (seenPairs.has(key)) return false;
+    seenPairs.add(key);
+    return true;
+  });
+
   // Build adjacency list and in-degree map
   for (const node of nodes) {
     adjacency.set(node.id, []);
     inDegree.set(node.id, 0);
   }
-  for (const edge of edges) {
+  for (const edge of uniqueEdges) {
     adjacency.get(edge.source)?.push(edge.target);
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
@@ -117,13 +139,33 @@ export function runSimulation(
     // Output QPS is capped by effective capacity
     const outputQPS = Math.min(incoming, effectiveQPS);
 
-    // Fix #2: load-balancers split traffic, everything else fans out
+    // Routers/balancers split traffic; everything else fans out
     const isSplitter = LOAD_BALANCING_COMPONENTS.has(data.componentId);
 
+    // Cache model: a cache absorbs CACHE_HIT_RATE of lookups, so only misses
+    // flow past it. Two shapes are supported:
+    //   chained:  app → cache → db   (traffic out of a cache = misses only)
+    //   parallel: app → cache, app → db  (storage siblings of a cache get
+    //             misses only — the app checks the cache first)
+    const isCache = data.componentId === "cache";
+    const hasCacheChild = children.some(
+      (id) => nodeMap.get(id)?.data.componentId === "cache"
+    );
+
     for (const childId of children) {
-      const qpsToChild = isSplitter && children.length > 0
+      let qpsToChild = isSplitter && children.length > 0
         ? outputQPS / children.length
         : outputQPS; // fan-out: full traffic to each child
+      const childData = nodeMap.get(childId)?.data;
+      if (isCache) {
+        qpsToChild *= 1 - CACHE_HIT_RATE;
+      } else if (
+        hasCacheChild &&
+        childData?.category === "storage" &&
+        childData.componentId !== "cache"
+      ) {
+        qpsToChild *= 1 - CACHE_HIT_RATE;
+      }
       const existing = incomingQPS.get(childId) ?? 0;
       incomingQPS.set(childId, existing + qpsToChild);
 
@@ -195,14 +237,18 @@ export function runSimulation(
     }
   }
 
-  // Fix #4: Pass adjacency/inDegree to avoid rebuilding
-  const totalLatencyMs = computeLongestPathLatency(nodes, adjacency, inDegree, nodeMetrics);
+  const totalLatencyMs = computeLongestPathLatency(nodes, uniqueEdges, nodeMap, nodeMetrics);
 
-  // Fix #5: If no nodes, throughput = 0
+  // Throughput is capped by bottlenecks on the request path. Monitoring is
+  // observability — an overloaded monitoring stack doesn't reduce how many
+  // user requests the system serves.
+  const pathBottlenecks = bottleneckNodes.filter(
+    (id) => nodeMap.get(id)?.data.componentId !== "monitoring"
+  );
   const throughput = nodes.length === 0
     ? 0
-    : bottleneckNodes.length > 0
-      ? Math.min(...bottleneckNodes.map((id) => nodeMetrics.get(id)!.effectiveQPS))
+    : pathBottlenecks.length > 0
+      ? Math.min(...pathBottlenecks.map((id) => nodeMetrics.get(id)!.effectiveQPS))
       : requestsPerSec;
 
   return {
@@ -215,14 +261,33 @@ export function runSimulation(
   };
 }
 
-// Fix #3 & #4: Use topological sort (Kahn's), accept adjacency/inDegree as params
+// Longest path over the user-facing request path only. Edges marked async and
+// edges into off-path components (monitoring, message queue) hand work off
+// out-of-band — they carry traffic, but don't add to response latency.
 function computeLongestPathLatency(
   nodes: Node<ComponentNodeData>[],
-  adjacency: Map<string, string[]>,
-  inDegree: Map<string, number>,
+  edges: Edge[],
+  nodeMap: Map<string, Node<ComponentNodeData>>,
   metrics: Map<string, NodeMetrics>
 ): number {
   if (nodes.length === 0) return 0;
+
+  const pathEdges = edges.filter((e) => {
+    if ((e.data as { async?: boolean } | undefined)?.async === true) return false;
+    const targetComponent = nodeMap.get(e.target)?.data.componentId ?? "";
+    return !OFF_PATH_COMPONENTS.has(targetComponent);
+  });
+
+  const adjacency = new Map<string, string[]>();
+  const inDegree = new Map<string, number>();
+  for (const node of nodes) {
+    adjacency.set(node.id, []);
+    inDegree.set(node.id, 0);
+  }
+  for (const edge of pathEdges) {
+    adjacency.get(edge.source)?.push(edge.target);
+    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
+  }
 
   // Clone inDegree so we can decrement
   const remaining = new Map(inDegree);

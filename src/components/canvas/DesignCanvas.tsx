@@ -8,6 +8,7 @@ import {
   Background,
   BackgroundVariant,
   ConnectionMode,
+  MarkerType,
   useReactFlow,
   type Node,
   type Edge,
@@ -44,6 +45,9 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
   const setSelectedEdge = useCanvasStore((s) => s.setSelectedEdge);
   const penMode = usePenStore((s) => s.mode);
   const penActive = penMode !== "off";
+  const tabs = useCanvasStore((s) => s.tabs);
+  const activeTabId = useCanvasStore((s) => s.activeTabId);
+  const isReadOnly = tabs.find((t) => t.id === activeTabId)?.readOnly ?? false;
 
   // Listen for text node edits and persist them to the store
   useEffect(() => {
@@ -120,7 +124,20 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
   // Nodes expose one handle per side ("top"/"right"/"bottom"/"left"). Edges
   // from older builds / reference solutions may carry missing or stale handle
   // ids — normalize them to the classic right→left flow so they all render.
-  const displayEdges = useMemo(() => sanitizeEdges(edges), [edges]);
+  // Every edge gets an arrowhead so the traffic direction is visible.
+  const displayEdges = useMemo(
+    () =>
+      sanitizeEdges(edges).map((e) => ({
+        ...e,
+        markerEnd: e.markerEnd ?? {
+          type: MarkerType.ArrowClosed,
+          width: 14,
+          height: 14,
+          color: "#71717a",
+        },
+      })),
+    [edges]
+  );
 
   const miniMapNodeColor = useMemo(
     () => (node: Node) => {
@@ -162,8 +179,8 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
         panOnDrag={!penActive}
         zoomOnScroll={!penActive}
         zoomOnPinch={!penActive}
-        nodesDraggable={!penActive}
-        nodesConnectable={!penActive}
+        nodesDraggable={!penActive && !isReadOnly}
+        nodesConnectable={!penActive && !isReadOnly}
         elementsSelectable={!penActive}
       >
         <Background
