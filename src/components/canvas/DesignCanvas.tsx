@@ -7,6 +7,7 @@ import {
   MiniMap,
   Background,
   BackgroundVariant,
+  ConnectionMode,
   useReactFlow,
   type Node,
   type Edge,
@@ -116,6 +117,19 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
     setSelectedEdge(null);
   }, [setSelectedNode, setSelectedEdge]);
 
+  // Nodes expose one handle per side ("top"/"right"/"bottom"/"left"). Edges
+  // created before that (persisted designs, reference solutions) carry no
+  // handle ids, so default them to the classic right→left flow.
+  const displayEdges = useMemo(
+    () =>
+      edges.map((e) =>
+        e.sourceHandle && e.targetHandle
+          ? e
+          : { ...e, sourceHandle: e.sourceHandle ?? "right", targetHandle: e.targetHandle ?? "left" }
+      ),
+    [edges]
+  );
+
   const miniMapNodeColor = useMemo(
     () => (node: Node) => {
       const data = node.data as ComponentNodeData;
@@ -137,7 +151,7 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
       <ReactFlow
         className="h-full w-full bg-zinc-950"
         nodes={nodes}
-        edges={edges}
+        edges={displayEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -149,7 +163,8 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={{ type: "animated" }}
-        connectionRadius={45}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={36}
         fitView
         proOptions={{ hideAttribution: true }}
         panOnDrag={!penActive}

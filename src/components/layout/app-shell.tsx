@@ -167,10 +167,13 @@ export function AppShell() {
       }
 
       if (e.key === "Delete" || e.key === "Backspace") {
-        const { selectedNodeId, deleteNode } = useCanvasStore.getState();
+        const { selectedNodeId, deleteNode, selectedEdgeId, deleteEdge } = useCanvasStore.getState();
         if (selectedNodeId) {
           e.preventDefault();
           deleteNode(selectedNodeId);
+        } else if (selectedEdgeId) {
+          e.preventDefault();
+          deleteEdge(selectedEdgeId);
         }
       }
 

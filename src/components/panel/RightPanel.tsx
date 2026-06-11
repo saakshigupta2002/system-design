@@ -126,6 +126,7 @@ function EdgePropertiesPanel() {
   const selectedEdgeId = useCanvasStore((s) => s.selectedEdgeId);
   const edges = useCanvasStore((s) => s.edges);
   const updateEdgeData = useCanvasStore((s) => s.updateEdgeData);
+  const deleteEdge = useCanvasStore((s) => s.deleteEdge);
 
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId);
   if (!selectedEdge) return null;
@@ -197,6 +198,19 @@ function EdgePropertiesPanel() {
             {data.async ? "Dashed line — asynchronous (e.g. message queue)" : "Solid line — synchronous (e.g. HTTP call)"}
           </p>
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => deleteEdge(selectedEdge.id)}
+          className="w-full gap-1.5 border-zinc-700 text-rose-400 hover:bg-zinc-800 hover:text-rose-300"
+        >
+          <Trash2 className="h-3 w-3" />
+          Remove Connection
+        </Button>
+        <p className="text-[11px] text-zinc-500">
+          Tip: you can also select a wire on the canvas and press Delete.
+        </p>
       </div>
     </div>
   );

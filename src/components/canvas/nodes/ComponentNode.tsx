@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, memo, useState, useCallback, useRef, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { Handle, Position, type NodeProps, type Node, useReactFlow } from "@xyflow/react";
 import { motion } from "framer-motion";
 import type { ComponentNodeData } from "@/store/canvasStore";
@@ -28,13 +28,15 @@ const STATUS_DOT: Record<string, string> = {
 const HANDLE_CLASS =
   "!h-3.5 !w-3.5 !rounded-full !border-2 !border-zinc-500 !bg-zinc-300 transition-all hover:!scale-150 hover:!border-cyan-400 hover:!bg-cyan-400";
 
-// One connection point per side. left-target and right-source carry no id so
-// they remain the defaults that existing/reference edges attach to.
-const HANDLE_SIDES: { pos: Position; targetId: string | undefined; sourceId: string | undefined }[] = [
-  { pos: Position.Top, targetId: "t-tgt", sourceId: "t-src" },
-  { pos: Position.Right, targetId: "r-tgt", sourceId: undefined },
-  { pos: Position.Bottom, targetId: "b-tgt", sourceId: "b-src" },
-  { pos: Position.Left, targetId: undefined, sourceId: "l-src" },
+// One handle per side. The canvas runs in loose connection mode, so each
+// handle can both start and receive a wire — no stacked source/target pairs
+// blocking each other's hit area. Edges without handle ids (older saves,
+// reference solutions) are normalized to right→left by the canvas.
+const HANDLE_SIDES: { id: string; pos: Position }[] = [
+  { id: "top", pos: Position.Top },
+  { id: "right", pos: Position.Right },
+  { id: "bottom", pos: Position.Bottom },
+  { id: "left", pos: Position.Left },
 ];
 
 function ComponentNodeInner({ id, data, selected }: NodeProps<ComponentNode>) {
@@ -152,18 +154,10 @@ function ComponentNodeInner({ id, data, selected }: NodeProps<ComponentNode>) {
         </div>
       )}
 
-      {/* Handles — one connection point per side (top/right/bottom/left).
-          Each side accepts both an incoming and an outgoing wire, so you can
-          connect vertically or sideways; the direction follows the way you
-          drag (start = source, release = target). Left's target and right's
-          source are the defaults (no id) so existing/reference edges still
-          attach exactly as before. The source handle is rendered last on each
-          side so a drag starts from it. */}
-      {HANDLE_SIDES.map(({ pos, targetId, sourceId }) => (
-        <Fragment key={pos}>
-          <Handle id={targetId} type="target" position={pos} className={HANDLE_CLASS} />
-          <Handle id={sourceId} type="source" position={pos} className={HANDLE_CLASS} />
-        </Fragment>
+      {/* Handles — one per side; drag direction decides the flow
+          (start = sender, release = receiver). */}
+      {HANDLE_SIDES.map(({ id: handleId, pos }) => (
+        <Handle key={handleId} id={handleId} type="source" position={pos} className={HANDLE_CLASS} />
       ))}
     </div>
   );
