@@ -1,24 +1,29 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ComponentPalette } from "./ComponentPalette";
 import { ProblemSelector } from "./ProblemSelector";
 import { LearningPath } from "./LearningPath";
+import { PanelResizeHandle } from "@/components/layout/PanelResizeHandle";
 import { useAppStore } from "@/store/appStore";
 
 interface SidebarProps {
   open?: boolean;
   onCreateProblem?: () => void;
   onCreateCustomComponent?: () => void;
+  onOpenEditorial?: () => void;
   variant?: "desktop" | "mobile";
 }
 
 function SidebarTabs({
   onCreateProblem,
   onCreateCustomComponent,
+  onOpenEditorial,
 }: {
   onCreateProblem?: () => void;
   onCreateCustomComponent?: () => void;
+  onOpenEditorial?: () => void;
 }) {
   const activeLeftTab = useAppStore((s) => s.activeLeftTab);
   const setActiveLeftTab = useAppStore((s) => s.setActiveLeftTab);
@@ -54,7 +59,7 @@ function SidebarTabs({
       </TabsContent>
 
       <TabsContent value="learn" className="mt-0 flex-1 min-h-0 overflow-hidden">
-        <LearningPath />
+        <LearningPath onOpenEditorial={onOpenEditorial} />
       </TabsContent>
     </Tabs>
   );
@@ -64,14 +69,20 @@ export function Sidebar({
   open = true,
   onCreateProblem,
   onCreateCustomComponent,
+  onOpenEditorial,
   variant = "desktop",
 }: SidebarProps) {
+  const width = useAppStore((s) => s.leftPanelWidth);
+  const setWidth = useAppStore((s) => s.setLeftPanelWidth);
+  const [resizing, setResizing] = useState(false);
+
   if (variant === "mobile") {
     return (
       <div className="flex h-full w-full flex-col bg-zinc-900">
         <SidebarTabs
           onCreateProblem={onCreateProblem}
           onCreateCustomComponent={onCreateCustomComponent}
+          onOpenEditorial={onOpenEditorial}
         />
       </div>
     );
@@ -79,18 +90,23 @@ export function Sidebar({
 
   return (
     <aside
-      className={`hidden shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 overflow-hidden transition-all duration-200 md:flex ${
-        open ? "w-[280px] opacity-100" : "w-0 opacity-0 border-r-0"
-      }`}
+      className={`relative hidden shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 overflow-hidden md:flex ${
+        resizing ? "" : "transition-all duration-200"
+      } ${open ? "opacity-100" : "opacity-0 border-r-0"}`}
+      style={{ width: open ? width : 0 }}
       aria-hidden={!open || undefined}
       inert={!open || undefined}
     >
-      <div className="flex w-[280px] flex-1 flex-col min-h-0">
+      <div className="flex flex-1 flex-col min-h-0" style={{ width }}>
         <SidebarTabs
           onCreateProblem={onCreateProblem}
           onCreateCustomComponent={onCreateCustomComponent}
+          onOpenEditorial={onOpenEditorial}
         />
       </div>
+      {open && (
+        <PanelResizeHandle side="left" onResize={setWidth} onDraggingChange={setResizing} />
+      )}
     </aside>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PanelResizeHandle } from "@/components/layout/PanelResizeHandle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -35,11 +36,11 @@ function RightTabs({ onSimulate }: { onSimulate: () => void }) {
     <Tabs value={activeRightTab} onValueChange={(v) => setActiveRightTab(v as typeof activeRightTab)} className="flex flex-1 flex-col min-h-0">
       <div className="mx-2 mt-2 shrink-0 overflow-x-auto">
         <TabsList className="h-8 w-max bg-zinc-800">
-          <TabsTrigger value="properties" className="h-7 px-2 text-[11px] data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Props</TabsTrigger>
-          <TabsTrigger value="simulation" className="h-7 px-2 text-[11px] data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Simulate</TabsTrigger>
-          <TabsTrigger value="score" className="h-7 px-2 text-[11px] data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Score</TabsTrigger>
-          <TabsTrigger value="capacity" className="h-7 px-2 text-[11px] data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Capacity</TabsTrigger>
-          <TabsTrigger value="tradeoffs" className="h-7 px-2 text-[11px] data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Trade-offs</TabsTrigger>
+          <TabsTrigger value="properties" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Props</TabsTrigger>
+          <TabsTrigger value="simulation" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Simulate</TabsTrigger>
+          <TabsTrigger value="score" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Score</TabsTrigger>
+          <TabsTrigger value="capacity" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Capacity</TabsTrigger>
+          <TabsTrigger value="tradeoffs" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Trade-offs</TabsTrigger>
         </TabsList>
       </div>
 
@@ -91,6 +92,9 @@ function RightTabs({ onSimulate }: { onSimulate: () => void }) {
 export function RightPanel({ open = true, onSimulate, variant = "desktop" }: RightPanelProps) {
   const interviewMode = useInterviewStore((s) => s.mode);
   const currentPhase = useInterviewStore((s) => s.currentPhase);
+  const width = useAppStore((s) => s.rightPanelWidth);
+  const setWidth = useAppStore((s) => s.setRightPanelWidth);
+  const [resizing, setResizing] = useState(false);
 
   // During interview mode, show phase panel for all phases except phase 4 (HLD)
   const showInterviewPhasePanel = interviewMode === "interview" && currentPhase !== 4;
@@ -105,18 +109,22 @@ export function RightPanel({ open = true, onSimulate, variant = "desktop" }: Rig
 
   return (
     <aside
-      className={`hidden shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 overflow-hidden transition-all duration-200 md:flex ${
-        open ? "w-[300px] opacity-100" : "w-0 opacity-0 border-l-0"
-      }`}
+      className={`relative hidden shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 overflow-hidden md:flex ${
+        resizing ? "" : "transition-all duration-200"
+      } ${open ? "opacity-100" : "opacity-0 border-l-0"}`}
+      style={{ width: open ? width : 0 }}
       aria-hidden={!open || undefined}
       inert={!open || undefined}
     >
       {showInterviewPhasePanel ? (
         <InterviewPhasePanel />
       ) : (
-        <div className="flex w-[300px] flex-1 flex-col min-h-0">
+        <div className="flex flex-1 flex-col min-h-0" style={{ width }}>
           <RightTabs onSimulate={onSimulate} />
         </div>
+      )}
+      {open && (
+        <PanelResizeHandle side="right" onResize={setWidth} onDraggingChange={setResizing} />
       )}
     </aside>
   );
@@ -194,7 +202,7 @@ function EdgePropertiesPanel() {
               Async
             </button>
           </div>
-          <p className="mt-1 text-[11px] text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-500">
             {data.async ? "Dashed line — asynchronous (e.g. message queue)" : "Solid line — synchronous (e.g. HTTP call)"}
           </p>
         </div>
@@ -208,7 +216,7 @@ function EdgePropertiesPanel() {
           <Trash2 className="h-3 w-3" />
           Remove Connection
         </Button>
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-xs text-zinc-500">
           Tip: you can also select a wire on the canvas and press Delete.
         </p>
       </div>
@@ -343,7 +351,7 @@ function PropertiesTab() {
                   step={1}
                   className=""
                 />
-                <p className="mt-1 text-[11px] text-zinc-400">
+                <p className="mt-1 text-xs text-zinc-400">
                   Effective capacity: {(data.maxQPS as number) === Infinity ? "\u221e" : new Intl.NumberFormat("en-US").format((data.maxQPS as number) * (data.replicas as number))} QPS
                 </p>
               </div>
@@ -609,7 +617,7 @@ function LearnSection({ componentId, label }: { componentId: string; label: stri
                             <p className={`text-xs font-medium ${section.accent}`}>
                               {pattern.name}
                             </p>
-                            <p className="text-[11px] leading-relaxed text-zinc-400">
+                            <p className="text-xs leading-relaxed text-zinc-400">
                               {pattern.description}
                             </p>
                           </div>
@@ -620,10 +628,10 @@ function LearnSection({ componentId, label }: { componentId: string; label: stri
                               key={i}
                               className={`flex items-start gap-2 rounded-md ${section.bgAccent} px-2 py-1.5`}
                             >
-                              <span className={`mt-0.5 text-[10px] font-bold ${section.accent}`}>
+                              <span className={`mt-0.5 text-[11px] font-bold ${section.accent}`}>
                                 TIP
                               </span>
-                              <span className="text-[11px] leading-relaxed text-zinc-300">
+                              <span className="text-xs leading-relaxed text-zinc-300">
                                 {item}
                               </span>
                             </div>
@@ -631,7 +639,7 @@ function LearnSection({ componentId, label }: { componentId: string; label: stri
                         : section.items.map((item, i) => (
                             <div key={i} className="flex items-start gap-1.5">
                               <span className={`mt-1 h-1 w-1 shrink-0 rounded-full ${section.accent.replace("text-", "bg-")}`} />
-                              <span className="text-[11px] leading-relaxed text-zinc-400">
+                              <span className="text-xs leading-relaxed text-zinc-400">
                                 {item}
                               </span>
                             </div>

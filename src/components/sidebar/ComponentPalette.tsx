@@ -194,6 +194,11 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
                           <div
                             draggable
                             onDragStart={(e) => handleDragStart(e, item.id)}
+                            onClick={() => handleQuickAdd(item.id)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(item.id); }}
+                            title="Click to add to the canvas, or drag to place it"
                             className={`group flex cursor-grab items-center gap-2 rounded-md border-l-2 px-2 py-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 active:cursor-grabbing ${borderColor}`}
                           >
                             <GripVertical className="h-3 w-3 shrink-0 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100" />

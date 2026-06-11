@@ -51,14 +51,14 @@ function CategorySection({ category }: { category: CategoryScore }) {
         <div className="mt-3 space-y-1.5">
           {category.passed.map((item, i) => (
             <div key={i} className="flex items-start gap-1.5">
-              <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
-              <span className="text-xs text-zinc-400">{item}</span>
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+              <span className="text-[13px] leading-relaxed text-zinc-300">{item}</span>
             </div>
           ))}
           {category.feedback.map((item, i) => (
             <div key={i} className="flex items-start gap-1.5">
-              <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-              <span className="text-xs text-zinc-400">{item}</span>
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <span className="text-[13px] leading-relaxed text-zinc-300">{item}</span>
             </div>
           ))}
         </div>
@@ -161,7 +161,7 @@ export function ScoreReport() {
               <span className="font-mono text-3xl font-bold text-zinc-100">
                 {scoreResult.total}
               </span>
-              <span className="text-[11px] text-zinc-400">/ 100</span>
+              <span className="text-xs text-zinc-400">/ 100</span>
             </div>
           </motion.div>
 
@@ -202,10 +202,10 @@ export function ScoreReport() {
                   key={i}
                   className="flex items-start gap-2 rounded-md bg-zinc-800 border border-zinc-700 px-2.5 py-2"
                 >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-[11px] font-bold text-zinc-300">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-300">
                     {i + 1}
                   </span>
-                  <span className="text-xs text-zinc-400">{item}</span>
+                  <span className="text-[13px] leading-relaxed text-zinc-300">{item}</span>
                 </div>
               ))}
             </div>

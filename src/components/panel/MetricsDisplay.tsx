@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback } from "react";
+import { useReactFlow } from "@xyflow/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useCanvasStore } from "@/store/canvasStore";
@@ -15,6 +17,19 @@ const STATUS_COLOR: Record<string, string> = {
 export function MetricsDisplay() {
   const result = useSimulationStore((s) => s.result);
   const nodes = useCanvasStore((s) => s.nodes);
+  const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
+  const { setCenter } = useReactFlow();
+
+  // Clicking a metric row highlights and centers that node on the canvas.
+  const focusNode = useCallback(
+    (nodeId: string) => {
+      const node = useCanvasStore.getState().nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+      setSelectedNode(nodeId);
+      setCenter(node.position.x + 60, node.position.y + 40, { zoom: 1.1, duration: 500 });
+    },
+    [setSelectedNode, setCenter]
+  );
 
   if (!result || !(result.nodeMetrics instanceof Map)) {
     return (
@@ -41,18 +56,18 @@ export function MetricsDisplay() {
       {/* Summary */}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-md bg-zinc-800 px-2.5 py-2">
-          <p className="text-[11px] text-zinc-500">Throughput</p>
+          <p className="text-xs text-zinc-500">Throughput</p>
           <p className="font-mono text-sm font-semibold text-zinc-100">
             {new Intl.NumberFormat("en-US").format(result.throughput)}
           </p>
-          <p className="text-[11px] text-zinc-500">req/s</p>
+          <p className="text-xs text-zinc-500">req/s</p>
         </div>
         <div className="rounded-md bg-zinc-800 px-2.5 py-2">
-          <p className="text-[11px] text-zinc-500">Total Latency</p>
+          <p className="text-xs text-zinc-500">Total Latency</p>
           <p className="font-mono text-sm font-semibold text-zinc-100">
             {result.totalLatencyMs.toFixed(0)}
           </p>
-          <p className="text-[11px] text-zinc-500">ms (longest path)</p>
+          <p className="text-xs text-zinc-500">ms (longest path)</p>
         </div>
       </div>
 
@@ -87,7 +102,12 @@ export function MetricsDisplay() {
             return (
               <div
                 key={m.nodeId}
-                className="rounded-md bg-zinc-800 px-2.5 py-2"
+                role="button"
+                tabIndex={0}
+                onClick={() => focusNode(m.nodeId)}
+                onKeyDown={(e) => { if (e.key === "Enter") focusNode(m.nodeId); }}
+                title="Click to locate this component on the canvas"
+                className="cursor-pointer rounded-md bg-zinc-800 px-2.5 py-2 transition-colors hover:bg-zinc-700/80"
               >
                 <div className="mb-1 flex items-center gap-1.5">
                   <div className={`h-1.5 w-1.5 rounded-full ${STATUS_COLOR[m.status]}`} />
@@ -95,20 +115,20 @@ export function MetricsDisplay() {
                     {label}
                   </span>
                   {m.isBottleneck && (
-                    <span className="ml-auto text-[11px] font-medium text-rose-400" style={{ animation: 'status-pulse 2s infinite' }}>
+                    <span className="ml-auto text-xs font-medium text-rose-400" style={{ animation: 'status-pulse 2s infinite' }}>
                       BOTTLENECK
                     </span>
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <p className="text-[10px] text-zinc-400">QPS</p>
+                    <p className="text-[11px] text-zinc-400">QPS</p>
                     <p className="font-mono text-xs text-zinc-300">
                       {m.incomingQPS.toFixed(0)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-zinc-400">Util</p>
+                    <p className="text-[11px] text-zinc-400">Util</p>
                     <div className="flex items-center gap-1">
                       <div className="h-1 w-8 overflow-hidden rounded-full bg-zinc-700">
                         <div
@@ -128,7 +148,7 @@ export function MetricsDisplay() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] text-zinc-400">Latency</p>
+                    <p className="text-[11px] text-zinc-400">Latency</p>
                     <p className="font-mono text-xs text-zinc-300">
                       {m.latencyMs.toFixed(0)}ms
                     </p>

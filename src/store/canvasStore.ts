@@ -124,6 +124,22 @@ interface CanvasState {
   clearCanvas: () => void;
   deleteNode: (nodeId: string) => void;
   deleteEdge: (edgeId: string) => void;
+
+  // Undo/redo over structural changes (add/connect/delete/clear).
+  past: { nodes: Node[]; edges: Edge[] }[];
+  future: { nodes: Node[]; edges: Edge[] }[];
+  undo: () => void;
+  redo: () => void;
+}
+
+const HISTORY_LIMIT = 50;
+
+/** Snapshot the current canvas onto the undo stack (clears the redo stack). */
+function pushHistory(state: { nodes: Node[]; edges: Edge[]; past: { nodes: Node[]; edges: Edge[] }[] }) {
+  return {
+    past: [...state.past.slice(-(HISTORY_LIMIT - 1)), { nodes: state.nodes, edges: state.edges }],
+    future: [] as { nodes: Node[]; edges: Edge[] }[],
+  };
 }
 
 export const useCanvasStore = create<CanvasState>()(
@@ -133,10 +149,42 @@ export const useCanvasStore = create<CanvasState>()(
       edges: [],
       selectedNodeId: null,
       selectedEdgeId: null,
+      past: [],
+      future: [],
 
       // Tab system — "my-design" is the default tab
       tabs: [{ id: "my-design", label: "My Design", nodes: [], edges: [] }],
       activeTabId: "my-design",
+
+      undo: () => {
+        set((state) => {
+          if (state.past.length === 0 || isActiveTabReadOnly(state)) return state;
+          const previous = state.past[state.past.length - 1];
+          return {
+            past: state.past.slice(0, -1),
+            future: [...state.future, { nodes: state.nodes, edges: state.edges }],
+            nodes: previous.nodes,
+            edges: previous.edges,
+            selectedNodeId: null,
+            selectedEdgeId: null,
+          };
+        });
+      },
+
+      redo: () => {
+        set((state) => {
+          if (state.future.length === 0 || isActiveTabReadOnly(state)) return state;
+          const next = state.future[state.future.length - 1];
+          return {
+            future: state.future.slice(0, -1),
+            past: [...state.past, { nodes: state.nodes, edges: state.edges }],
+            nodes: next.nodes,
+            edges: next.edges,
+            selectedNodeId: null,
+            selectedEdgeId: null,
+          };
+        });
+      },
 
       addTab: (tab) => {
         clearSimResults();
@@ -157,6 +205,8 @@ export const useCanvasStore = create<CanvasState>()(
               edges: tab.edges,
               selectedNodeId: null,
               selectedEdgeId: null,
+              past: [],
+              future: [],
             };
           }
           return {
@@ -166,6 +216,8 @@ export const useCanvasStore = create<CanvasState>()(
             edges: tab.edges,
             selectedNodeId: null,
             selectedEdgeId: null,
+            past: [],
+            future: [],
           };
         });
       },
@@ -188,6 +240,8 @@ export const useCanvasStore = create<CanvasState>()(
             edges: target.edges,
             selectedNodeId: null,
             selectedEdgeId: null,
+            past: [],
+            future: [],
           };
         });
       },
@@ -207,6 +261,8 @@ export const useCanvasStore = create<CanvasState>()(
               edges: myDesign.edges,
               selectedNodeId: null,
               selectedEdgeId: null,
+              past: [],
+              future: [],
             };
           }
           return { tabs: remaining };
@@ -234,6 +290,7 @@ export const useCanvasStore = create<CanvasState>()(
         set((state) => {
           if (isActiveTabReadOnly(state)) return state;
           return {
+            ...pushHistory(state),
             edges: addEdge(
               { ...connection, type: "animated", data: { label: '', protocol: 'http', async: false } satisfies CustomEdgeData },
               state.edges
@@ -243,7 +300,9 @@ export const useCanvasStore = create<CanvasState>()(
       },
       addNode: (node) => {
         set((state) =>
-          isActiveTabReadOnly(state) ? state : { nodes: [...state.nodes, node] }
+          isActiveTabReadOnly(state)
+            ? state
+            : { ...pushHistory(state), nodes: [...state.nodes, node] }
         );
       },
       setSelectedNode: (id) => {
@@ -276,12 +335,19 @@ export const useCanvasStore = create<CanvasState>()(
       },
       clearCanvas: () => {
         clearSimResults();
-        set({ nodes: [], edges: [], selectedNodeId: null, selectedEdgeId: null });
+        set((state) => ({
+          ...pushHistory(state),
+          nodes: [],
+          edges: [],
+          selectedNodeId: null,
+          selectedEdgeId: null,
+        }));
       },
       deleteNode: (nodeId) => {
         set((state) => {
           if (isActiveTabReadOnly(state)) return state;
           return {
+            ...pushHistory(state),
             nodes: state.nodes.filter((n) => n.id !== nodeId),
             edges: state.edges.filter(
               (e) => e.source !== nodeId && e.target !== nodeId
@@ -295,6 +361,7 @@ export const useCanvasStore = create<CanvasState>()(
         set((state) => {
           if (isActiveTabReadOnly(state)) return state;
           return {
+            ...pushHistory(state),
             edges: state.edges.filter((e) => e.id !== edgeId),
             selectedEdgeId:
               state.selectedEdgeId === edgeId ? null : state.selectedEdgeId,

@@ -155,8 +155,8 @@ export function CapacityCalculator() {
 
       {/* Formula reference */}
       <div className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-2">
-        <p className="text-[11px] font-medium text-zinc-400">Formulas</p>
-        <div className="mt-1 space-y-0.5 font-mono text-[11px] text-zinc-400">
+        <p className="text-xs font-medium text-zinc-400">Formulas</p>
+        <div className="mt-1 space-y-0.5 font-mono text-xs text-zinc-400">
           <p>QPS = DAU × req/user ÷ 86,400</p>
           <p>Peak = QPS × 3</p>
           <p>Storage/yr = DAU × req × writeRatio × size × 365</p>
@@ -207,7 +207,7 @@ function InputField({ label, value, onChange, presets, format }: InputFieldProps
           <button
             key={p.label}
             onClick={() => onChange(p.value)}
-            className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${
+            className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
               value === p.value
                 ? "bg-cyan-500/15 text-cyan-500"
                 : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300"

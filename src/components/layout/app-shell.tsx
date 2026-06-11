@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { ReactFlowProvider, type Node } from "@xyflow/react";
 import { X } from "lucide-react";
 import { TopBar } from "./top-bar";
-import { SupportFAB } from "./SupportFAB";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { RightPanel } from "@/components/panel/RightPanel";
 import { DesignCanvas } from "@/components/canvas/DesignCanvas";
@@ -24,6 +23,8 @@ import { CreateProblemDialog } from "@/components/dialogs/CreateProblemDialog";
 import { CreateComponentDialog } from "@/components/dialogs/CreateComponentDialog";
 import { SupportDialog } from "@/components/dialogs/SupportDialog";
 import { EditorialDialog } from "@/components/dialogs/EditorialDialog";
+import { ShortcutsDialog } from "@/components/dialogs/ShortcutsDialog";
+import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useInterviewStore } from "@/store/interviewStore";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 
@@ -45,6 +46,8 @@ export function AppShell() {
   const [createComponentDialogOpen, setCreateComponentDialogOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [editorialDialogOpen, setEditorialDialogOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   // Auto-open support dialog when URL has ?support=1 (used by the README link)
   useEffect(() => {
@@ -93,6 +96,10 @@ export function AppShell() {
       return;
     }
 
+    // Show the results where they land
+    useAppStore.getState().setActiveRightTab("simulation");
+    if (isMobile) setMobileRightOpen(true);
+
     useSimulationStore.getState().setRunning(true);
 
     setTimeout(() => {
@@ -112,7 +119,7 @@ export function AppShell() {
       useSimulationStore.getState().setRunning(false);
       useAppStore.getState().showToast("Simulation complete!", "success");
     }, 100);
-  }, []);
+  }, [isMobile]);
 
   const handleScore = useCallback(() => {
     const { nodes, edges } = useCanvasStore.getState();
@@ -189,6 +196,17 @@ export function AppShell() {
         handleScore();
       }
 
+      if ((e.key === "z" || e.key === "Z") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (e.shiftKey) useCanvasStore.getState().redo();
+        else useCanvasStore.getState().undo();
+      }
+
+      if (e.key === "?") {
+        e.preventDefault();
+        setShortcutsOpen(true);
+      }
+
       if (e.key === "s" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
         e.preventDefault();
         setSaveDialogOpen(true);
@@ -225,13 +243,13 @@ export function AppShell() {
         <TopBar
           onSimulate={handleSimulate}
           onScore={handleScore}
-          onClearCanvas={handleClearCanvas}
+          onClearCanvas={() => setClearConfirmOpen(true)}
           onSave={handleSave}
           onLoad={handleLoad}
           onStartInterview={() => setInterviewDialogOpen(true)}
           onCreateProblem={() => setCreateProblemDialogOpen(true)}
           onOpenSupport={() => setSupportDialogOpen(true)}
-          onOpenEditorial={() => setEditorialDialogOpen(true)}
+          onOpenShortcuts={() => setShortcutsOpen(true)}
           onToggleLeft={handleToggleLeft}
           onToggleRight={handleToggleRight}
         />
@@ -242,6 +260,7 @@ export function AppShell() {
             open={leftSidebarOpen}
             onCreateProblem={() => setCreateProblemDialogOpen(true)}
             onCreateCustomComponent={() => setCreateComponentDialogOpen(true)}
+            onOpenEditorial={() => setEditorialDialogOpen(true)}
             variant="desktop"
           />
 
@@ -292,6 +311,10 @@ export function AppShell() {
                       setCreateComponentDialogOpen(true);
                       setMobileSidebarOpen(false);
                     }}
+                    onOpenEditorial={() => {
+                      setEditorialDialogOpen(true);
+                      setMobileSidebarOpen(false);
+                    }}
                     variant="mobile"
                   />
                 </div>
@@ -332,8 +355,6 @@ export function AppShell() {
           )}
         </div>
 
-        <SupportFAB onClick={() => setSupportDialogOpen(true)} />
-
         <Toast />
 
         <SaveDialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} />
@@ -343,6 +364,16 @@ export function AppShell() {
         <CreateComponentDialog open={createComponentDialogOpen} onClose={() => setCreateComponentDialogOpen(false)} />
         <SupportDialog open={supportDialogOpen} onClose={() => setSupportDialogOpen(false)} />
         <EditorialDialog open={editorialDialogOpen} onClose={() => setEditorialDialogOpen(false)} />
+        <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+        <ConfirmDialog
+          open={clearConfirmOpen}
+          title="Clear canvas?"
+          message="This removes every component, wire, and drawing from the current tab. You can bring them back with Undo (⌘Z)."
+          confirmText="Clear canvas"
+          danger
+          onConfirm={handleClearCanvas}
+          onClose={() => setClearConfirmOpen(false)}
+        />
       </div>
     </ReactFlowProvider>
   );

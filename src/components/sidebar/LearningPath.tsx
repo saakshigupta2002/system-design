@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Star } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Star } from "lucide-react";
 import { LEARNING_PATH, PROBLEM_CONCEPTS } from "@/data/learningPath";
 import { PROBLEMS } from "@/data/problems";
 import { useAppStore } from "@/store/appStore";
@@ -43,7 +43,7 @@ function getConceptsForProblem(problemId: string): string[] {
   return PROBLEM_CONCEPTS.find((p) => p.problemId === problemId)?.concepts ?? [];
 }
 
-export function LearningPath() {
+export function LearningPath({ onOpenEditorial }: { onOpenEditorial?: () => void } = {}) {
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(["Foundations"]));
@@ -214,12 +214,28 @@ export function LearningPath() {
                               <Star className="h-3 w-3 shrink-0 text-amber-400 fill-amber-400" />
                             )}
                           </div>
-                          <Badge
-                            variant="outline"
-                            className={`h-4 shrink-0 px-1.5 text-[10px] font-medium ${getDifficultyColor(problem.difficulty)}`}
-                          >
-                            {problem.difficulty}
-                          </Badge>
+                          <div className="flex shrink-0 items-center gap-1">
+                            {onOpenEditorial && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedProblem(pid);
+                                  onOpenEditorial();
+                                }}
+                                className="flex h-5 w-5 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-700 hover:text-cyan-400"
+                                title="Read the editorial — how to approach & solve it"
+                                aria-label={`Read editorial for ${problem.title}`}
+                              >
+                                <BookOpen className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <Badge
+                              variant="outline"
+                              className={`h-4 px-1.5 text-[10px] font-medium ${getDifficultyColor(problem.difficulty)}`}
+                            >
+                              {problem.difficulty}
+                            </Badge>
+                          </div>
                         </div>
                         {concepts.length > 0 && (
                           <div className="flex flex-wrap gap-1 ml-5">

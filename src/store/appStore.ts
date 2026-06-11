@@ -8,10 +8,17 @@ interface ToastData {
   type: ToastType;
 }
 
+export const LEFT_PANEL_MIN = 240;
+export const LEFT_PANEL_MAX = 480;
+export const RIGHT_PANEL_MIN = 300;
+export const RIGHT_PANEL_MAX = 620;
+
 interface AppState {
   selectedProblemId: string;
   leftSidebarOpen: boolean;
   rightPanelOpen: boolean;
+  leftPanelWidth: number;
+  rightPanelWidth: number;
   activeLeftTab: "components" | "problems" | "learn";
   activeRightTab: "properties" | "simulation" | "score" | "capacity" | "tradeoffs";
   toast: ToastData | null;
@@ -20,6 +27,8 @@ interface AppState {
   toggleLeftSidebar: () => void;
   toggleRightPanel: () => void;
   setLeftSidebarOpen: (open: boolean) => void;
+  setLeftPanelWidth: (width: number) => void;
+  setRightPanelWidth: (width: number) => void;
   setActiveLeftTab: (tab: AppState["activeLeftTab"]) => void;
   setActiveRightTab: (tab: AppState["activeRightTab"]) => void;
   showToast: (message: string, type: ToastType) => void;
@@ -34,6 +43,8 @@ export const useAppStore = create<AppState>()(
       selectedProblemId: "url-shortener",
       leftSidebarOpen: true,
       rightPanelOpen: true,
+      leftPanelWidth: 280,
+      rightPanelWidth: 340,
       activeLeftTab: "components",
       activeRightTab: "properties",
       toast: null,
@@ -44,6 +55,10 @@ export const useAppStore = create<AppState>()(
       toggleRightPanel: () =>
         set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
       setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open }),
+      setLeftPanelWidth: (width) =>
+        set({ leftPanelWidth: Math.min(LEFT_PANEL_MAX, Math.max(LEFT_PANEL_MIN, width)) }),
+      setRightPanelWidth: (width) =>
+        set({ rightPanelWidth: Math.min(RIGHT_PANEL_MAX, Math.max(RIGHT_PANEL_MIN, width)) }),
       setActiveLeftTab: (tab) => set({ activeLeftTab: tab }),
       setActiveRightTab: (tab) => set({ activeRightTab: tab }),
       showToast: (message, type) => {
@@ -68,6 +83,8 @@ export const useAppStore = create<AppState>()(
       name: "systemdesign-app",
       partialize: (state) => ({
         selectedProblemId: state.selectedProblemId,
+        leftPanelWidth: state.leftPanelWidth,
+        rightPanelWidth: state.rightPanelWidth,
       }),
     }
   )
