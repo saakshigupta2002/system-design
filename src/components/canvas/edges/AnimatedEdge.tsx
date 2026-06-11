@@ -7,8 +7,9 @@ import {
   getBezierPath,
   type EdgeProps,
 } from "@xyflow/react";
+import { X } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
-import type { CustomEdgeData } from "@/store/canvasStore";
+import { useCanvasStore, type CustomEdgeData } from "@/store/canvasStore";
 
 const protocolBadge: Record<string, { text: string; color: string } | null> = {
   http: null,
@@ -30,8 +31,10 @@ function AnimatedEdgeInner({
   style,
   markerEnd,
   data,
+  selected,
 }: EdgeProps) {
   const isRunning = useSimulationStore((s) => s.isRunning);
+  const deleteEdge = useCanvasStore((s) => s.deleteEdge);
   const edgeData = (data ?? {}) as CustomEdgeData;
   const isAsync = edgeData.async === true;
   const protocol = edgeData.protocol;
@@ -51,15 +54,15 @@ function AnimatedEdgeInner({
 
   return (
     <g>
-      {/* Main edge */}
+      {/* Main edge — highlighted while selected so it's clear what Delete acts on */}
       <BaseEdge
         id={id}
         path={edgePath}
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: isRunning ? "rgb(6, 182, 212)" : "rgb(82, 82, 91)",
-          strokeWidth: 1.5,
+          stroke: selected ? "rgb(34, 211, 238)" : isRunning ? "rgb(6, 182, 212)" : "rgb(82, 82, 91)",
+          strokeWidth: selected ? 2.25 : 1.5,
           ...(isAsync ? { strokeDasharray: "6 4" } : {}),
         }}
       />
@@ -82,6 +85,27 @@ function AnimatedEdgeInner({
             />
           </circle>
         </>
+      )}
+      {/* Delete button — shown on the selected wire */}
+      {selected && (
+        <EdgeLabelRenderer>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteEdge(id);
+            }}
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - 18}px)`,
+              pointerEvents: "all",
+            }}
+            className="nodrag nopan flex h-5 w-5 items-center justify-center rounded-full border border-rose-400/60 bg-rose-500 text-white shadow-md transition-transform hover:scale-110"
+            title="Delete connection (or press Delete)"
+            aria-label="Delete connection"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </EdgeLabelRenderer>
       )}
       {/* Label + protocol badge */}
       {showLabel && (

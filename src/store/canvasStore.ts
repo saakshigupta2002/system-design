@@ -46,6 +46,9 @@ export interface CanvasTab {
   label: string;
   nodes: Node[];
   edges: Edge[];
+  /** Informational badge only (e.g. REF on reference tabs). The tab is a
+   *  disposable copy, so moving/editing is allowed — reopening the
+   *  Reference rebuilds it fresh. */
   readOnly?: boolean;
 }
 
@@ -79,9 +82,6 @@ function clearSimResults() {
   sim.setScoreResult(null);
   sim.setShowScore(false);
 }
-
-const isActiveTabReadOnly = (state: { tabs: CanvasTab[]; activeTabId: string }) =>
-  state.tabs.find((t) => t.id === state.activeTabId)?.readOnly === true;
 
 /** Drop self-loops and normalize missing/stale handle ids to right→left. */
 export function sanitizeEdges(edges: Edge[] | undefined): Edge[] {
@@ -158,7 +158,7 @@ export const useCanvasStore = create<CanvasState>()(
 
       undo: () => {
         set((state) => {
-          if (state.past.length === 0 || isActiveTabReadOnly(state)) return state;
+          if (state.past.length === 0) return state;
           const previous = state.past[state.past.length - 1];
           return {
             past: state.past.slice(0, -1),
@@ -173,7 +173,7 @@ export const useCanvasStore = create<CanvasState>()(
 
       redo: () => {
         set((state) => {
-          if (state.future.length === 0 || isActiveTabReadOnly(state)) return state;
+          if (state.future.length === 0) return state;
           const next = state.future[state.future.length - 1];
           return {
             future: state.future.slice(0, -1),
@@ -287,23 +287,16 @@ export const useCanvasStore = create<CanvasState>()(
         // A node connected to itself adds an inbound edge that breaks entry-
         // point detection in the simulator — never useful, so block it.
         if (connection.source === connection.target) return;
-        set((state) => {
-          if (isActiveTabReadOnly(state)) return state;
-          return {
-            ...pushHistory(state),
-            edges: addEdge(
-              { ...connection, type: "animated", data: { label: '', protocol: 'http', async: false } satisfies CustomEdgeData },
-              state.edges
-            ),
-          };
-        });
+        set((state) => ({
+          ...pushHistory(state),
+          edges: addEdge(
+            { ...connection, type: "animated", data: { label: '', protocol: 'http', async: false } satisfies CustomEdgeData },
+            state.edges
+          ),
+        }));
       },
       addNode: (node) => {
-        set((state) =>
-          isActiveTabReadOnly(state)
-            ? state
-            : { ...pushHistory(state), nodes: [...state.nodes, node] }
-        );
+        set((state) => ({ ...pushHistory(state), nodes: [...state.nodes, node] }));
       },
       setSelectedNode: (id) => {
         set({ selectedNodeId: id, selectedEdgeId: null });
@@ -344,29 +337,23 @@ export const useCanvasStore = create<CanvasState>()(
         }));
       },
       deleteNode: (nodeId) => {
-        set((state) => {
-          if (isActiveTabReadOnly(state)) return state;
-          return {
-            ...pushHistory(state),
-            nodes: state.nodes.filter((n) => n.id !== nodeId),
-            edges: state.edges.filter(
-              (e) => e.source !== nodeId && e.target !== nodeId
-            ),
-            selectedNodeId:
-              state.selectedNodeId === nodeId ? null : state.selectedNodeId,
-          };
-        });
+        set((state) => ({
+          ...pushHistory(state),
+          nodes: state.nodes.filter((n) => n.id !== nodeId),
+          edges: state.edges.filter(
+            (e) => e.source !== nodeId && e.target !== nodeId
+          ),
+          selectedNodeId:
+            state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+        }));
       },
       deleteEdge: (edgeId) => {
-        set((state) => {
-          if (isActiveTabReadOnly(state)) return state;
-          return {
-            ...pushHistory(state),
-            edges: state.edges.filter((e) => e.id !== edgeId),
-            selectedEdgeId:
-              state.selectedEdgeId === edgeId ? null : state.selectedEdgeId,
-          };
-        });
+        set((state) => ({
+          ...pushHistory(state),
+          edges: state.edges.filter((e) => e.id !== edgeId),
+          selectedEdgeId:
+            state.selectedEdgeId === edgeId ? null : state.selectedEdgeId,
+        }));
       },
     }),
     {

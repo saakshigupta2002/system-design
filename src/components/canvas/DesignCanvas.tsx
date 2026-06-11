@@ -45,9 +45,6 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
   const setSelectedEdge = useCanvasStore((s) => s.setSelectedEdge);
   const penMode = usePenStore((s) => s.mode);
   const penActive = penMode !== "off";
-  const tabs = useCanvasStore((s) => s.tabs);
-  const activeTabId = useCanvasStore((s) => s.activeTabId);
-  const isReadOnly = tabs.find((t) => t.id === activeTabId)?.readOnly ?? false;
 
   // Listen for text node edits and persist them to the store
   useEffect(() => {
@@ -129,6 +126,8 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
     () =>
       sanitizeEdges(edges).map((e) => ({
         ...e,
+        // Generous invisible click target so wires are easy to select.
+        interactionWidth: 24,
         markerEnd: e.markerEnd ?? {
           type: MarkerType.ArrowClosed,
           width: 14,
@@ -179,8 +178,8 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
         panOnDrag={!penActive}
         zoomOnScroll={!penActive}
         zoomOnPinch={!penActive}
-        nodesDraggable={!penActive && !isReadOnly}
-        nodesConnectable={!penActive && !isReadOnly}
+        nodesDraggable={!penActive}
+        nodesConnectable={!penActive}
         elementsSelectable={!penActive}
       >
         <Background
