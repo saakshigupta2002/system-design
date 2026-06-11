@@ -56,6 +56,16 @@ export function MetricsDisplay() {
         </div>
       </div>
 
+      {result.warnings.length > 0 && (
+        <div className="space-y-1.5 rounded-md border border-amber-500/20 bg-amber-950/30 px-2.5 py-2">
+          {result.warnings.map((w, i) => (
+            <p key={i} className="text-xs leading-relaxed text-amber-400">
+              {w}
+            </p>
+          ))}
+        </div>
+      )}
+
       {result.bottleneckNodes.length > 0 && (
         <div className="rounded-md border border-rose-500/20 bg-rose-950/30 px-2.5 py-2">
           <p className="text-xs font-medium text-rose-400">

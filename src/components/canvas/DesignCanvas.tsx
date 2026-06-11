@@ -15,7 +15,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { nodeTypes } from "./nodes/nodeTypes";
 import { edgeTypes } from "./edges/edgeTypes";
-import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
+import { useCanvasStore, sanitizeEdges, type ComponentNodeData } from "@/store/canvasStore";
 import { usePenStore } from "@/store/penStore";
 import { getComponentById } from "@/data/components";
 import { BookOpen, GraduationCap, Layers, MousePointer2, Sparkles } from "lucide-react";
@@ -118,17 +118,9 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
   }, [setSelectedNode, setSelectedEdge]);
 
   // Nodes expose one handle per side ("top"/"right"/"bottom"/"left"). Edges
-  // created before that (persisted designs, reference solutions) carry no
-  // handle ids, so default them to the classic right→left flow.
-  const displayEdges = useMemo(
-    () =>
-      edges.map((e) =>
-        e.sourceHandle && e.targetHandle
-          ? e
-          : { ...e, sourceHandle: e.sourceHandle ?? "right", targetHandle: e.targetHandle ?? "left" }
-      ),
-    [edges]
-  );
+  // from older builds / reference solutions may carry missing or stale handle
+  // ids — normalize them to the classic right→left flow so they all render.
+  const displayEdges = useMemo(() => sanitizeEdges(edges), [edges]);
 
   const miniMapNodeColor = useMemo(
     () => (node: Node) => {

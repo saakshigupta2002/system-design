@@ -48,6 +48,24 @@ export interface CanvasTab {
   readOnly?: boolean;
 }
 
+// The only handle ids ComponentNode renders. Edges created by older builds may
+// carry stale ids (e.g. "t-tgt") that no longer exist — those edges silently
+// fail to render while still poisoning the simulation graph.
+const VALID_HANDLE_IDS = new Set(["top", "right", "bottom", "left"]);
+
+/** Drop self-loops and normalize missing/stale handle ids to right→left. */
+export function sanitizeEdges(edges: Edge[] | undefined): Edge[] {
+  return (edges ?? [])
+    .filter((e) => e.source !== e.target)
+    .map((e) => ({
+      ...e,
+      sourceHandle:
+        e.sourceHandle && VALID_HANDLE_IDS.has(e.sourceHandle) ? e.sourceHandle : "right",
+      targetHandle:
+        e.targetHandle && VALID_HANDLE_IDS.has(e.targetHandle) ? e.targetHandle : "left",
+    }));
+}
+
 interface CanvasState {
   nodes: Node[];
   edges: Edge[];
@@ -173,6 +191,9 @@ export const useCanvasStore = create<CanvasState>()(
         set((state) => ({ edges: applyEdgeChanges(changes, state.edges) }));
       },
       onConnect: (connection) => {
+        // A node connected to itself adds an inbound edge that breaks entry-
+        // point detection in the simulator — never useful, so block it.
+        if (connection.source === connection.target) return;
         set((state) => ({
           edges: addEdge(
             { ...connection, type: "animated", data: { label: '', protocol: 'http', async: false } satisfies CustomEdgeData },
@@ -234,6 +255,22 @@ export const useCanvasStore = create<CanvasState>()(
     }),
     {
       name: "systemdesign-canvas",
+      version: 1,
+      // One-time cleanup of designs saved by older builds: drops self-loops
+      // and stale handle ids that broke entry-point detection in simulations.
+      migrate: (persisted) => {
+        const s = persisted as {
+          nodes?: Node[];
+          edges?: Edge[];
+          tabs?: CanvasTab[];
+          activeTabId?: string;
+        };
+        return {
+          ...s,
+          edges: sanitizeEdges(s.edges),
+          tabs: (s.tabs ?? []).map((t) => ({ ...t, edges: sanitizeEdges(t.edges) })),
+        };
+      },
       partialize: (state) => ({
         nodes: state.nodes,
         edges: state.edges,

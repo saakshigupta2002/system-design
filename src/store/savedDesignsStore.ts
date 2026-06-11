@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { useCanvasStore, type ComponentNodeData } from "./canvasStore";
+import { useCanvasStore, sanitizeEdges, type ComponentNodeData } from "./canvasStore";
 import { useAppStore } from "./appStore";
 import { usePenStore, type Stroke } from "./penStore";
 import { PROBLEMS } from "@/data/problems";
@@ -162,14 +162,16 @@ export const useSavedDesignsStore = create<SavedDesignsState>()(
 
         useCanvasStore.setState({
           nodes: restoredNodes,
-          edges: design.edges.map((e) => ({
-            id: e.id,
-            type: e.type,
-            source: e.source,
-            target: e.target,
-            sourceHandle: e.sourceHandle ?? undefined,
-            targetHandle: e.targetHandle ?? undefined,
-          })),
+          edges: sanitizeEdges(
+            design.edges.map((e) => ({
+              id: e.id,
+              type: e.type,
+              source: e.source,
+              target: e.target,
+              sourceHandle: e.sourceHandle ?? undefined,
+              targetHandle: e.targetHandle ?? undefined,
+            }))
+          ),
           selectedNodeId: null,
           selectedEdgeId: null,
         });

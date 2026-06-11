@@ -52,6 +52,12 @@ export function runSimulation(
     (n) => (inDegree.get(n.id) ?? 0) === 0 && (adjacency.get(n.id)?.length ?? 0) > 0
   );
 
+  if (nodes.length > 0 && edges.length > 0 && entryNodes.length === 0) {
+    warnings.push(
+      "No traffic entry point found — traffic enters at a component with outgoing wires but no incoming ones. Check your arrow directions: right now every connected component has an inbound wire (or is part of a loop), so no traffic flows."
+    );
+  }
+
   // Initialize incoming QPS for entry nodes
   const incomingQPS = new Map<string, number>();
   const qpsPerEntry = entryNodes.length > 0 ? requestsPerSec / entryNodes.length : 0;
