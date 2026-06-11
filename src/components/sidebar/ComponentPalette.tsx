@@ -14,35 +14,22 @@ import {
   getComponentById,
 } from "@/data/components";
 import { CONCEPT_LIBRARY } from "@/data/conceptLibrary";
-import { Server, GripVertical, Plus, Search as SearchIcon, Sparkles, Trash2 } from "lucide-react";
+import { Server, Plus, Search as SearchIcon, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ICON_MAP } from "@/lib/icons";
 import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
 import { useAppStore } from "@/store/appStore";
 import { useCustomComponentsStore } from "@/store/customComponentsStore";
 import type { SystemComponent } from "@/types/component";
 
+// Accent color per category — applied to the icon glyph only, matching how the
+// canvas nodes are colored, so the palette and the canvas read as one design.
 const CATEGORY_ACCENT: Record<string, string> = {
   networking: "text-blue-400",
   compute: "text-violet-400",
   storage: "text-amber-400",
   messaging: "text-emerald-400",
   infrastructure: "text-cyan-400",
-};
-
-const CATEGORY_BG: Record<string, string> = {
-  networking: "bg-blue-400/10",
-  compute: "bg-violet-400/10",
-  storage: "bg-amber-400/10",
-  messaging: "bg-emerald-400/10",
-  infrastructure: "bg-cyan-400/10",
-};
-
-const CATEGORY_BORDER: Record<string, string> = {
-  networking: "border-l-blue-400",
-  compute: "border-l-violet-400",
-  storage: "border-l-amber-400",
-  messaging: "border-l-emerald-400",
-  infrastructure: "border-l-cyan-400",
 };
 
 interface ComponentPaletteProps {
@@ -138,13 +125,13 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
           />
         </div>
         {query ? (
-          <p className="mt-1.5 text-[10px] text-zinc-500">
+          <p className="mt-1.5 text-[11px] text-zinc-500">
             {totalMatches === 0
               ? "No matches"
               : `${totalMatches} component${totalMatches === 1 ? "" : "s"} match "${search}"`}
           </p>
         ) : (
-          <p className="mt-1.5 text-[10px] leading-tight text-zinc-600">
+          <p className="mt-1.5 text-[11px] leading-tight text-zinc-600">
             <span className="text-zinc-500">qps</span> = max throughput per instance (illustrative)
           </p>
         )}
@@ -154,11 +141,10 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
         {onCreateCustomComponent && (
           <button
             onClick={onCreateCustomComponent}
-            className="group flex w-full items-center gap-2 rounded-md border border-dashed border-zinc-700 bg-zinc-800/40 px-2.5 py-2 text-xs text-zinc-300 transition-colors hover:border-cyan-500/50 hover:bg-zinc-800 hover:text-cyan-300"
+            className="flex w-full items-center gap-2 rounded-md border border-dashed border-zinc-600 px-2.5 py-2 text-left text-xs font-medium text-cyan-400 transition-colors hover:border-cyan-500/50 hover:bg-cyan-500/5"
           >
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
-            <span className="flex-1 text-left">Create custom component</span>
-            <Plus className="h-3 w-3 shrink-0 text-zinc-500 group-hover:text-cyan-400" />
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            Create Custom Component
           </button>
         )}
         {COMPONENT_CATEGORIES.map((cat) => {
@@ -168,22 +154,17 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
           if (query !== "" && items.length === 0) return null;
           return (
             <div key={cat.key}>
-              <div className="mb-2 flex items-center gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+              <div className="mb-1.5 flex items-center justify-between px-0.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                   {cat.label}
                 </p>
-                <span className="flex h-4 min-w-4 items-center justify-center rounded bg-zinc-800 px-1 text-[10px] font-medium tabular-nums text-zinc-500">
-                  {items.length}
-                </span>
-                <div className="h-px flex-1 bg-zinc-800" />
+                <span className="text-[10px] tabular-nums text-zinc-600">{items.length}</span>
               </div>
               <TooltipProvider>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {items.map((item) => {
                   const Icon = ICON_MAP[item.icon] ?? Server;
                   const accent = CATEGORY_ACCENT[item.category] ?? "text-cyan-400";
-                  const iconBg = CATEGORY_BG[item.category] ?? "bg-cyan-400/10";
-                  const borderColor = CATEGORY_BORDER[item.category] ?? "border-l-cyan-400";
                   const concept = CONCEPT_LIBRARY[item.id];
                   const tipText = concept?.whenToUse[0] ?? item.description;
                   const isCustom = customIds.has(item.id);
@@ -199,40 +180,30 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
                             tabIndex={0}
                             onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(item.id); }}
                             title="Click to add to the canvas, or drag to place it"
-                            className={`group flex cursor-grab items-center gap-2 rounded-md border-l-2 px-2 py-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 active:cursor-grabbing ${borderColor}`}
+                            className="group flex cursor-pointer items-center gap-2.5 rounded-md border border-transparent px-2.5 py-2 transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:cursor-grabbing"
                           >
-                            <GripVertical className="h-3 w-3 shrink-0 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100" />
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${iconBg}`}>
-                              <Icon className={`h-3.5 w-3.5 shrink-0 transition-colors ${accent}`} />
-                            </div>
-                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            <Icon className={`h-4 w-4 shrink-0 ${accent}`} />
+                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-300">
+                              {item.label}
+                            </span>
                             {isCustom && (
-                              <span className="shrink-0 rounded bg-cyan-500/15 px-1 text-[9px] font-semibold uppercase tracking-wider text-cyan-400">
+                              <Badge
+                                variant="outline"
+                                className="h-4 shrink-0 border-cyan-500/30 bg-cyan-500/10 px-1.5 text-[10px] font-medium text-cyan-400"
+                              >
                                 Custom
-                              </span>
+                              </Badge>
                             )}
                             <span
-                              className="shrink-0 text-[11px] tabular-nums text-zinc-400"
+                              className="shrink-0 font-mono text-[11px] tabular-nums text-zinc-500"
                               title="Max throughput per instance (queries/sec, illustrative)"
                             >
                               {item.maxQPS === Infinity ? "\u221e" : `${(item.maxQPS / 1000).toFixed(0)}k`}
-                              <span className="ml-0.5 text-[9px] text-zinc-500">qps</span>
                             </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickAdd(item.id);
-                              }}
-                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-60 transition-all hover:bg-zinc-700 hover:text-cyan-400 hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                              title="Add to canvas"
-                              aria-label={`Add ${item.label} to canvas`}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </button>
                             {isCustom && (
                               <button
                                 onClick={(e) => handleDeleteCustom(e, item.id, item.label)}
-                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-60 transition-all hover:bg-zinc-700 hover:text-rose-400 hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-colors hover:text-rose-400 group-hover:opacity-100"
                                 title="Delete custom component"
                                 aria-label={`Delete ${item.label}`}
                               >
