@@ -7,7 +7,58 @@ import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Trophy } from "lucide-react";
 import { useState } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
+import { useScoreHistoryStore } from "@/store/scoreHistoryStore";
+import { useAppStore } from "@/store/appStore";
 import type { CategoryScore } from "@/types/scoring";
+
+function ScoreHistory() {
+  const entries = useScoreHistoryStore((s) => s.entries);
+  const problemId = useAppStore((s) => s.selectedProblemId);
+  const recent = entries.filter((e) => e.problemId === problemId).slice(-6).reverse();
+  if (recent.length < 2) return null;
+
+  return (
+    <>
+      <Separator className="bg-zinc-800" />
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          Attempts on this problem
+        </p>
+        <div className="space-y-1">
+          {recent.map((e, i) => {
+            const prev = recent[i + 1];
+            const delta = prev ? e.total - prev.total : null;
+            return (
+              <div
+                key={e.timestamp}
+                className="flex items-center justify-between rounded-md bg-zinc-800 px-2.5 py-1.5 text-xs"
+              >
+                <span className="text-zinc-400">
+                  {new Date(e.timestamp).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  {new Date(e.timestamp).toLocaleTimeString(undefined, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                <span className="flex items-center gap-2">
+                  {delta !== null && delta !== 0 && (
+                    <span className={delta > 0 ? "text-emerald-400" : "text-rose-400"}>
+                      {delta > 0 ? `+${delta}` : delta}
+                    </span>
+                  )}
+                  <span className="font-mono font-semibold text-zinc-200">{e.total}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
 
 function CategorySection({ category }: { category: CategoryScore }) {
   const [expanded, setExpanded] = useState(false);
@@ -211,6 +262,8 @@ export function ScoreReport() {
             </div>
           </>
         )}
+
+        <ScoreHistory />
       </div>
     </ScrollArea>
   );

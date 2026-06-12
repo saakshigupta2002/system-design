@@ -25,8 +25,13 @@ export function scoreAvailability(
     );
   }
 
-  // Check stateful redundancy (3 pts) — stateful components are SPOFs without replicas
-  const statefulNodes = nodes.filter((n) => getComponentById(n.data.componentId)?.stateful);
+  // Check stateful redundancy (3 pts) — stateful components are SPOFs without
+  // replicas. Monitoring is exempt: it's observability, not the data path.
+  const statefulNodes = nodes.filter(
+    (n) =>
+      n.data.componentId !== "monitoring" &&
+      getComponentById(n.data.componentId)?.stateful
+  );
   if (statefulNodes.length === 0) {
     feedback.push(
       "No stateful components (database, cache, queue) in your design. Most real systems need at least a persistent datastore — add one and run more than one replica so a failover instance can take over."

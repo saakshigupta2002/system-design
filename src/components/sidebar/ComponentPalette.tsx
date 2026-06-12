@@ -14,7 +14,7 @@ import {
   getComponentById,
 } from "@/data/components";
 import { CONCEPT_LIBRARY } from "@/data/conceptLibrary";
-import { Server, Plus, Search as SearchIcon, Trash2 } from "lucide-react";
+import { Server, Plus, Pencil, Search as SearchIcon, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ICON_MAP } from "@/lib/icons";
 import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
@@ -34,9 +34,10 @@ const CATEGORY_ACCENT: Record<string, string> = {
 
 interface ComponentPaletteProps {
   onCreateCustomComponent?: () => void;
+  onEditCustomComponent?: (id: string) => void;
 }
 
-export function ComponentPalette({ onCreateCustomComponent }: ComponentPaletteProps = {}) {
+export function ComponentPalette({ onCreateCustomComponent, onEditCustomComponent }: ComponentPaletteProps = {}) {
   const [search, setSearch] = useState("");
   const { getViewport } = useReactFlow();
   const addNode = useCanvasStore((s) => s.addNode);
@@ -200,6 +201,19 @@ export function ComponentPalette({ onCreateCustomComponent }: ComponentPalettePr
                             >
                               {item.maxQPS === Infinity ? "\u221e" : `${(item.maxQPS / 1000).toFixed(0)}k`}
                             </span>
+                            {isCustom && onEditCustomComponent && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEditCustomComponent(item.id);
+                                }}
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-colors hover:text-cyan-400 group-hover:opacity-100"
+                                title="Edit custom component"
+                                aria-label={`Edit ${item.label}`}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            )}
                             {isCustom && (
                               <button
                                 onClick={(e) => handleDeleteCustom(e, item.id, item.label)}

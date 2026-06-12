@@ -118,6 +118,22 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
     setSelectedEdge(null);
   }, [setSelectedNode, setSelectedEdge]);
 
+  // Mirror React Flow's box/multi selection into the store so Delete can act on it.
+  const onSelectionChange = useCallback(
+    ({ nodes: selNodes, edges: selEdges }: { nodes: Node[]; edges: Edge[] }) => {
+      useCanvasStore.getState().setSelection({
+        nodeIds: selNodes.map((n) => n.id),
+        edgeIds: selEdges.map((e) => e.id),
+      });
+    },
+    []
+  );
+
+  // Snapshot before a drag starts so the move is undoable.
+  const onNodeDragStart = useCallback(() => {
+    useCanvasStore.getState().snapshot();
+  }, []);
+
   // Nodes expose one handle per side ("top"/"right"/"bottom"/"left"). Edges
   // from older builds / reference solutions may carry missing or stale handle
   // ids — normalize them to the classic right→left flow so they all render.
@@ -168,6 +184,10 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
+        onSelectionChange={onSelectionChange}
+        onNodeDragStart={onNodeDragStart}
+        onSelectionDragStart={onNodeDragStart}
+        deleteKeyCode={null}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={{ type: "animated" }}

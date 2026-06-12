@@ -7,11 +7,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { Info, Trash2, Lightbulb, ChevronDown, ChevronRight, CheckSquare, BookOpen, Target, AlertTriangle, MessageCircle, Layers } from "lucide-react";
+import { Info, Trash2, CopyPlus, Lightbulb, ChevronDown, ChevronRight, CheckSquare, BookOpen, Target, AlertTriangle, MessageCircle, Layers } from "lucide-react";
 import { useCanvasStore, type ComponentNodeData, type CustomEdgeData } from "@/store/canvasStore";
 import { useAppStore } from "@/store/appStore";
 import { getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
+import { LOAD_BALANCING_COMPONENTS } from "@/engine/simulator";
 import { getConceptByComponentId } from "@/data/conceptLibrary";
 import { SimulationControls } from "./SimulationControls";
 import { MetricsDisplay } from "./MetricsDisplay";
@@ -133,6 +134,7 @@ export function RightPanel({ open = true, onSimulate, variant = "desktop" }: Rig
 function EdgePropertiesPanel() {
   const selectedEdgeId = useCanvasStore((s) => s.selectedEdgeId);
   const edges = useCanvasStore((s) => s.edges);
+  const nodes = useCanvasStore((s) => s.nodes);
   const updateEdgeData = useCanvasStore((s) => s.updateEdgeData);
   const deleteEdge = useCanvasStore((s) => s.deleteEdge);
 
@@ -141,6 +143,10 @@ function EdgePropertiesPanel() {
 
   const data = (selectedEdge.data ?? {}) as CustomEdgeData;
   const protocols: CustomEdgeData["protocol"][] = ["http", "grpc", "websocket", "pubsub", "tcp", "custom"];
+  const sourceNode = nodes.find((n) => n.id === selectedEdge.source);
+  const sourceIsSplitter = LOAD_BALANCING_COMPONENTS.has(
+    (sourceNode?.data as ComponentNodeData | undefined)?.componentId ?? ""
+  );
 
   return (
     <div className="space-y-3">
@@ -206,6 +212,31 @@ function EdgePropertiesPanel() {
             {data.async ? "Dashed line — asynchronous (e.g. message queue)" : "Solid line — synchronous (e.g. HTTP call)"}
           </p>
         </div>
+
+        {/* Traffic share — only meaningful when the source splits traffic */}
+        {sourceIsSplitter && (
+          <div>
+            <label className="mb-1 block text-xs text-zinc-400">Traffic share (relative)</label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={data.weight ?? ""}
+              placeholder="1 (equal share)"
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                updateEdgeData(selectedEdge.id, {
+                  weight: e.target.value === "" || isNaN(v) || v <= 0 ? undefined : v,
+                });
+              }}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600/50"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+              Relative to this splitter&apos;s other outgoing wires — e.g. 70 and 30 send 70% /
+              30% of its traffic. Unset wires count as 1.
+            </p>
+          </div>
+        )}
 
         <Button
           variant="outline"
@@ -357,6 +388,35 @@ function PropertiesTab() {
               </div>
             )}
 
+            {/* Cache hit rate — caches only */}
+            {data.componentId === "cache" && (
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-xs text-zinc-400">Cache Hit Rate</label>
+                  <span className="font-mono text-xs text-cyan-500">
+                    {Math.round(((data.cacheHitRate as number) ?? 0.8) * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  aria-label="Cache hit rate"
+                  value={[Math.round(((data.cacheHitRate as number) ?? 0.8) * 100)]}
+                  onValueChange={(v) =>
+                    updateNodeData(selectedNode.id, {
+                      cacheHitRate: (Array.isArray(v) ? v[0] : v) / 100,
+                    })
+                  }
+                  min={50}
+                  max={99}
+                  step={1}
+                  className=""
+                />
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                  Share of lookups served from memory — only misses continue to storage behind
+                  this cache.
+                </p>
+              </div>
+            )}
+
             {/* Info */}
             <div className="space-y-1">
               {(() => {
@@ -385,6 +445,16 @@ function PropertiesTab() {
                 </div>
               ))}
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => useCanvasStore.getState().duplicateNode(selectedNode.id)}
+              className="w-full gap-1.5 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+            >
+              <CopyPlus className="h-3 w-3" />
+              Duplicate Component
+            </Button>
 
             <Button
               variant="outline"

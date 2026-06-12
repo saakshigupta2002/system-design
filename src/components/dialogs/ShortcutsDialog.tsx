@@ -16,7 +16,10 @@ const SHORTCUTS: { keys: string[]; action: string }[] = [
   { keys: ["⌘/Ctrl", "E"], action: "Export as PNG" },
   { keys: ["⌘/Ctrl", "Z"], action: "Undo" },
   { keys: ["⌘/Ctrl", "⇧", "Z"], action: "Redo" },
-  { keys: ["Delete"], action: "Remove selected component or wire" },
+  { keys: ["⌘/Ctrl", "C"], action: "Copy selected component" },
+  { keys: ["⌘/Ctrl", "V"], action: "Paste component" },
+  { keys: ["⇧", "drag"], action: "Box-select multiple items" },
+  { keys: ["Delete"], action: "Remove selected components or wires" },
   { keys: ["Esc"], action: "Close dialogs / deselect" },
   { keys: ["?"], action: "Show this cheatsheet" },
 ];

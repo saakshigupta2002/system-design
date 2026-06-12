@@ -9,15 +9,19 @@ import { useCanvasStore } from "@/store/canvasStore";
 interface CreateProblemDialogProps {
   open: boolean;
   onClose: () => void;
+  /** When set, the dialog edits this existing custom problem instead of creating. */
+  editId?: string | null;
 }
 
 const DIFFICULTIES = ["Easy", "Medium", "Hard"] as const;
 
-export function CreateProblemDialog({ open, onClose }: CreateProblemDialogProps) {
+export function CreateProblemDialog({ open, onClose, editId = null }: CreateProblemDialogProps) {
   const addProblem = useCustomProblemsStore((s) => s.addProblem);
+  const updateProblem = useCustomProblemsStore((s) => s.updateProblem);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
   const showToast = useAppStore((s) => s.showToast);
   const titleRef = useRef<HTMLInputElement>(null);
+  const isEditing = editId !== null;
 
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
@@ -30,22 +34,24 @@ export function CreateProblemDialog({ open, onClose }: CreateProblemDialogProps)
   const [constraintsText, setConstraintsText] = useState("");
   const [tagsText, setTagsText] = useState("");
 
-  // Reset form and focus when dialog opens
+  // Reset (or prefill, when editing) and focus when dialog opens
   useEffect(() => {
-    if (open) {
-      setTitle("");
-      setDifficulty("Medium");
-      setDescription("");
-      setReadsPerSec(10000);
-      setWritesPerSec(1000);
-      setStorageGB(1000);
-      setLatencyMs(200);
-      setUsers("10M DAU");
-      setConstraintsText("");
-      setTagsText("");
-      setTimeout(() => titleRef.current?.focus(), 50);
-    }
-  }, [open]);
+    if (!open) return;
+    const existing = editId
+      ? useCustomProblemsStore.getState().problems.find((p) => p.id === editId)
+      : undefined;
+    setTitle(existing?.title ?? "");
+    setDifficulty(existing?.difficulty ?? "Medium");
+    setDescription(existing?.description ?? "");
+    setReadsPerSec(existing?.requirements.readsPerSec ?? 10000);
+    setWritesPerSec(existing?.requirements.writesPerSec ?? 1000);
+    setStorageGB(existing?.requirements.storageGB ?? 1000);
+    setLatencyMs(existing?.requirements.latencyMs ?? 200);
+    setUsers(existing?.requirements.users ?? "10M DAU");
+    setConstraintsText(existing?.constraints.join("\n") ?? "");
+    setTagsText(existing?.tags.join(", ") ?? "");
+    setTimeout(() => titleRef.current?.focus(), 50);
+  }, [open, editId]);
 
   if (!open) return null;
 
@@ -63,14 +69,23 @@ export function CreateProblemDialog({ open, onClose }: CreateProblemDialogProps)
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const id = addProblem({
+    const fields = {
       title: trimmedTitle,
       difficulty,
       description: description.trim(),
       requirements: { readsPerSec, writesPerSec, storageGB, latencyMs, users: users.trim() || "10M DAU" },
       constraints,
       tags,
-    });
+    };
+
+    if (isEditing && editId) {
+      updateProblem(editId, fields);
+      showToast("Custom problem updated", "success");
+      onClose();
+      return;
+    }
+
+    const id = addProblem(fields);
 
     // Clear canvas, select the new problem
     useCanvasStore.getState().clearCanvas();
@@ -94,7 +109,9 @@ export function CreateProblemDialog({ open, onClose }: CreateProblemDialogProps)
       {/* Dialog */}
       <div className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900 p-5 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-100">Create Custom Problem</h2>
+          <h2 className="text-sm font-semibold text-zinc-100">
+            {isEditing ? "Edit Custom Problem" : "Create Custom Problem"}
+          </h2>
           <button
             onClick={onClose}
             className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
@@ -244,7 +261,7 @@ export function CreateProblemDialog({ open, onClose }: CreateProblemDialogProps)
             disabled={!title.trim()}
             className="rounded-md bg-cyan-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Create Problem
+            {isEditing ? "Save Changes" : "Create Problem"}
           </button>
         </div>
       </div>

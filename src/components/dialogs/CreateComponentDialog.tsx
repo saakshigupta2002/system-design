@@ -11,14 +11,18 @@ import type { ComponentCategory } from "@/types/component";
 interface CreateComponentDialogProps {
   open: boolean;
   onClose: () => void;
+  /** When set, the dialog edits this existing custom component instead of creating. */
+  editId?: string | null;
 }
 
 const ICON_OPTIONS = Object.keys(ICON_MAP);
 
-export function CreateComponentDialog({ open, onClose }: CreateComponentDialogProps) {
+export function CreateComponentDialog({ open, onClose, editId = null }: CreateComponentDialogProps) {
   const addComponent = useCustomComponentsStore((s) => s.addComponent);
+  const updateComponent = useCustomComponentsStore((s) => s.updateComponent);
   const showToast = useAppStore((s) => s.showToast);
   const labelRef = useRef<HTMLInputElement>(null);
+  const isEditing = editId !== null;
 
   const [label, setLabel] = useState("");
   const [category, setCategory] = useState<ComponentCategory>("compute");
@@ -31,19 +35,21 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
   const [description, setDescription] = useState("");
 
   useEffect(() => {
-    if (open) {
-      setLabel("");
-      setCategory("compute");
-      setIcon("Box");
-      setMaxQPS(5000);
-      setLatencyMs(20);
-      setMonthlyCost(100);
-      setScalable(true);
-      setStateful(false);
-      setDescription("");
-      setTimeout(() => labelRef.current?.focus(), 50);
-    }
-  }, [open]);
+    if (!open) return;
+    const existing = editId
+      ? useCustomComponentsStore.getState().getComponent(editId)
+      : undefined;
+    setLabel(existing?.label ?? "");
+    setCategory(existing?.category ?? "compute");
+    setIcon(existing?.icon ?? "Box");
+    setMaxQPS(existing?.maxQPS ?? 5000);
+    setLatencyMs(existing?.latencyMs ?? 20);
+    setMonthlyCost(existing?.monthlyCost ?? 100);
+    setScalable(existing?.scalable ?? true);
+    setStateful(existing?.stateful ?? false);
+    setDescription(existing?.description ?? "");
+    setTimeout(() => labelRef.current?.focus(), 50);
+  }, [open, editId]);
 
   if (!open) return null;
 
@@ -51,7 +57,7 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
     const trimmedLabel = label.trim();
     if (!trimmedLabel) return;
 
-    addComponent({
+    const fields = {
       label: trimmedLabel,
       category,
       icon,
@@ -61,8 +67,16 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
       scalable,
       stateful,
       description: description.trim(),
-    });
+    };
 
+    if (isEditing && editId) {
+      updateComponent(editId, fields);
+      showToast(`Custom component "${trimmedLabel}" updated`, "success");
+      onClose();
+      return;
+    }
+
+    addComponent(fields);
     showToast(`Custom component "${trimmedLabel}" created`, "success");
     onClose();
   };
@@ -82,7 +96,9 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
 
       <div className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900 p-5 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-100">Create Custom Component</h2>
+          <h2 className="text-sm font-semibold text-zinc-100">
+            {isEditing ? "Edit Custom Component" : "Create Custom Component"}
+          </h2>
           <button
             onClick={onClose}
             className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
@@ -215,6 +231,13 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
           </div>
         </div>
 
+        {isEditing && (
+          <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+            Changes apply to components added from the palette after saving — nodes already on
+            the canvas keep their current values.
+          </p>
+        )}
+
         <div className="mt-4 flex justify-end gap-2">
           <button
             onClick={onClose}
@@ -227,7 +250,7 @@ export function CreateComponentDialog({ open, onClose }: CreateComponentDialogPr
             disabled={!label.trim()}
             className="rounded-md bg-cyan-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Create Component
+            {isEditing ? "Save Changes" : "Create Component"}
           </button>
         </div>
       </div>

@@ -23,6 +23,7 @@ import {
   Heart,
   Coffee,
   Keyboard,
+  LayoutGrid,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useCanvasStore } from "@/store/canvasStore";
@@ -51,8 +52,14 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
-  const { getViewport } = useReactFlow();
+  const { getViewport, fitView } = useReactFlow();
   const addNode = useCanvasStore((s) => s.addNode);
+
+  const tidyUp = useCallback(() => {
+    useCanvasStore.getState().autoArrange();
+    // Let the new positions land before framing them.
+    setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 50);
+  }, [fitView]);
 
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
@@ -255,6 +262,15 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
           Add Note
         </button>
 
+        <button
+          onClick={tidyUp}
+          className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
+          title="Auto-arrange the canvas into clean layers"
+        >
+          <LayoutGrid className="h-3 w-3" />
+          Tidy Up
+        </button>
+
         <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
 
         <button
@@ -296,6 +312,13 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
                 >
                   <StickyNote className="h-3.5 w-3.5 text-zinc-500" />
                   Add text note
+                </button>
+                <button
+                  onClick={() => { setMobileMoreOpen(false); tidyUp(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5 text-zinc-500" />
+                  Tidy up layout
                 </button>
                 <button
                   onClick={() => { setMobileMoreOpen(false); onStartInterview(); }}

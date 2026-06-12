@@ -11,7 +11,7 @@ import {
 
 /** Component IDs that split (route) traffic across children instead of
  *  duplicating it — routers/balancers send each request down ONE branch. */
-const LOAD_BALANCING_COMPONENTS = new Set([
+export const LOAD_BALANCING_COMPONENTS = new Set([
   "load-balancer",
   "api-gateway",
   "dns",
@@ -61,10 +61,19 @@ export function runSimulation(
     adjacency.set(node.id, []);
     inDegree.set(node.id, 0);
   }
+  // Optional per-edge traffic share, used by splitters (relative weights).
+  const weightByPair = new Map<string, number>();
   for (const edge of uniqueEdges) {
     adjacency.get(edge.source)?.push(edge.target);
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
+    const w = (edge.data as { weight?: number } | undefined)?.weight;
+    if (typeof w === "number" && w > 0) {
+      weightByPair.set(`${edge.source}→${edge.target}`, w);
+    }
   }
+
+  // QPS recorded per connection, for display on the canvas edges.
+  const edgeFlows = new Map<string, number>();
 
   // Find entry nodes: no inbound edges AND at least one outbound edge.
   // Isolated nodes (no edges at all) are NOT entry points — otherwise they'd
@@ -139,33 +148,43 @@ export function runSimulation(
     // Output QPS is capped by effective capacity
     const outputQPS = Math.min(incoming, effectiveQPS);
 
-    // Routers/balancers split traffic; everything else fans out
+    // Routers/balancers split traffic; everything else fans out.
+    // Split shares honor per-edge weights when set (relative; default 1 each).
     const isSplitter = LOAD_BALANCING_COMPONENTS.has(data.componentId);
+    const childWeights = children.map(
+      (childId) => weightByPair.get(`${nodeId}→${childId}`) ?? 1
+    );
+    const totalWeight = childWeights.reduce((sum, w) => sum + w, 0);
 
-    // Cache model: a cache absorbs CACHE_HIT_RATE of lookups, so only misses
+    // Cache model: a cache absorbs its hit rate of lookups, so only misses
     // flow past it. Two shapes are supported:
     //   chained:  app → cache → db   (traffic out of a cache = misses only)
     //   parallel: app → cache, app → db  (storage siblings of a cache get
     //             misses only — the app checks the cache first)
     const isCache = data.componentId === "cache";
-    const hasCacheChild = children.some(
-      (id) => nodeMap.get(id)?.data.componentId === "cache"
-    );
+    const hitRateOf = (d: ComponentNodeData | undefined) =>
+      Math.min(0.99, Math.max(0, d?.cacheHitRate ?? CACHE_HIT_RATE));
+    const cacheChild = children
+      .map((id) => nodeMap.get(id))
+      .find((n) => n?.data.componentId === "cache");
 
-    for (const childId of children) {
-      let qpsToChild = isSplitter && children.length > 0
-        ? outputQPS / children.length
-        : outputQPS; // fan-out: full traffic to each child
+    children.forEach((childId, i) => {
+      let qpsToChild =
+        isSplitter && totalWeight > 0
+          ? (outputQPS * childWeights[i]) / totalWeight
+          : outputQPS; // fan-out: full traffic to each child
       const childData = nodeMap.get(childId)?.data;
       if (isCache) {
-        qpsToChild *= 1 - CACHE_HIT_RATE;
+        qpsToChild *= 1 - hitRateOf(data);
       } else if (
-        hasCacheChild &&
+        cacheChild &&
         childData?.category === "storage" &&
         childData.componentId !== "cache"
       ) {
-        qpsToChild *= 1 - CACHE_HIT_RATE;
+        qpsToChild *= 1 - hitRateOf(cacheChild.data);
       }
+      const flowKey = `${nodeId}→${childId}`;
+      edgeFlows.set(flowKey, (edgeFlows.get(flowKey) ?? 0) + qpsToChild);
       const existing = incomingQPS.get(childId) ?? 0;
       incomingQPS.set(childId, existing + qpsToChild);
 
@@ -175,7 +194,7 @@ export function runSimulation(
       if (newDeg === 0) {
         queue.push(childId);
       }
-    }
+    });
   }
 
   // Fix #8: Detect cycles — nodes with remaining inDegree > 0 that weren't processed
@@ -253,6 +272,7 @@ export function runSimulation(
 
   return {
     nodeMetrics,
+    edgeFlows,
     totalLatencyMs,
     bottleneckNodes,
     throughput,

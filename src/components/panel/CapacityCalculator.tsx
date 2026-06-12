@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { Separator } from "@/components/ui/separator";
-import { Calculator } from "lucide-react";
+import { Calculator, Play } from "lucide-react";
+import { useSimulationStore } from "@/store/simulationStore";
+import { useAppStore } from "@/store/appStore";
 
 function formatNumber(n: number): string {
   if (n >= 1e12) return `${(n / 1e12).toFixed(2)} T`;
@@ -133,6 +135,22 @@ export function CapacityCalculator() {
           value={formatNumber(estimates.writeQPS)}
         />
       </div>
+
+      {/* Hand the estimate to the simulator instead of retyping it */}
+      <button
+        onClick={() => {
+          const load = Math.min(500000, Math.max(100, Math.round(estimates.peakQps)));
+          useSimulationStore.getState().setConfig({ requestsPerSec: load });
+          useAppStore.getState().setActiveRightTab("simulation");
+          useAppStore
+            .getState()
+            .showToast(`Simulation load set to ${new Intl.NumberFormat("en-US").format(load)} req/s`, "success");
+        }}
+        className="flex w-full items-center justify-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-400 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/15"
+      >
+        <Play className="h-3 w-3" />
+        Use peak QPS as simulation load
+      </button>
 
       <Separator className="bg-zinc-800" />
 

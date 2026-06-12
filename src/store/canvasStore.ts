@@ -11,6 +11,7 @@ import {
   addEdge,
 } from "@xyflow/react";
 import { useSimulationStore } from "./simulationStore";
+import { computeLayeredPositions } from "@/lib/autoLayout";
 
 export interface ComponentNodeData {
   componentId: string;
@@ -21,6 +22,8 @@ export interface ComponentNodeData {
   maxQPS: number;
   latencyMs: number;
   scalable: boolean;
+  /** Cache nodes only: fraction of lookups served from memory (0–1). */
+  cacheHitRate?: number;
   utilization?: number;
   status?: string;
   isBottleneck?: boolean;
@@ -38,6 +41,9 @@ export interface CustomEdgeData {
   label?: string;
   protocol?: 'http' | 'grpc' | 'websocket' | 'pubsub' | 'tcp' | 'custom';
   async?: boolean;
+  /** Relative traffic share when the source is a splitter (LB/gateway/DNS).
+   *  Shares are normalized across the splitter's outgoing edges. */
+  weight?: number;
   [key: string]: unknown;
 }
 
@@ -56,6 +62,19 @@ export interface CanvasTab {
 // carry stale ids (e.g. "t-tgt") that no longer exist — those edges silently
 // fail to render while still poisoning the simulation graph.
 const VALID_HANDLE_IDS = new Set(["top", "right", "bottom", "left"]);
+
+/** Clone a node with a fresh id, slightly offset so the copy is visible. */
+function cloneWithNewId(node: Node): Node {
+  const componentId = (node.data as { componentId?: string })?.componentId;
+  const offset = 36 + Math.round(Math.random() * 24);
+  return {
+    ...node,
+    id: `${componentId ?? node.type ?? "node"}-${crypto.randomUUID()}`,
+    position: { x: node.position.x + offset, y: node.position.y + offset },
+    selected: false,
+    data: { ...node.data },
+  };
+}
 
 /** Strip transient simulation results (utilization/status/bottleneck) from
  *  node data — they describe one past run and shouldn't survive tab switches
@@ -125,11 +144,28 @@ interface CanvasState {
   deleteNode: (nodeId: string) => void;
   deleteEdge: (edgeId: string) => void;
 
-  // Undo/redo over structural changes (add/connect/delete/clear).
+  // Undo/redo over structural changes (add/connect/delete/clear/move).
   past: { nodes: Node[]; edges: Edge[] }[];
   future: { nodes: Node[]; edges: Edge[] }[];
   undo: () => void;
   redo: () => void;
+  /** Push the current canvas onto the undo stack (e.g. before a node drag). */
+  snapshot: () => void;
+
+  // Copy/paste/duplicate
+  clipboard: Node | null;
+  copyNode: (nodeId: string) => void;
+  pasteNode: () => void;
+  duplicateNode: (nodeId: string) => void;
+
+  // Box/multi selection (mirrors React Flow's internal selection)
+  selection: { nodeIds: string[]; edgeIds: string[] };
+  setSelection: (selection: { nodeIds: string[]; edgeIds: string[] }) => void;
+  /** Delete everything in the multi-selection (single history entry). */
+  deleteSelection: () => void;
+
+  /** Re-layout all nodes into clean dependency layers. */
+  autoArrange: () => void;
 }
 
 const HISTORY_LIMIT = 50;
@@ -151,10 +187,85 @@ export const useCanvasStore = create<CanvasState>()(
       selectedEdgeId: null,
       past: [],
       future: [],
+      clipboard: null,
+      selection: { nodeIds: [], edgeIds: [] },
 
       // Tab system — "my-design" is the default tab
       tabs: [{ id: "my-design", label: "My Design", nodes: [], edges: [] }],
       activeTabId: "my-design",
+
+      snapshot: () => {
+        set((state) => pushHistory(state));
+      },
+
+      copyNode: (nodeId) => {
+        set((state) => {
+          const node = state.nodes.find((n) => n.id === nodeId);
+          return node ? { clipboard: node } : state;
+        });
+      },
+
+      pasteNode: () => {
+        set((state) => {
+          if (!state.clipboard) return state;
+          return {
+            ...pushHistory(state),
+            nodes: [...state.nodes, cloneWithNewId(state.clipboard)],
+          };
+        });
+      },
+
+      duplicateNode: (nodeId) => {
+        set((state) => {
+          const node = state.nodes.find((n) => n.id === nodeId);
+          if (!node) return state;
+          return {
+            ...pushHistory(state),
+            nodes: [...state.nodes, cloneWithNewId(node)],
+          };
+        });
+      },
+
+      setSelection: (selection) => set({ selection }),
+
+      deleteSelection: () => {
+        set((state) => {
+          const { nodeIds, edgeIds } = state.selection;
+          if (nodeIds.length === 0 && edgeIds.length === 0) return state;
+          const nodeSet = new Set(nodeIds);
+          const edgeSet = new Set(edgeIds);
+          return {
+            ...pushHistory(state),
+            nodes: state.nodes.filter((n) => !nodeSet.has(n.id)),
+            edges: state.edges.filter(
+              (e) => !edgeSet.has(e.id) && !nodeSet.has(e.source) && !nodeSet.has(e.target)
+            ),
+            selection: { nodeIds: [], edgeIds: [] },
+            selectedNodeId:
+              state.selectedNodeId && nodeSet.has(state.selectedNodeId)
+                ? null
+                : state.selectedNodeId,
+            selectedEdgeId:
+              state.selectedEdgeId && edgeSet.has(state.selectedEdgeId)
+                ? null
+                : state.selectedEdgeId,
+          };
+        });
+      },
+
+      autoArrange: () => {
+        set((state) => {
+          const componentNodes = state.nodes.filter((n) => n.type !== "text");
+          if (componentNodes.length === 0) return state;
+          const positions = computeLayeredPositions(componentNodes, state.edges);
+          return {
+            ...pushHistory(state),
+            nodes: state.nodes.map((n) =>
+              positions.has(n.id) ? { ...n, position: positions.get(n.id)! } : n
+            ),
+          };
+        });
+      },
 
       undo: () => {
         set((state) => {

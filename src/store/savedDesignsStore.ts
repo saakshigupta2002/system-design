@@ -15,6 +15,7 @@ export interface SerializedComponentData {
   maxQPS: number;
   latencyMs: number;
   scalable: boolean;
+  cacheHitRate?: number;
 }
 
 export interface SerializedTextData {
@@ -91,6 +92,7 @@ function serializeNodes(
         maxQPS: n.data.maxQPS,
         latencyMs: n.data.latencyMs,
         scalable: n.data.scalable,
+        cacheHitRate: n.data.cacheHitRate as number | undefined,
       } as SerializedComponentData,
     };
   });
@@ -215,22 +217,51 @@ export const useSavedDesignsStore = create<SavedDesignsState>()(
 
       importDesign: (json: string) => {
         try {
-          const parsed = JSON.parse(json);
-          // Validate basic structure
-          if (!parsed.nodes || !parsed.edges || !parsed.name) {
+          const parsed = JSON.parse(json) as Record<string, unknown>;
+          if (
+            typeof parsed.name !== "string" ||
+            !Array.isArray(parsed.nodes) ||
+            !Array.isArray(parsed.edges)
+          ) {
             useAppStore.getState().showToast("Invalid design file", "error");
+            return;
+          }
+
+          // Keep only structurally sound nodes/edges so a malformed file
+          // can't put junk into the canvas when loaded.
+          const nodes = (parsed.nodes as Record<string, unknown>[]).filter(
+            (n): n is SerializedNode & Record<string, unknown> =>
+              !!n &&
+              typeof n.id === "string" &&
+              typeof n.position === "object" &&
+              n.position !== null &&
+              Number.isFinite((n.position as { x?: unknown }).x) &&
+              Number.isFinite((n.position as { y?: unknown }).y) &&
+              typeof n.data === "object" &&
+              n.data !== null
+          );
+          const edges = (parsed.edges as Record<string, unknown>[]).filter(
+            (e): e is SerializedEdge & Record<string, unknown> =>
+              !!e &&
+              typeof e.id === "string" &&
+              typeof e.source === "string" &&
+              typeof e.target === "string"
+          );
+
+          if (nodes.length === 0) {
+            useAppStore.getState().showToast("Design file contains no valid components", "error");
             return;
           }
 
           const now = new Date().toISOString();
           const design: SavedDesign = {
             id: `design-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            name: parsed.name + " (imported)",
-            problemId: parsed.problemId ?? null,
-            nodes: parsed.nodes,
-            edges: parsed.edges,
-            annotations: parsed.annotations ?? [],
-            strokes: parsed.strokes ?? [],
+            name: parsed.name.trim().slice(0, 80) + " (imported)",
+            problemId: typeof parsed.problemId === "string" ? parsed.problemId : null,
+            nodes,
+            edges,
+            annotations: Array.isArray(parsed.annotations) ? (parsed.annotations as string[]) : [],
+            strokes: Array.isArray(parsed.strokes) ? (parsed.strokes as Stroke[]) : [],
             createdAt: now,
             updatedAt: now,
           };

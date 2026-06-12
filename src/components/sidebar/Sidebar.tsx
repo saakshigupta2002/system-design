@@ -11,20 +11,22 @@ import { useAppStore } from "@/store/appStore";
 interface SidebarProps {
   open?: boolean;
   onCreateProblem?: () => void;
+  onEditProblem?: (id: string) => void;
   onCreateCustomComponent?: () => void;
+  onEditCustomComponent?: (id: string) => void;
   onOpenEditorial?: () => void;
   variant?: "desktop" | "mobile";
 }
 
+type SidebarTabsProps = Omit<SidebarProps, "open" | "variant">;
+
 function SidebarTabs({
   onCreateProblem,
+  onEditProblem,
   onCreateCustomComponent,
+  onEditCustomComponent,
   onOpenEditorial,
-}: {
-  onCreateProblem?: () => void;
-  onCreateCustomComponent?: () => void;
-  onOpenEditorial?: () => void;
-}) {
+}: SidebarTabsProps) {
   const activeLeftTab = useAppStore((s) => s.activeLeftTab);
   const setActiveLeftTab = useAppStore((s) => s.setActiveLeftTab);
   return (
@@ -51,11 +53,14 @@ function SidebarTabs({
       </TabsList>
 
       <TabsContent value="components" className="mt-0 flex-1 min-h-0 overflow-hidden">
-        <ComponentPalette onCreateCustomComponent={onCreateCustomComponent} />
+        <ComponentPalette
+          onCreateCustomComponent={onCreateCustomComponent}
+          onEditCustomComponent={onEditCustomComponent}
+        />
       </TabsContent>
 
       <TabsContent value="problems" className="mt-0 flex-1 min-h-0 overflow-hidden">
-        <ProblemSelector onCreateProblem={onCreateProblem} />
+        <ProblemSelector onCreateProblem={onCreateProblem} onEditProblem={onEditProblem} />
       </TabsContent>
 
       <TabsContent value="learn" className="mt-0 flex-1 min-h-0 overflow-hidden">
@@ -68,7 +73,9 @@ function SidebarTabs({
 export function Sidebar({
   open = true,
   onCreateProblem,
+  onEditProblem,
   onCreateCustomComponent,
+  onEditCustomComponent,
   onOpenEditorial,
   variant = "desktop",
 }: SidebarProps) {
@@ -76,14 +83,18 @@ export function Sidebar({
   const setWidth = useAppStore((s) => s.setLeftPanelWidth);
   const [resizing, setResizing] = useState(false);
 
+  const tabsProps: SidebarTabsProps = {
+    onCreateProblem,
+    onEditProblem,
+    onCreateCustomComponent,
+    onEditCustomComponent,
+    onOpenEditorial,
+  };
+
   if (variant === "mobile") {
     return (
       <div className="flex h-full w-full flex-col bg-zinc-900">
-        <SidebarTabs
-          onCreateProblem={onCreateProblem}
-          onCreateCustomComponent={onCreateCustomComponent}
-          onOpenEditorial={onOpenEditorial}
-        />
+        <SidebarTabs {...tabsProps} />
       </div>
     );
   }
@@ -98,11 +109,7 @@ export function Sidebar({
       inert={!open || undefined}
     >
       <div className="flex flex-1 flex-col min-h-0" style={{ width }}>
-        <SidebarTabs
-          onCreateProblem={onCreateProblem}
-          onCreateCustomComponent={onCreateCustomComponent}
-          onOpenEditorial={onOpenEditorial}
-        />
+        <SidebarTabs {...tabsProps} />
       </div>
       {open && (
         <PanelResizeHandle side="left" onResize={setWidth} onDraggingChange={setResizing} />

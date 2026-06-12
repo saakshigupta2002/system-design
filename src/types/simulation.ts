@@ -12,6 +12,8 @@ export interface NodeMetrics {
 
 export interface SimulationResult {
   nodeMetrics: Map<string, NodeMetrics>;
+  /** QPS flowing along each connection, keyed by `${source}→${target}`. */
+  edgeFlows: Map<string, number>;
   totalLatencyMs: number;
   bottleneckNodes: string[];
   throughput: number;

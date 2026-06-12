@@ -14,6 +14,8 @@ import { useSimulationStore } from "@/store/simulationStore";
 import { runSimulation } from "@/engine/simulator";
 import { scoreDesign } from "@/scoring/scorer";
 import { openReferenceSolution } from "@/lib/referenceSolution";
+import { markCompleted } from "@/lib/learningProgress";
+import { useScoreHistoryStore } from "@/store/scoreHistoryStore";
 import { Toast } from "@/components/ui/Toast";
 import { SaveDialog } from "@/components/dialogs/SaveDialog";
 import { LoadDialog } from "@/components/dialogs/LoadDialog";
@@ -48,6 +50,8 @@ export function AppShell() {
   const [editorialDialogOpen, setEditorialDialogOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [editProblemId, setEditProblemId] = useState<string | null>(null);
+  const [editComponentId, setEditComponentId] = useState<string | null>(null);
 
   // Auto-open support dialog when URL has ?support=1 (used by the README link)
   useEffect(() => {
@@ -138,6 +142,21 @@ export function AppShell() {
     // On mobile, auto-open the right sheet so the score is visible
     if (isMobile) setMobileRightOpen(true);
 
+    // Record the attempt; a 71+ ("Excellent") score completes the problem
+    // in the Learn path.
+    const problemId = useAppStore.getState().selectedProblemId;
+    useScoreHistoryStore.getState().addEntry({
+      problemId,
+      total: result.total,
+      verdict: result.verdict,
+    });
+    if (result.total >= 71 && !problemId.startsWith("custom-")) {
+      if (markCompleted(problemId)) {
+        useAppStore.getState().showToast("Scored 71+ — marked complete in the Learn path", "success");
+        return;
+      }
+    }
+
     useAppStore.getState().showToast("Design scored!", "success");
   }, [isMobile]);
 
@@ -176,13 +195,38 @@ export function AppShell() {
       }
 
       if (e.key === "Delete" || e.key === "Backspace") {
-        const { selectedNodeId, deleteNode, selectedEdgeId, deleteEdge } = useCanvasStore.getState();
-        if (selectedNodeId) {
+        const { selection, deleteSelection, selectedNodeId, deleteNode, selectedEdgeId, deleteEdge } =
+          useCanvasStore.getState();
+        if (selection.nodeIds.length + selection.edgeIds.length > 1) {
+          e.preventDefault();
+          deleteSelection();
+        } else if (selectedNodeId) {
           e.preventDefault();
           deleteNode(selectedNodeId);
         } else if (selectedEdgeId) {
           e.preventDefault();
           deleteEdge(selectedEdgeId);
+        } else if (selection.nodeIds.length + selection.edgeIds.length === 1) {
+          e.preventDefault();
+          deleteSelection();
+        }
+      }
+
+      if (e.key === "c" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        const { selectedNodeId, copyNode } = useCanvasStore.getState();
+        // Don't hijack copy when the user has text selected on the page.
+        if (selectedNodeId && window.getSelection()?.toString() === "") {
+          e.preventDefault();
+          copyNode(selectedNodeId);
+          useAppStore.getState().showToast("Component copied — ⌘V to paste", "info");
+        }
+      }
+
+      if (e.key === "v" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        const { clipboard, pasteNode } = useCanvasStore.getState();
+        if (clipboard) {
+          e.preventDefault();
+          pasteNode();
         }
       }
 
@@ -236,6 +280,21 @@ export function AppShell() {
     return () => clearInterval(id);
   }, [timerRunning, tickTimer]);
 
+  // One-time hint once the user starts building: the empty-state shortcut
+  // tips disappear forever after the first node, so point at the cheatsheet.
+  useEffect(() => {
+    const HINT_KEY = "systemdesign-shortcuts-hint-shown";
+    if (typeof window === "undefined" || localStorage.getItem(HINT_KEY)) return;
+    const unsub = useCanvasStore.subscribe((state) => {
+      if (state.nodes.length > 0) {
+        localStorage.setItem(HINT_KEY, "1");
+        useAppStore.getState().showToast("Tip: press ? to see all keyboard shortcuts", "info");
+        unsub();
+      }
+    });
+    return unsub;
+  }, []);
+
   return (
     <ReactFlowProvider>
       <div className="flex h-full flex-col">
@@ -259,7 +318,15 @@ export function AppShell() {
           <Sidebar
             open={leftSidebarOpen}
             onCreateProblem={() => setCreateProblemDialogOpen(true)}
+            onEditProblem={(id) => {
+              setEditProblemId(id);
+              setCreateProblemDialogOpen(true);
+            }}
             onCreateCustomComponent={() => setCreateComponentDialogOpen(true)}
+            onEditCustomComponent={(id) => {
+              setEditComponentId(id);
+              setCreateComponentDialogOpen(true);
+            }}
             onOpenEditorial={() => setEditorialDialogOpen(true)}
             variant="desktop"
           />
@@ -307,7 +374,17 @@ export function AppShell() {
                       setCreateProblemDialogOpen(true);
                       setMobileSidebarOpen(false);
                     }}
+                    onEditProblem={(id) => {
+                      setEditProblemId(id);
+                      setCreateProblemDialogOpen(true);
+                      setMobileSidebarOpen(false);
+                    }}
                     onCreateCustomComponent={() => {
+                      setCreateComponentDialogOpen(true);
+                      setMobileSidebarOpen(false);
+                    }}
+                    onEditCustomComponent={(id) => {
+                      setEditComponentId(id);
                       setCreateComponentDialogOpen(true);
                       setMobileSidebarOpen(false);
                     }}
@@ -360,8 +437,22 @@ export function AppShell() {
         <SaveDialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} />
         <LoadDialog open={loadDialogOpen} onClose={() => setLoadDialogOpen(false)} />
         <InterviewStartDialog open={interviewDialogOpen} onClose={() => setInterviewDialogOpen(false)} />
-        <CreateProblemDialog open={createProblemDialogOpen} onClose={() => setCreateProblemDialogOpen(false)} />
-        <CreateComponentDialog open={createComponentDialogOpen} onClose={() => setCreateComponentDialogOpen(false)} />
+        <CreateProblemDialog
+          open={createProblemDialogOpen}
+          editId={editProblemId}
+          onClose={() => {
+            setCreateProblemDialogOpen(false);
+            setEditProblemId(null);
+          }}
+        />
+        <CreateComponentDialog
+          open={createComponentDialogOpen}
+          editId={editComponentId}
+          onClose={() => {
+            setCreateComponentDialogOpen(false);
+            setEditComponentId(null);
+          }}
+        />
         <SupportDialog open={supportDialogOpen} onClose={() => setSupportDialogOpen(false)} />
         <EditorialDialog open={editorialDialogOpen} onClose={() => setEditorialDialogOpen(false)} />
         <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, ChevronDown, ChevronRight, Star } from "lucide-react";
 import { LEARNING_PATH, PROBLEM_CONCEPTS } from "@/data/learningPath";
 import { PROBLEMS } from "@/data/problems";
 import { useAppStore } from "@/store/appStore";
-
-const STORAGE_KEY = "systemdesign-completed-problems";
-// Pre-rename key — migrated on first read so progress isn't lost.
-const LEGACY_STORAGE_KEY = "sds-completed-problems";
+import {
+  COMPLETED_CHANGED_EVENT,
+  readCompleted,
+  writeCompleted,
+} from "@/lib/learningProgress";
 
 function getDifficultyColor(difficulty: string) {
   switch (difficulty) {
@@ -47,24 +48,14 @@ export function LearningPath({ onOpenEditorial }: { onOpenEditorial?: () => void
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(["Foundations"]));
-  const [completed, setCompleted] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try {
-      let stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) {
-        // Migrate progress saved under the old key.
-        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-        if (legacy) {
-          localStorage.setItem(STORAGE_KEY, legacy);
-          localStorage.removeItem(LEGACY_STORAGE_KEY);
-          stored = legacy;
-        }
-      }
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [completed, setCompleted] = useState<Set<string>>(() => readCompleted());
+
+  // Stay in sync when something else (e.g. a 71+ score) marks a problem done.
+  useEffect(() => {
+    const refresh = () => setCompleted(readCompleted());
+    window.addEventListener(COMPLETED_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(COMPLETED_CHANGED_EVENT, refresh);
+  }, []);
 
   const toggleCompleted = useCallback((problemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -75,11 +66,7 @@ export function LearningPath({ onOpenEditorial }: { onOpenEditorial?: () => void
       } else {
         next.add(problemId);
       }
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
-      } catch {
-        // ignore
-      }
+      writeCompleted(next);
       return next;
     });
   }, []);

@@ -11,6 +11,12 @@ import { X } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useCanvasStore, type CustomEdgeData } from "@/store/canvasStore";
 
+function formatQps(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return n.toFixed(0);
+}
+
 const protocolBadge: Record<string, { text: string; color: string } | null> = {
   http: null,
   grpc: { text: "gRPC", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
@@ -22,6 +28,8 @@ const protocolBadge: Record<string, { text: string; color: string } | null> = {
 
 function AnimatedEdgeInner({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -34,7 +42,11 @@ function AnimatedEdgeInner({
   selected,
 }: EdgeProps) {
   const isRunning = useSimulationStore((s) => s.isRunning);
+  const result = useSimulationStore((s) => s.result);
   const deleteEdge = useCanvasStore((s) => s.deleteEdge);
+  // Traffic carried by this wire in the latest simulation (if any).
+  const flow =
+    result?.edgeFlows instanceof Map ? result.edgeFlows.get(`${source}→${target}`) : undefined;
   const edgeData = (data ?? {}) as CustomEdgeData;
   const isAsync = edgeData.async === true;
   const protocol = edgeData.protocol;
@@ -105,6 +117,22 @@ function AnimatedEdgeInner({
           >
             <X className="h-3 w-3" />
           </button>
+        </EdgeLabelRenderer>
+      )}
+      {/* Traffic flow from the latest simulation */}
+      {flow !== undefined && (
+        <EdgeLabelRenderer>
+          <span
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + (showLabel ? 16 : 0)}px)`,
+              pointerEvents: "none",
+            }}
+            className="rounded border border-cyan-500/30 bg-zinc-950/90 px-1.5 py-0.5 font-mono text-[10px] leading-none text-cyan-400"
+            title="Requests/sec on this connection in the last simulation"
+          >
+            {formatQps(flow)}/s
+          </span>
         </EdgeLabelRenderer>
       )}
       {/* Label + protocol badge */}

@@ -71,6 +71,25 @@ export function MetricsDisplay() {
         </div>
       </div>
 
+      {/* Surface the cache model so reduced storage QPS isn't a mystery */}
+      {(() => {
+        const caches = nodes.filter(
+          (n) => (n.data as Record<string, unknown>).componentId === "cache"
+        );
+        if (caches.length === 0) return null;
+        const rates = caches.map((c) =>
+          Math.round((((c.data as Record<string, unknown>).cacheHitRate as number) ?? 0.8) * 100)
+        );
+        const rateText =
+          new Set(rates).size === 1 ? `${rates[0]}%` : rates.map((r) => `${r}%`).join(" / ");
+        return (
+          <p className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-2 text-xs leading-relaxed text-zinc-400">
+            Cache model: {rateText} of lookups are served from memory — only misses reach
+            storage behind a cache. Adjustable on each cache node.
+          </p>
+        );
+      })()}
+
       {result.warnings.length > 0 && (
         <div className="space-y-1.5 rounded-md border border-amber-500/20 bg-amber-950/30 px-2.5 py-2">
           {result.warnings.map((w, i) => (

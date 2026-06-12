@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Search as SearchIcon } from "lucide-react";
+import { Plus, X, Pencil, Search as SearchIcon } from "lucide-react";
 import { PROBLEMS } from "@/data/problems";
 import { useAppStore } from "@/store/appStore";
 import { useCustomProblemsStore } from "@/store/customProblemsStore";
@@ -26,9 +26,10 @@ function getDifficultyColor(difficulty: string) {
 
 interface ProblemSelectorProps {
   onCreateProblem?: () => void;
+  onEditProblem?: (id: string) => void;
 }
 
-export function ProblemSelector({ onCreateProblem }: ProblemSelectorProps) {
+export function ProblemSelector({ onCreateProblem, onEditProblem }: ProblemSelectorProps) {
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
   const customProblems = useCustomProblemsStore((s) => s.problems);
@@ -133,6 +134,18 @@ export function ProblemSelector({ onCreateProblem }: ProblemSelectorProps) {
                 >
                   {problem.difficulty}
                 </Badge>
+                {onEditProblem && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditProblem(problem.id);
+                    }}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-opacity hover:text-cyan-400 group-hover:opacity-100"
+                    title="Edit custom problem"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                )}
                 <button
                   onClick={(e) => handleDeleteCustom(e, problem.id)}
                   className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
