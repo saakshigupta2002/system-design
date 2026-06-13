@@ -23,7 +23,6 @@ import { InterviewBar } from "@/components/interview/InterviewBar";
 import { InterviewStartDialog } from "@/components/interview/InterviewStartDialog";
 import { CreateProblemDialog } from "@/components/dialogs/CreateProblemDialog";
 import { CreateComponentDialog } from "@/components/dialogs/CreateComponentDialog";
-import { SupportDialog } from "@/components/dialogs/SupportDialog";
 import { EditorialDialog } from "@/components/dialogs/EditorialDialog";
 import { ShortcutsDialog } from "@/components/dialogs/ShortcutsDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
@@ -46,25 +45,12 @@ export function AppShell() {
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
   const [createProblemDialogOpen, setCreateProblemDialogOpen] = useState(false);
   const [createComponentDialogOpen, setCreateComponentDialogOpen] = useState(false);
-  const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [editorialDialogOpen, setEditorialDialogOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [editProblemId, setEditProblemId] = useState<string | null>(null);
   const [editComponentId, setEditComponentId] = useState<string | null>(null);
 
-  // Auto-open support dialog when URL has ?support=1 (used by the README link)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("support") === "1") {
-      setSupportDialogOpen(true);
-      params.delete("support");
-      const q = params.toString();
-      const next = window.location.pathname + (q ? `?${q}` : "") + window.location.hash;
-      window.history.replaceState({}, "", next);
-    }
-  }, []);
   const interviewMode = useInterviewStore((s) => s.mode);
   const timerRunning = useInterviewStore((s) => s.timerRunning);
   const tickTimer = useInterviewStore((s) => s.tickTimer);
@@ -307,7 +293,6 @@ export function AppShell() {
           onLoad={handleLoad}
           onStartInterview={() => setInterviewDialogOpen(true)}
           onCreateProblem={() => setCreateProblemDialogOpen(true)}
-          onOpenSupport={() => setSupportDialogOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
           onToggleLeft={handleToggleLeft}
           onToggleRight={handleToggleRight}
@@ -453,7 +438,6 @@ export function AppShell() {
             setEditComponentId(null);
           }}
         />
-        <SupportDialog open={supportDialogOpen} onClose={() => setSupportDialogOpen(false)} />
         <EditorialDialog open={editorialDialogOpen} onClose={() => setEditorialDialogOpen(false)} />
         <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
         <ConfirmDialog
