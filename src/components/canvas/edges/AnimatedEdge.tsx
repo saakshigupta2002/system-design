@@ -111,7 +111,7 @@ function AnimatedEdgeInner({
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - 18}px)`,
               pointerEvents: "all",
             }}
-            className="nodrag nopan flex h-5 w-5 items-center justify-center rounded-full border border-rose-400/60 bg-rose-500 text-white shadow-md transition-transform hover:scale-110"
+            className="nodrag nopan flex h-5 w-5 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-zinc-400 shadow-sm transition-colors hover:border-rose-500/50 hover:bg-rose-500/15 hover:text-rose-400"
             title="Delete connection (or press Delete)"
             aria-label="Delete connection"
           >

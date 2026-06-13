@@ -8,9 +8,16 @@ interface SupportDialogProps {
   onClose: () => void;
 }
 
-// TODO(saakshi): add your own payment details here.
-const PAYMENT_ID = ""; // e.g. "you@upi" or a payment link
+// ─── Set your support details here ──────────────────────────────────────────
+// PAYMENT_LINK: a URL that opens in a new tab — e.g. your Buy Me a Coffee,
+//   Ko-fi, PayPal.me, or Stripe page. This is the main "Buy me a coffee" button.
+// PAYMENT_ID:   a UPI id (or similar) shown with a copy button, for those who
+//   prefer to pay directly. Optional.
+// Leave both blank to keep the "coming soon" placeholder.
+const PAYMENT_LINK = ""; // e.g. "https://buymeacoffee.com/yourname"
+const PAYMENT_ID = "";   // e.g. "yourname@upi"
 const PAYMENT_NAME = "Saakshi Gupta";
+// ────────────────────────────────────────────────────────────────────────────
 
 export function SupportDialog({ open, onClose }: SupportDialogProps) {
   const [copied, setCopied] = useState(false);
@@ -73,19 +80,34 @@ export function SupportDialog({ open, onClose }: SupportDialogProps) {
             If this helped you prep for a system design interview, a chai goes a long way to keep it alive and open-source.
           </p>
 
-          {/* Payment details — add your own to enable this. */}
-          {PAYMENT_ID ? (
-            <button
-              onClick={handleCopy}
-              className="mt-5 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1.5 font-mono text-[11px] text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800"
-            >
-              {PAYMENT_ID}
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-zinc-500" />
+          {/* Payment options — set PAYMENT_LINK and/or PAYMENT_ID above. */}
+          {PAYMENT_LINK || PAYMENT_ID ? (
+            <div className="mt-5 flex flex-col items-center gap-3">
+              {PAYMENT_LINK && (
+                <a
+                  href={PAYMENT_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 px-5 py-2 text-sm font-semibold text-zinc-950 shadow-lg shadow-amber-500/30 transition-transform hover:-translate-y-0.5"
+                >
+                  <Coffee className="h-4 w-4" />
+                  Buy me a coffee
+                </a>
               )}
-            </button>
+              {PAYMENT_ID && (
+                <button
+                  onClick={handleCopy}
+                  className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1.5 font-mono text-[11px] text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800"
+                >
+                  {PAYMENT_ID}
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-zinc-500" />
+                  )}
+                </button>
+              )}
+            </div>
           ) : (
             <div className="mt-5 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-4 py-3 text-[11px] text-zinc-500">
               Payment details coming soon.
