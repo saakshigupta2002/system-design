@@ -67,16 +67,21 @@ export function TradeoffLog() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          Your Trade-offs
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Your Trade-off Log
+          </p>
+          <p className="mt-0.5 text-[11px] leading-tight text-zinc-600">
+            Record the design decisions you made and why.
+          </p>
+        </div>
         {!formOpen && (
           <Button
             variant="outline"
             size="sm"
             onClick={() => setFormOpen(true)}
-            className="h-6 gap-1 border-zinc-700 px-2 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+            className="h-6 shrink-0 gap-1 border-zinc-700 px-2 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
           >
             <Plus className="h-3 w-3" />
             Add

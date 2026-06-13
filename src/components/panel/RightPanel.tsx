@@ -37,7 +37,7 @@ function RightTabs({ onSimulate }: { onSimulate: () => void }) {
     <Tabs value={activeRightTab} onValueChange={(v) => setActiveRightTab(v as typeof activeRightTab)} className="flex flex-1 flex-col min-h-0">
       <div className="mx-2 mt-2 shrink-0 overflow-x-auto">
         <TabsList className="h-8 w-max bg-zinc-800">
-          <TabsTrigger value="properties" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Props</TabsTrigger>
+          <TabsTrigger value="properties" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Inspect</TabsTrigger>
           <TabsTrigger value="simulation" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Simulate</TabsTrigger>
           <TabsTrigger value="score" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Score</TabsTrigger>
           <TabsTrigger value="capacity" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Capacity</TabsTrigger>
@@ -270,11 +270,17 @@ function PropertiesTab() {
 
   return (
     <div className="space-y-4">
-      {/* Problem requirements */}
+      {/* Problem brief */}
       {problem && (
         <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+              Problem
+            </span>
+            <span className="truncate text-xs font-medium text-zinc-300">{problem.title}</span>
+          </div>
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Requirements — {problem.title}
+            Requirements
           </p>
           <div className="space-y-1.5">
             {[

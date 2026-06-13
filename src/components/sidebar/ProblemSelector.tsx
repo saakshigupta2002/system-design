@@ -60,6 +60,9 @@ export function ProblemSelector({ onCreateProblem, onEditProblem }: ProblemSelec
   return (
     <ScrollArea className="h-full">
       <div className="space-y-1 p-3">
+        <p className="px-0.5 pb-1 text-[11px] leading-tight text-zinc-500">
+          Browse or search every problem — jump to any.
+        </p>
         {/* Search + difficulty filter */}
         <div className="relative mb-1.5">
           <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />

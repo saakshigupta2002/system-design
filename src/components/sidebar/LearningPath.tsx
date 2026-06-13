@@ -98,6 +98,9 @@ export function LearningPath({ onOpenEditorial }: { onOpenEditorial?: () => void
   return (
     <ScrollArea className="h-full">
       <div className="space-y-1 p-3">
+        <p className="px-0.5 pb-1 text-[11px] leading-tight text-zinc-500">
+          A guided path — follow the recommended order and track your progress.
+        </p>
         {LEARNING_PATH.map((tier) => {
           const isExpanded = expandedTiers.has(tier.name);
           const completedCount = tier.problemIds.filter((id) => completed.has(id)).length;

@@ -13,9 +13,14 @@ export function TradeoffCards() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-        Reference Cards
-      </p>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          Reference Cards
+        </p>
+        <p className="mt-0.5 text-[11px] leading-tight text-zinc-600">
+          Common trade-off patterns to learn from.
+        </p>
+      </div>
       <div className="space-y-1.5">
         {TRADEOFF_CARDS.map((card) => {
           const isOpen = expandedId === card.id;

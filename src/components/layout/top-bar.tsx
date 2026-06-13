@@ -463,6 +463,9 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
           <Trash2 className="h-3.5 w-3.5" />
         </button>
 
+        {/* Divider before the primary actions */}
+        <div className="hidden h-4 w-px bg-zinc-800 md:block" />
+
         <Button
           size="sm"
           onClick={onSimulate}
@@ -480,6 +483,9 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
           <Trophy className="h-3 w-3" />
           <span className="hidden sm:inline">Score</span>
         </Button>
+
+        {/* Divider before utility controls */}
+        <div className="hidden h-4 w-px bg-zinc-800 md:block" />
 
         <button
           onClick={onOpenShortcuts}
