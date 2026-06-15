@@ -1,7 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { X, Settings, Send, Sparkles, Trash2, Loader2, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  X,
+  Settings,
+  Send,
+  Sparkles,
+  Trash2,
+  Loader2,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Minus,
+  GripHorizontal,
+} from "lucide-react";
 import {
   useAiAssistantStore,
   PROVIDER_LABELS,
@@ -13,7 +25,6 @@ import { sendChat } from "@/lib/aiClient";
 import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
 import { useAppStore } from "@/store/appStore";
 import { useSimulationStore } from "@/store/simulationStore";
-import { useInterviewStore } from "@/store/interviewStore";
 import { getProblemById } from "@/data/problems";
 
 const QUICK_PROMPTS = [
@@ -91,17 +102,26 @@ export function AIAssistantPanel({ open, onClose }: { open: boolean; onClose: ()
   const apiKey = keys[provider];
   const model = models[provider];
 
-  const interviewMode = useInterviewStore((s) => s.mode);
   const [showConfig, setShowConfig] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Sit below the top bar — and the interview bar when it's showing.
-  const topClass = interviewMode === "interview" ? "top-[5.75rem]" : "top-12";
+  // Floating-window position (the window itself stays draggable + resizable,
+  // so the user can keep it open while they simulate / read the score).
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [placed, setPlaced] = useState(false);
+  const drag = useRef<{ dx: number; dy: number } | null>(null);
 
-  // Open the config screen automatically if the active provider has no key.
+  useEffect(() => {
+    if (!open || placed || typeof window === "undefined") return;
+    const w = window.innerWidth < 640 ? window.innerWidth - 16 : 400;
+    setPos({ x: Math.max(8, window.innerWidth - w - 12), y: 70 });
+    setPlaced(true);
+  }, [open, placed]);
+
   useEffect(() => {
     if (open && !apiKey) setShowConfig(true);
   }, [open, apiKey]);
@@ -109,6 +129,28 @@ export function AIAssistantPanel({ open, onClose }: { open: boolean; onClose: ()
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
+
+  const onHeaderPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // Don't start a drag when clicking a header button.
+      if ((e.target as HTMLElement).closest("button")) return;
+      drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
+      const move = (ev: PointerEvent) => {
+        if (!drag.current) return;
+        const x = Math.min(window.innerWidth - 120, Math.max(0, ev.clientX - drag.current.dx));
+        const y = Math.min(window.innerHeight - 48, Math.max(0, ev.clientY - drag.current.dy));
+        setPos({ x, y });
+      };
+      const up = () => {
+        drag.current = null;
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    },
+    [pos.x, pos.y]
+  );
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -138,26 +180,32 @@ export function AIAssistantPanel({ open, onClose }: { open: boolean; onClose: ()
     }
   };
 
+  if (!open) return null;
+
   return (
-    <aside
-      className={`fixed right-0 bottom-0 z-40 flex w-full flex-col border-l border-zinc-800 bg-zinc-950 shadow-2xl transition-transform sm:w-[400px] ${topClass} ${
-        open ? "translate-x-0" : "translate-x-full"
-      }`}
-      aria-hidden={!open}
+    <div
+      style={{ left: pos.x, top: pos.y }}
+      className={`fixed z-50 flex w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl sm:w-[400px] ${
+        minimized ? "h-auto resize-none" : "h-[70vh] resize sm:h-[560px]"
+      } min-h-[44px] min-w-[300px]`}
     >
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-cyan-400" />
-          <div>
-            <p className="text-sm font-semibold text-zinc-100">AI Assistant</p>
-            <p className="text-[11px] text-zinc-500">
+      {/* Header (drag handle) */}
+      <div
+        onPointerDown={onHeaderPointerDown}
+        className="flex shrink-0 cursor-move touch-none select-none items-center justify-between border-b border-zinc-800 bg-zinc-900 px-3 py-2.5"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <GripHorizontal className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+          <Sparkles className="h-4 w-4 shrink-0 text-cyan-400" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-none text-zinc-100">AI Assistant</p>
+            <p className="mt-0.5 truncate text-[11px] text-zinc-500">
               {apiKey ? `${PROVIDER_LABELS[provider]} · ${model}` : "Bring your own API key"}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {messages.length > 0 && (
+        <div className="flex shrink-0 items-center gap-1">
+          {messages.length > 0 && !minimized && (
             <button
               onClick={clearMessages}
               className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
@@ -166,12 +214,21 @@ export function AIAssistantPanel({ open, onClose }: { open: boolean; onClose: ()
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
+          {!minimized && (
+            <button
+              onClick={() => setShowConfig((v) => !v)}
+              className={`flex h-7 w-7 items-center justify-center rounded-md hover:bg-zinc-800 ${showConfig ? "text-cyan-400" : "text-zinc-500 hover:text-zinc-300"}`}
+              title="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
           <button
-            onClick={() => setShowConfig((v) => !v)}
-            className={`flex h-7 w-7 items-center justify-center rounded-md hover:bg-zinc-800 ${showConfig ? "text-cyan-400" : "text-zinc-500 hover:text-zinc-300"}`}
-            title="Settings"
+            onClick={() => setMinimized((v) => !v)}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            title={minimized ? "Expand" : "Minimize"}
           >
-            <Settings className="h-4 w-4" />
+            {minimized ? <Sparkles className="h-3.5 w-3.5" /> : <Minus className="h-4 w-4" />}
           </button>
           <button
             onClick={onClose}
@@ -183,85 +240,88 @@ export function AIAssistantPanel({ open, onClose }: { open: boolean; onClose: ()
         </div>
       </div>
 
-      {showConfig ? (
-        <ConfigView onDone={() => apiKey && setShowConfig(false)} />
-      ) : (
-        <>
-          {/* Messages */}
-          <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
-            {messages.length === 0 && (
-              <div className="space-y-3">
-                <p className="text-[13px] leading-relaxed text-zinc-400">
-                  Ask anything about this problem or your design — it can see the current problem
-                  and what you&apos;ve built on the canvas.
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {QUICK_PROMPTS.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => send(p)}
-                      className="rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-300 transition-colors hover:border-cyan-500/40 hover:text-cyan-300"
-                    >
-                      {p}
-                    </button>
-                  ))}
+      {!minimized && (
+        showConfig ? (
+          <ConfigView onDone={() => apiKey && setShowConfig(false)} />
+        ) : (
+          <>
+            {/* Messages */}
+            <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+              {messages.length === 0 && (
+                <div className="space-y-3">
+                  <p className="text-[13px] leading-relaxed text-zinc-400">
+                    Ask anything about this problem or your design — it can see the current problem
+                    and what you&apos;ve built on the canvas. Drag this window anywhere, or resize it
+                    from the bottom-right corner.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {QUICK_PROMPTS.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => send(p)}
+                        className="rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-300 transition-colors hover:border-cyan-500/40 hover:text-cyan-300"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[88%] rounded-lg px-3 py-2 text-[13px] leading-relaxed ${
-                  m.role === "user"
-                    ? "ml-auto bg-cyan-600/20 text-zinc-100"
-                    : "bg-zinc-900 text-zinc-300"
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{m.content}</p>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex items-center gap-2 text-xs text-zinc-500">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Thinking…
-              </div>
-            )}
-            {error && (
-              <div className="rounded-md border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs leading-relaxed text-rose-400">
-                {error}
-              </div>
-            )}
-          </div>
-
-          {/* Composer */}
-          <div className="shrink-0 border-t border-zinc-800 p-3">
-            <div className="flex items-end gap-2">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send(input);
-                  }
-                }}
-                rows={1}
-                placeholder={apiKey ? "Ask the assistant…" : "Add an API key in settings to start"}
-                className="max-h-32 min-h-[38px] flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-[13px] text-zinc-200 placeholder-zinc-500 outline-none focus:border-cyan-500"
-              />
-              <button
-                onClick={() => send(input)}
-                disabled={loading || !input.trim()}
-                className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-md bg-cyan-600 text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
-                title="Send (Enter)"
-              >
-                <Send className="h-4 w-4" />
-              </button>
+              )}
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={`max-w-[88%] rounded-lg px-3 py-2 text-[13px] leading-relaxed ${
+                    m.role === "user"
+                      ? "ml-auto bg-cyan-600/20 text-zinc-100"
+                      : "bg-zinc-900 text-zinc-300"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Thinking…
+                </div>
+              )}
+              {error && (
+                <div className="rounded-md border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs leading-relaxed text-rose-400">
+                  {error}
+                </div>
+              )}
             </div>
-          </div>
-        </>
+
+            {/* Composer */}
+            <div className="shrink-0 border-t border-zinc-800 p-3">
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      send(input);
+                    }
+                  }}
+                  rows={1}
+                  placeholder={apiKey ? "Ask the assistant…" : "Add an API key in settings to start"}
+                  className="max-h-32 min-h-[38px] flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-[13px] text-zinc-200 placeholder-zinc-500 outline-none focus:border-cyan-500"
+                />
+                <button
+                  onClick={() => send(input)}
+                  disabled={loading || !input.trim()}
+                  className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-md bg-cyan-600 text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  title="Send (Enter)"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </>
+        )
       )}
-    </aside>
+    </div>
   );
 }
 
