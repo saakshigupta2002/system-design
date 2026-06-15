@@ -4,12 +4,41 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ──────────────────────────────────────────────────────────────────────────
+   PALETTE REMAP
+   The whole app uses Tailwind `zinc-*` and `cyan-*` utilities. We override
+   those scales here, so every surface/border/text/accent picks up a deliberate
+   cool-tinted near-black ramp (OKLCH, hue ~240) and a refined, desaturated cyan
+   accent — with zero per-component churn. In light mode the neutral ramp is
+   inverted (zinc-900 → near-white panel, zinc-100 → dark text), so every
+   "dark surface + light text" component flips correctly without edits.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-zinc-50:  var(--z-50);
+  --color-zinc-100: var(--z-100);
+  --color-zinc-200: var(--z-200);
+  --color-zinc-300: var(--z-300);
+  --color-zinc-400: var(--z-400);
+  --color-zinc-500: var(--z-500);
+  --color-zinc-600: var(--z-600);
+  --color-zinc-700: var(--z-700);
+  --color-zinc-800: var(--z-800);
+  --color-zinc-900: var(--z-900);
+  --color-zinc-950: var(--z-950);
+  --color-cyan-300: var(--ac-300);
+  --color-cyan-400: var(--ac-400);
+  --color-cyan-500: var(--ac-500);
+  --color-cyan-600: var(--ac-600);
+  --color-cyan-700: var(--ac-700);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,73 +77,126 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ── LIGHT THEME (default :root) — inverted neutral ramp ─────────────────── */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --z-50:  oklch(0.30 0.010 240);
+  --z-100: oklch(0.27 0.012 240);
+  --z-200: oklch(0.32 0.012 240);
+  --z-300: oklch(0.40 0.013 240);
+  --z-400: oklch(0.46 0.014 240);
+  --z-500: oklch(0.50 0.015 240);
+  --z-600: oklch(0.56 0.015 240);
+  --z-700: oklch(0.85 0.007 240);
+  --z-800: oklch(0.90 0.006 240);
+  --z-900: oklch(0.965 0.004 240);
+  --z-950: oklch(0.975 0.003 240);
+  --ac-300: oklch(0.72 0.13 200);
+  --ac-400: oklch(0.60 0.16 200);
+  --ac-500: oklch(0.52 0.16 200);
+  --ac-600: oklch(0.47 0.15 203);
+  --ac-700: oklch(0.43 0.13 205);
+
+  --background: oklch(0.935 0.006 240);
+  --foreground: oklch(0.25 0.012 240);
+  --card: oklch(0.965 0.004 240);
+  --card-foreground: oklch(0.25 0.012 240);
+  --popover: oklch(0.975 0.003 240);
+  --popover-foreground: oklch(0.25 0.012 240);
+  --primary: oklch(0.25 0.012 240);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --secondary: oklch(0.905 0.006 240);
+  --secondary-foreground: oklch(0.25 0.012 240);
+  --muted: oklch(0.905 0.006 240);
+  --muted-foreground: oklch(0.50 0.015 240);
+  --accent: oklch(0.905 0.006 240);
+  --accent-foreground: oklch(0.25 0.012 240);
+  --destructive: oklch(0.58 0.20 25);
+  --border: oklch(0.88 0.006 240);
+  --input: oklch(0.87 0.007 240);
+  --ring: oklch(0.57 0.16 200);
+  --chart-1: oklch(0.57 0.16 200);
+  --chart-2: oklch(0.58 0.13 150);
+  --chart-3: oklch(0.62 0.14 85);
+  --chart-4: oklch(0.52 0.16 280);
+  --chart-5: oklch(0.56 0.18 20);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar: oklch(0.96 0.004 240);
+  --sidebar-foreground: oklch(0.25 0.012 240);
+  --sidebar-primary: oklch(0.57 0.16 200);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.905 0.006 240);
+  --sidebar-accent-foreground: oklch(0.25 0.012 240);
+  --sidebar-border: oklch(0.88 0.006 240);
+  --sidebar-ring: oklch(0.57 0.16 200);
+
+  --canvas-atmos:
+    radial-gradient(72% 46% at 50% -6%, oklch(0.57 0.16 200 / 0.05), transparent 72%),
+    radial-gradient(135% 130% at 50% 42%, transparent 64%, oklch(0.50 0.02 240 / 0.07) 100%);
+  --grid-dot: rgba(70, 85, 115, 0.20);
+  --grid-line: rgba(70, 85, 115, 0.05);
+  --edge-idle: rgba(90, 105, 130, 0.45);
+  --minimap-mask: rgba(228, 232, 240, 0.6);
 }
 
+/* ── DARK THEME (.dark) — cool near-black, elevation via luminance ───────── */
 .dark {
-  --background: oklch(0.12 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.18 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.18 0 0);
-  --secondary: oklch(0.24 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.24 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.24 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(0.24 0 0);
-  --input: oklch(0.27 0 0);
-  --ring: oklch(0.50 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.60 0 0);
-  --chart-3: oklch(0.50 0 0);
-  --chart-4: oklch(0.42 0 0);
-  --chart-5: oklch(0.30 0 0);
-  --sidebar: oklch(0.15 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.24 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.24 0 0);
-  --sidebar-ring: oklch(0.50 0 0);
+  --z-50:  oklch(0.98 0.004 240);
+  --z-100: oklch(0.95 0.006 240);
+  --z-200: oklch(0.90 0.008 240);
+  --z-300: oklch(0.82 0.011 240);
+  --z-400: oklch(0.72 0.014 240);
+  --z-500: oklch(0.685 0.016 240);
+  --z-600: oklch(0.55 0.016 240);
+  --z-700: oklch(0.38 0.018 240);
+  --z-800: oklch(0.29 0.017 240);
+  --z-900: oklch(0.225 0.016 240);
+  --z-950: oklch(0.14 0.013 240);
+  --ac-300: oklch(0.87 0.11 200);
+  --ac-400: oklch(0.82 0.13 198);
+  --ac-500: oklch(0.74 0.14 197);
+  --ac-600: oklch(0.66 0.14 200);
+  --ac-700: oklch(0.57 0.12 203);
+
+  --background: oklch(0.145 0.012 240);
+  --foreground: oklch(0.96 0.008 240);
+  --card: oklch(0.225 0.016 240);
+  --card-foreground: oklch(0.96 0.008 240);
+  --popover: oklch(0.255 0.017 240);
+  --popover-foreground: oklch(0.96 0.008 240);
+  --primary: oklch(0.95 0.008 240);
+  --primary-foreground: oklch(0.18 0.013 240);
+  --secondary: oklch(0.27 0.015 240);
+  --secondary-foreground: oklch(0.95 0.008 240);
+  --muted: oklch(0.27 0.015 240);
+  --muted-foreground: oklch(0.72 0.014 240);
+  --accent: oklch(0.27 0.015 240);
+  --accent-foreground: oklch(0.95 0.008 240);
+  --destructive: oklch(0.62 0.20 25);
+  --border: oklch(0.27 0.015 240);
+  --input: oklch(0.30 0.015 240);
+  --ring: oklch(0.74 0.14 197);
+  --chart-1: oklch(0.74 0.14 197);
+  --chart-2: oklch(0.70 0.13 150);
+  --chart-3: oklch(0.74 0.14 85);
+  --chart-4: oklch(0.62 0.16 280);
+  --chart-5: oklch(0.64 0.18 20);
+  --sidebar: oklch(0.185 0.014 240);
+  --sidebar-foreground: oklch(0.95 0.008 240);
+  --sidebar-primary: oklch(0.74 0.14 197);
+  --sidebar-primary-foreground: oklch(0.18 0.013 240);
+  --sidebar-accent: oklch(0.27 0.015 240);
+  --sidebar-accent-foreground: oklch(0.95 0.008 240);
+  --sidebar-border: oklch(0.27 0.015 240);
+  --sidebar-ring: oklch(0.74 0.14 197);
+
+  --canvas-atmos:
+    radial-gradient(72% 46% at 50% -6%, oklch(0.74 0.14 197 / 0.09), transparent 72%),
+    radial-gradient(60% 55% at 100% 108%, oklch(0.55 0.09 250 / 0.06), transparent 72%),
+    radial-gradient(135% 130% at 50% 42%, transparent 60%, oklch(0.10 0.01 240 / 0.50) 100%);
+  --grid-dot: rgba(155, 172, 205, 0.24);
+  --grid-line: rgba(150, 165, 195, 0.05);
+  --edge-idle: rgba(150, 165, 195, 0.32);
+  --minimap-mask: rgba(9, 11, 14, 0.7);
 }
 
 @layer base {
@@ -123,10 +205,28 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
   }
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  /* Tabular, slashed-zero figures for all metrics/timers/QPS. */
+  .font-mono, [class*="tabular"] {
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
+  /* A slightly lighter, uniform icon stroke reads cleaner at small UI sizes. */
+  svg.lucide { stroke-width: 1.75; }
+}
+
+/* ── Elevation scale ─────────────────────────────────────────────────────── */
+@theme inline {
+  --shadow-e1: 0 1px 2px 0 oklch(0 0 0 / 0.30);
+  --shadow-e2: 0 2px 8px -2px oklch(0 0 0 / 0.40), 0 1px 2px 0 oklch(0 0 0 / 0.30);
+  --shadow-e3: 0 8px 24px -6px oklch(0 0 0 / 0.50), 0 2px 6px -2px oklch(0 0 0 / 0.35);
+  --shadow-e4: 0 16px 48px -12px oklch(0 0 0 / 0.60), 0 4px 12px -4px oklch(0 0 0 / 0.40);
 }
 
 /* Full viewport height with dvh fallback so mobile browser chrome doesn't shift layout */
@@ -147,17 +247,57 @@ button, a, [role="button"], input, textarea, select { touch-action: manipulation
   width: 40px;
   height: 4px;
   border-radius: 9999px;
-  background: rgb(63, 63, 70);
+  background: oklch(0.40 0.016 240);
   margin-inline: auto;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* ── Canvas atmosphere (baked into the fixed React Flow background) ────────── */
+.react-flow.app-canvas {
+  background-color: var(--background);
+  background-image: var(--canvas-atmos);
+}
+
+/* Radial mask fade for the dot grid — densest at center, fading at edges. */
+.react-flow__background {
+  -webkit-mask-image: radial-gradient(115% 115% at 50% 45%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(115% 115% at 50% 45%, #000 55%, transparent 100%);
+}
+
+/* Data/metric helpers — big bold value, small dimmed uppercase label. */
+.metric-value { font-variant-numeric: tabular-nums slashed-zero; letter-spacing: -0.01em; }
+.metric-label {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  color: var(--color-zinc-500);
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgb(63, 63, 70); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgb(82, 82, 91); }
-*:focus-visible { outline: 1px solid rgb(6, 182, 212); outline-offset: 2px; }
-.react-flow__node { transition: filter 0.15s ease; }
-.react-flow__handle { transition: all 0.15s ease; }
-.react-flow__handle:hover { transform: scale(1.2); }
+::-webkit-scrollbar-thumb { background: oklch(0.36 0.016 240); border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.46 0.016 240); background-clip: padding-box; }
+* { scrollbar-width: thin; scrollbar-color: oklch(0.36 0.016 240) transparent; }
+
+/* Premium easing curve (easeOutExpo) used across UI motion. */
+:root { --ease-out: cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Refined cyan focus ring */
+*:focus-visible { outline: 2px solid oklch(0.74 0.14 197); outline-offset: 2px; border-radius: 4px; }
+
+/* Text selection picks up the refined accent */
+::selection { background: oklch(0.72 0.115 200 / 0.28); }
+
+/* Smooth, consistent micro-interactions on interactive controls */
+button:not(.react-flow__controls-button), a, [role="button"], [role="tab"], .react-flow__edge {
+  transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out),
+    color 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out), opacity 0.16s var(--ease-out),
+    scale 0.12s var(--ease-out);
+}
+button:not([disabled]):active { scale: 0.97; }
+
+.react-flow__handle { transition: background-color 0.15s var(--ease-out), border-color 0.15s var(--ease-out); }
+.react-flow__handle:hover { scale: 1.2; }
+
+/* App keyframes used by component inline animations */
 @keyframes status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

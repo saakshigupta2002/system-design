@@ -173,7 +173,7 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
       <CanvasTabBar />
       <div className="relative flex-1">
       <ReactFlow
-        className="h-full w-full bg-zinc-950"
+        className="app-canvas h-full w-full"
         nodes={nodes}
         edges={displayEdges}
         onNodesChange={onNodesChange}
@@ -206,8 +206,7 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1}
-          color="rgba(63, 63, 70, 0.5)"
-          className="!bg-zinc-950"
+          color="var(--grid-dot)"
         />
         <Controls
           className="!rounded-md !border !border-zinc-800 !bg-zinc-900 !shadow-sm [&>button]:!border-zinc-800 [&>button]:!bg-zinc-900 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-800 [&>button:hover]:!text-zinc-200"
@@ -215,7 +214,7 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
         />
         <MiniMap
           className="!hidden !rounded-md !border !border-zinc-800 !bg-zinc-900 md:!block"
-          maskColor="rgba(9, 9, 11, 0.7)"
+          maskColor="var(--minimap-mask)"
           nodeColor={miniMapNodeColor}
           position="bottom-right"
           style={{ width: 140, height: 90 }}

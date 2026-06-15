@@ -73,7 +73,7 @@ function AnimatedEdgeInner({
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: selected ? "rgb(34, 211, 238)" : isRunning ? "rgb(6, 182, 212)" : "rgb(82, 82, 91)",
+          stroke: selected ? "rgb(34, 211, 238)" : isRunning ? "rgb(6, 182, 212)" : "var(--edge-idle)",
           strokeWidth: selected ? 2.25 : 1.5,
           ...(isAsync ? { strokeDasharray: "6 4" } : {}),
         }}
