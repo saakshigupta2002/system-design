@@ -93,12 +93,16 @@ function RightTabs({ onSimulate }: { onSimulate: () => void }) {
 export function RightPanel({ open = true, onSimulate, variant = "desktop" }: RightPanelProps) {
   const interviewMode = useInterviewStore((s) => s.mode);
   const currentPhase = useInterviewStore((s) => s.currentPhase);
+  const phases = useInterviewStore((s) => s.phases);
   const width = useAppStore((s) => s.rightPanelWidth);
   const setWidth = useAppStore((s) => s.setRightPanelWidth);
   const [resizing, setResizing] = useState(false);
 
-  // During interview mode, show phase panel for all phases except phase 4 (HLD)
-  const showInterviewPhasePanel = interviewMode === "interview" && currentPhase !== 4;
+  // During interview mode show the phase guide — except in High-Level Design,
+  // where the panel is hidden so the full canvas is available for building.
+  // Keyed by phase name so it survives phase reordering.
+  const showInterviewPhasePanel =
+    interviewMode === "interview" && phases[currentPhase]?.name !== "High-Level Design";
 
   if (variant === "mobile") {
     return (

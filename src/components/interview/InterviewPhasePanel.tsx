@@ -7,13 +7,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ClipboardList,
   Calculator,
+  Boxes,
   FileCode2,
   Database,
   Search,
   ChevronRight,
 } from "lucide-react";
 
-/** Panel content shown during interview phases 0-3 and 5 (not phase 4 = HLD). */
+/** Panel content shown during every interview phase except High-Level Design,
+ *  where the panel is hidden so the full canvas is available for building. */
 export function InterviewPhasePanel() {
   const currentPhase = useInterviewStore((s) => s.currentPhase);
   const phases = useInterviewStore((s) => s.phases);
@@ -40,9 +42,10 @@ export function InterviewPhasePanel() {
         <div className="p-3 space-y-4">
           {currentPhase === 0 && <RequirementsGuide problem={problem} />}
           {currentPhase === 1 && <EstimationGuide problem={problem} />}
-          {currentPhase === 2 && <APIDesignGuide problem={problem} />}
-          {currentPhase === 3 && <DataModelGuide problem={problem} />}
-          {currentPhase === 5 && <DeepDiveGuide problem={problem} />}
+          {currentPhase === 2 && <CoreEntitiesGuide problem={problem} />}
+          {currentPhase === 3 && <APIDesignGuide problem={problem} />}
+          {currentPhase === 4 && <DataModelGuide problem={problem} />}
+          {currentPhase === 6 && <DeepDiveGuide problem={problem} />}
         </div>
       </ScrollArea>
 
@@ -69,12 +72,14 @@ function PhaseIcon({ icon }: { icon: string }) {
       return <ClipboardList className={cls} />;
     case "Calculator":
       return <Calculator className={cls} />;
+    case "Boxes":
+      return <Boxes className={cls} />;
     case "FileCode2":
       return <FileCode2 className={cls} />;
     case "Database":
       return <Database className={cls} />;
     case "LayoutDashboard":
-      return null; // Phase 4 is not rendered here
+      return null; // High-Level Design phase hides this panel
     case "Search":
       return <Search className={cls} />;
     default:
@@ -123,19 +128,48 @@ function RequirementsGuide({ problem }: GuideProps) {
         </div>
       )}
       <GuideItem
-        title="Things to clarify"
+        title="Functional requirements — what it must DO"
         items={[
-          "Who are the users? What scale are we designing for?",
-          "What are the core use cases? (read-heavy? write-heavy?)",
-          "What are the latency requirements?",
-          "What consistency model is needed? (strong vs eventual)",
-          "Any geographic distribution requirements?",
-          "What are the non-functional requirements? (availability, durability)",
+          "List the core actions: \"Users should be able to ...\"",
+          "Keep it to the few features that define the system",
+          "Read-heavy or write-heavy? What's the main flow?",
+        ]}
+      />
+      <GuideItem
+        title="Non-functional requirements — how WELL"
+        items={[
+          "Scale: how many users / requests per second?",
+          "Latency: how fast must it respond?",
+          "Availability vs consistency (CAP) — which matters more here?",
+          "Durability, security, geographic distribution?",
         ]}
       />
       {problem && problem.constraints.length > 0 && (
         <GuideItem title="Key constraints" items={problem.constraints} />
       )}
+    </>
+  );
+}
+
+function CoreEntitiesGuide({ problem: _problem }: GuideProps) {
+  return (
+    <>
+      <GuideItem
+        title="List the core entities"
+        items={[
+          "Name the main 'things' the system stores or moves",
+          "e.g. URL shortener: User, ShortLink, Click",
+          "e.g. chat app: User, Conversation, Message",
+          "Just the nouns for now — fields and schema come later",
+        ]}
+      />
+      <div className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-2">
+        <p className="text-[10px] font-semibold text-zinc-500">WHY</p>
+        <p className="mt-0.5 text-xs text-zinc-400">
+          Naming entities early gives your API and data model something concrete to
+          operate on — interviewers expect this quick step before you design.
+        </p>
+      </div>
     </>
   );
 }
@@ -195,8 +229,14 @@ function APIDesignGuide({ problem: _problem }: GuideProps) {
       <div className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-2">
         <p className="text-[10px] font-semibold text-zinc-500">TIP</p>
         <p className="mt-0.5 text-xs text-zinc-400">
-          Use the text notes on the canvas to draft your API endpoints.
-          Click &quot;Add Note&quot; in the top bar.
+          Use text notes on the canvas to draft your API endpoints (&quot;Add Note&quot;).
+        </p>
+      </div>
+      <div className="rounded-md border border-cyan-500/30 bg-cyan-500/[0.06] px-2.5 py-2">
+        <p className="text-[10px] font-semibold text-cyan-400">NEXT: HIGH-LEVEL DESIGN</p>
+        <p className="mt-0.5 text-xs text-zinc-300">
+          Build the diagram <span className="font-medium">one API endpoint at a time</span> — for
+          each endpoint, add just the components needed to serve it, then move to the next.
         </p>
       </div>
     </>

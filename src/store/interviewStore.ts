@@ -21,6 +21,12 @@ const PHASES: Phase[] = [
     icon: "Calculator",
   },
   {
+    name: "Core Entities",
+    targetMinutes: 2,
+    description: "List the main 'things' the system deals with",
+    icon: "Boxes",
+  },
+  {
     name: "API Design",
     targetMinutes: 5,
     description: "Define core API endpoints",
