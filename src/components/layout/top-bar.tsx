@@ -22,6 +22,7 @@ import {
   MoreHorizontal,
   Keyboard,
   LayoutGrid,
+  Sparkles,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useCanvasStore } from "@/store/canvasStore";
@@ -41,11 +42,12 @@ interface TopBarProps {
   onStartInterview: () => void;
   onCreateProblem: () => void;
   onOpenShortcuts: () => void;
+  onToggleAI: () => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
 }
 
-export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onStartInterview, onCreateProblem, onOpenShortcuts, onToggleLeft, onToggleRight }: TopBarProps) {
+export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onStartInterview, onCreateProblem, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -465,6 +467,15 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
 
         {/* Divider before the primary actions */}
         <div className="hidden h-4 w-px bg-zinc-800 md:block" />
+
+        <button
+          onClick={onToggleAI}
+          className="flex h-7 items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 text-xs font-medium text-cyan-400 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/15 hover:text-cyan-300"
+          title="AI assistant — bring your own API key"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">AI</span>
+        </button>
 
         <Button
           size="sm"

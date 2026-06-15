@@ -25,6 +25,7 @@ import { CreateProblemDialog } from "@/components/dialogs/CreateProblemDialog";
 import { CreateComponentDialog } from "@/components/dialogs/CreateComponentDialog";
 import { EditorialDialog } from "@/components/dialogs/EditorialDialog";
 import { ShortcutsDialog } from "@/components/dialogs/ShortcutsDialog";
+import { AIAssistantPanel } from "@/components/ai/AIAssistantPanel";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { useInterviewStore } from "@/store/interviewStore";
 import { useIsMobile } from "@/hooks/useBreakpoint";
@@ -47,6 +48,7 @@ export function AppShell() {
   const [createComponentDialogOpen, setCreateComponentDialogOpen] = useState(false);
   const [editorialDialogOpen, setEditorialDialogOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [editProblemId, setEditProblemId] = useState<string | null>(null);
   const [editComponentId, setEditComponentId] = useState<string | null>(null);
@@ -294,6 +296,7 @@ export function AppShell() {
           onStartInterview={() => setInterviewDialogOpen(true)}
           onCreateProblem={() => setCreateProblemDialogOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
+          onToggleAI={() => setAiOpen((v) => !v)}
           onToggleLeft={handleToggleLeft}
           onToggleRight={handleToggleRight}
         />
@@ -440,6 +443,7 @@ export function AppShell() {
         />
         <EditorialDialog open={editorialDialogOpen} onClose={() => setEditorialDialogOpen(false)} />
         <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+        <AIAssistantPanel open={aiOpen} onClose={() => setAiOpen(false)} />
         <ConfirmDialog
           open={clearConfirmOpen}
           title="Clear canvas?"
