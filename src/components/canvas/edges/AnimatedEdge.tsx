@@ -44,6 +44,9 @@ function AnimatedEdgeInner({
   const isRunning = useSimulationStore((s) => s.isRunning);
   const result = useSimulationStore((s) => s.result);
   const deleteEdge = useCanvasStore((s) => s.deleteEdge);
+  // Traffic keeps flowing once a simulation has run (not only during the brief
+  // compute window), so the canvas visibly "comes alive" after you Simulate.
+  const flowing = isRunning || result !== null;
   // Traffic carried by this wire in the latest simulation (if any).
   const flow =
     result?.edgeFlows instanceof Map ? result.edgeFlows.get(`${source}→${target}`) : undefined;
@@ -73,28 +76,23 @@ function AnimatedEdgeInner({
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: selected ? "rgb(34, 211, 238)" : isRunning ? "rgb(6, 182, 212)" : "var(--edge-idle)",
-          strokeWidth: selected ? 2.25 : 1.5,
+          stroke: selected ? "rgb(34, 211, 238)" : flowing ? "rgba(52, 211, 230, 0.6)" : "var(--edge-idle)",
+          strokeWidth: selected ? 2.25 : flowing ? 1.9 : 1.5,
           ...(isAsync ? { strokeDasharray: "6 4" } : {}),
         }}
       />
-      {/* Animated dots — only render when simulation is running */}
-      {isRunning && (
+      {/* Directional traffic — particles flow source → target along the path,
+          and persist after the run so the active design stays animated. */}
+      {flowing && (
         <>
-          <circle r="2" fill="rgb(6, 182, 212)" opacity="0.8">
-            <animateMotion
-              dur="2s"
-              repeatCount="indefinite"
-              path={edgePath}
-            />
+          <circle r="2.4" fill="#3ad6e6" opacity="0.95">
+            <animateMotion dur="1.6s" repeatCount="indefinite" path={edgePath} />
           </circle>
-          <circle r="1.5" fill="rgb(6, 182, 212)" opacity="0.4">
-            <animateMotion
-              dur="2s"
-              repeatCount="indefinite"
-              path={edgePath}
-              begin="0.7s"
-            />
+          <circle r="2" fill="#3ad6e6" opacity="0.6">
+            <animateMotion dur="1.6s" repeatCount="indefinite" path={edgePath} begin="0.53s" />
+          </circle>
+          <circle r="1.6" fill="#3ad6e6" opacity="0.35">
+            <animateMotion dur="1.6s" repeatCount="indefinite" path={edgePath} begin="1.06s" />
           </circle>
         </>
       )}
