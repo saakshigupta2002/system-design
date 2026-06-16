@@ -100,6 +100,7 @@ function clearSimResults() {
   sim.setResult(null);
   sim.setScoreResult(null);
   sim.setShowScore(false);
+  sim.clearFailed();
 }
 
 /** Drop self-loops and normalize missing/stale handle ids to right→left. */

@@ -5,7 +5,8 @@ import { Handle, Position, type NodeProps, type Node, useReactFlow } from "@xyfl
 import { motion } from "framer-motion";
 import type { ComponentNodeData } from "@/store/canvasStore";
 import { useCanvasStore } from "@/store/canvasStore";
-import { Server } from "lucide-react";
+import { useSimulationStore } from "@/store/simulationStore";
+import { Server, Power } from "lucide-react";
 import { ICON_MAP } from "@/lib/icons";
 
 type ComponentNode = Node<ComponentNodeData, "component">;
@@ -23,6 +24,7 @@ const STATUS_DOT: Record<string, string> = {
   warning: "bg-amber-500",
   critical: "bg-rose-500",
   idle: "bg-zinc-600",
+  down: "bg-rose-600",
 };
 
 const HANDLE_CLASS =
@@ -54,6 +56,8 @@ function ComponentNodeInner({ id, data, selected }: NodeProps<ComponentNode>) {
   const [editLabel, setEditLabel] = useState(nodeData.label);
   const inputRef = useRef<HTMLInputElement>(null);
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const isFailed = useSimulationStore((s) => s.failedNodeIds.includes(id));
+  const toggleFailed = useSimulationStore((s) => s.toggleFailed);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -81,17 +85,41 @@ function ComponentNodeInner({ id, data, selected }: NodeProps<ComponentNode>) {
   return (
     <div
       className={`
-        relative flex flex-col items-center gap-1 rounded-lg border bg-zinc-900 px-4 py-3
+        group relative flex flex-col items-center gap-1 rounded-lg border bg-zinc-900 px-4 py-3
         shadow-sm transition-colors
-        ${isBottleneck ? "border-rose-500/60" : colors.border}
+        ${isFailed ? "border-rose-500 border-dashed opacity-50" : isBottleneck ? "border-rose-500/60" : colors.border}
         ${selected ? "border-cyan-500" : ""}
       `}
     >
       {/* Status indicator dot */}
       <div
         className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${statusDot}`}
-        style={{ animation: status !== 'idle' ? 'status-pulse 2s infinite' : 'none' }}
+        style={{ animation: status !== 'idle' && status !== 'down' ? 'status-pulse 2s infinite' : 'none' }}
       />
+
+      {/* Chaos: take this component offline / bring it back */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleFailed(id);
+        }}
+        className={`absolute -left-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border shadow-sm transition-all ${
+          isFailed
+            ? "border-rose-400/60 bg-rose-600 text-white opacity-100"
+            : "border-zinc-600 bg-zinc-800 text-zinc-400 opacity-0 hover:border-rose-500/50 hover:text-rose-400 group-hover:opacity-100"
+        }`}
+        title={isFailed ? "Bring back online" : "Take offline (chaos test)"}
+        aria-label={isFailed ? "Bring component online" : "Take component offline"}
+      >
+        <Power className="h-3 w-3" />
+      </button>
+
+      {/* OFFLINE tag */}
+      {isFailed && (
+        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded bg-rose-600 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white">
+          Offline
+        </span>
+      )}
 
       {/* Icon + Label row */}
       <div className="flex items-center gap-1.5">

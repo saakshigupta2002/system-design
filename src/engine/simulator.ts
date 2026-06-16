@@ -39,7 +39,8 @@ function computeLatency(baseLatency: number, utilization: number): number {
 export function runSimulation(
   nodes: Node<ComponentNodeData>[],
   edges: Edge[],
-  requestsPerSec: number
+  requestsPerSec: number,
+  failedNodeIds: Set<string> = new Set()
 ): SimulationResult {
   const warnings: string[] = [];
   const nodeMetrics = new Map<string, NodeMetrics>();
@@ -120,16 +121,19 @@ export function runSimulation(
     if (!node) continue;
 
     const data = node.data;
+    const isFailed = failedNodeIds.has(nodeId);
     const incoming = incomingQPS.get(nodeId) ?? 0;
     const replicas = data.replicas ?? 1; // Fix #6: nullish coalescing
-    const effectiveQPS = data.maxQPS * replicas;
+    // A failed component has zero serving capacity — it can't process or
+    // forward traffic, so its whole downstream subtree starves.
+    const effectiveQPS = isFailed ? 0 : data.maxQPS * replicas;
     // Fix #9: guard against 0/0 NaN
     const utilization = effectiveQPS === 0 || effectiveQPS === Infinity
       ? 0
       : incoming / effectiveQPS;
     const latency = computeLatency(data.latencyMs, utilization);
-    const status = getStatus(utilization);
-    const isBottleneck = utilization > UTILIZATION_CRITICAL;
+    const status: NodeStatus = isFailed ? "down" : getStatus(utilization);
+    const isBottleneck = !isFailed && utilization > UTILIZATION_CRITICAL;
 
     if (isBottleneck) bottleneckNodes.push(nodeId);
 
@@ -145,14 +149,17 @@ export function runSimulation(
 
     // Propagate to children
     const children = adjacency.get(nodeId) ?? [];
-    // Output QPS is capped by effective capacity
-    const outputQPS = Math.min(incoming, effectiveQPS);
+    // A failed node forwards nothing; otherwise output is capped by capacity.
+    const outputQPS = isFailed ? 0 : Math.min(incoming, effectiveQPS);
 
     // Routers/balancers split traffic; everything else fans out.
     // Split shares honor per-edge weights when set (relative; default 1 each).
     const isSplitter = LOAD_BALANCING_COMPONENTS.has(data.componentId);
-    const childWeights = children.map(
-      (childId) => weightByPair.get(`${nodeId}→${childId}`) ?? 1
+    // Failed children are excluded from a splitter's distribution, so a load
+    // balancer / gateway reroutes their share onto the survivors — which is
+    // exactly what surfaces a new bottleneck when a node dies.
+    const childWeights = children.map((childId) =>
+      failedNodeIds.has(childId) ? 0 : weightByPair.get(`${nodeId}→${childId}`) ?? 1
     );
     const totalWeight = childWeights.reduce((sum, w) => sum + w, 0);
 
@@ -254,6 +261,27 @@ export function runSimulation(
         isBottleneck: false,
       });
     }
+  }
+
+  // Chaos blast radius: a non-failed component that lost ALL its inbound
+  // traffic because of an upstream failure is effectively offline too.
+  if (failedNodeIds.size > 0) {
+    const starved: string[] = [];
+    for (const node of nodes) {
+      if (failedNodeIds.has(node.id)) continue;
+      const m = nodeMetrics.get(node.id);
+      if (m && (inDegree.get(node.id) ?? 0) > 0 && m.incomingQPS === 0) {
+        m.status = "down";
+        starved.push(node.data.label);
+      }
+    }
+    const downLabels = nodes.filter((n) => failedNodeIds.has(n.id)).map((n) => n.data.label);
+    warnings.push(
+      `Chaos: ${downLabels.join(", ")} offline.` +
+        (starved.length
+          ? ` Downstream starved (requests fail): ${starved.join(", ")}.`
+          : " No downstream impact — the rest of the system stayed up.")
+    );
   }
 
   const totalLatencyMs = computeLongestPathLatency(nodes, uniqueEdges, nodeMap, nodeMetrics);

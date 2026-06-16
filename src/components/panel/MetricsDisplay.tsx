@@ -12,6 +12,7 @@ const STATUS_COLOR: Record<string, string> = {
   warning: "bg-amber-500",
   critical: "bg-rose-500",
   idle: "bg-zinc-600",
+  down: "bg-rose-600",
 };
 
 export function MetricsDisplay() {

@@ -93,9 +93,10 @@ export function AppShell() {
     if (isMobile) setMobileRightOpen(true);
 
     useSimulationStore.getState().setRunning(true);
+    const failed = new Set(useSimulationStore.getState().failedNodeIds);
 
     setTimeout(() => {
-      const result = runSimulation(componentNodes, edges, config.requestsPerSec);
+      const result = runSimulation(componentNodes, edges, config.requestsPerSec, failed);
 
       const updates = new Map<string, Record<string, unknown>>();
       for (const [nodeId, metrics] of result.nodeMetrics) {
@@ -112,6 +113,28 @@ export function AppShell() {
       useAppStore.getState().showToast("Simulation complete!", "success");
     }, 100);
   }, [isMobile]);
+
+  // Live chaos: once a simulation has run, toggling a component's power
+  // re-runs the snapshot quietly so the cascade updates on the canvas at once.
+  const failedNodeIds = useSimulationStore((s) => s.failedNodeIds);
+  useEffect(() => {
+    if (!useSimulationStore.getState().result || useSimulationStore.getState().isRamping) return;
+    const { nodes, edges } = useCanvasStore.getState();
+    const componentNodes = nodes.filter((n) => n.type !== "text") as Node<ComponentNodeData>[];
+    if (componentNodes.length === 0) return;
+    const res = runSimulation(
+      componentNodes,
+      edges,
+      useSimulationStore.getState().config.requestsPerSec,
+      new Set(failedNodeIds)
+    );
+    const updates = new Map<string, Record<string, unknown>>();
+    for (const [nid, m] of res.nodeMetrics) {
+      updates.set(nid, { utilization: m.utilization, status: m.status, isBottleneck: m.isBottleneck });
+    }
+    useCanvasStore.getState().updateAllNodeData(updates);
+    useSimulationStore.getState().setResult(res);
+  }, [failedNodeIds]);
 
   const handleScore = useCallback(() => {
     const { nodes, edges } = useCanvasStore.getState();

@@ -1,4 +1,4 @@
-export type NodeStatus = "healthy" | "warning" | "critical" | "idle";
+export type NodeStatus = "healthy" | "warning" | "critical" | "idle" | "down";
 
 export interface NodeMetrics {
   nodeId: string;
