@@ -61,7 +61,7 @@ interface SavedDesignsState {
   importDesign: (json: string) => void;
 }
 
-function serializeNodes(
+export function serializeNodes(
   nodes: ReturnType<typeof useCanvasStore.getState>["nodes"]
 ): SerializedNode[] {
   return nodes.map((n) => {

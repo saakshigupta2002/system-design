@@ -25,6 +25,7 @@ import {
   Sparkles,
   Sun,
   Moon,
+  Share2,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useCanvasStore } from "@/store/canvasStore";
@@ -34,6 +35,7 @@ import { useCustomProblemsStore } from "@/store/customProblemsStore";
 import { type Node, useReactFlow } from "@xyflow/react";
 import { exportAsPng, exportAsSvg, exportAsJSON } from "@/lib/exportCanvas";
 import { openReferenceSolution } from "@/lib/referenceSolution";
+import { createShareLink } from "@/lib/shareDesign";
 
 interface TopBarProps {
   onSimulate: () => void;
@@ -61,6 +63,21 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
     // Let the new positions land before framing them.
     setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 50);
   }, [fitView]);
+
+  const shareDesign = useCallback(async () => {
+    const link = createShareLink();
+    if (!link) {
+      useAppStore.getState().showToast("Add some components first", "info");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      useAppStore.getState().showToast("Share link copied to clipboard", "success");
+    } catch {
+      // Clipboard blocked — surface the link so they can copy it manually.
+      window.prompt("Copy your shareable link:", link);
+    }
+  }, []);
 
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
@@ -335,6 +352,13 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
 
                 {/* File */}
                 <button
+                  onClick={() => { setMobileMoreOpen(false); shareDesign(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
+                >
+                  <Share2 className="h-3.5 w-3.5 text-zinc-500" />
+                  Share link
+                </button>
+                <button
                   onClick={() => { setMobileMoreOpen(false); onSave(); }}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
                 >
@@ -407,6 +431,14 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
         >
           <FolderOpen className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Load</span>
+        </button>
+        <button
+          onClick={shareDesign}
+          className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
+          title="Copy a shareable link to this design"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Share</span>
         </button>
 
         <div className="hidden h-4 w-px bg-zinc-800 md:block" />

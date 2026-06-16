@@ -15,6 +15,7 @@ import { runSimulation } from "@/engine/simulator";
 import { scoreDesign } from "@/scoring/scorer";
 import { openReferenceSolution } from "@/lib/referenceSolution";
 import { markCompleted } from "@/lib/learningProgress";
+import { applySharedDesignFromHash } from "@/lib/shareDesign";
 import { useScoreHistoryStore } from "@/store/scoreHistoryStore";
 import { Toast } from "@/components/ui/Toast";
 import { SaveDialog } from "@/components/dialogs/SaveDialog";
@@ -290,6 +291,13 @@ export function AppShell() {
     }, 1000);
     return () => clearInterval(id);
   }, [timerRunning, tickTimer]);
+
+  // Load a shared design from the URL hash on first mount (#d=...).
+  useEffect(() => {
+    if (applySharedDesignFromHash()) {
+      useAppStore.getState().showToast("Loaded shared design", "success");
+    }
+  }, []);
 
   // One-time hint once the user starts building: the empty-state shortcut
   // tips disappear forever after the first node, so point at the cheatsheet.
