@@ -172,7 +172,7 @@ export function ArchitectureDiagram({
               markerHeight="6"
               orient="auto-start-reverse"
             >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#52525b" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-zinc-600)" />
             </marker>
           </defs>
 
@@ -186,7 +186,7 @@ export function ArchitectureDiagram({
                 y1={from.cy}
                 x2={tip.x}
                 y2={tip.y}
-                stroke="#52525b"
+                stroke="var(--color-zinc-600)"
                 strokeWidth={1.3}
                 markerEnd="url(#arch-arrow)"
               />
@@ -202,7 +202,7 @@ export function ArchitectureDiagram({
                 width={NODE_W}
                 height={NODE_H}
                 rx={7}
-                fill="#18181b"
+                fill="var(--color-zinc-800)"
                 stroke={p.color}
                 strokeOpacity={0.5}
                 strokeWidth={1.2}
@@ -214,7 +214,7 @@ export function ArchitectureDiagram({
                 dominantBaseline="central"
                 fontSize={11}
                 fontFamily="system-ui, sans-serif"
-                fill="#e4e4e7"
+                fill="var(--color-zinc-100)"
               >
                 {p.label.length > 16 ? p.label.slice(0, 15) + "…" : p.label}
               </text>

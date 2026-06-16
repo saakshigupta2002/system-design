@@ -268,7 +268,7 @@ export function ScoreReport() {
               const strokeColor = VERDICT_STROKE[scoreResult.verdictColor] ?? "#22d3ee";
               return (
                 <svg width="96" height="96" className="-rotate-90">
-                  <circle cx="48" cy="48" r={radius} fill="none" stroke="rgb(39,39,42)" strokeWidth="6" />
+                  <circle cx="48" cy="48" r={radius} fill="none" stroke="var(--color-zinc-800)" strokeWidth="6" />
                   <motion.circle
                     cx="48" cy="48" r={radius} fill="none"
                     stroke={strokeColor} strokeWidth="6"
