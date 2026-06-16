@@ -86,33 +86,33 @@
   --z-400: oklch(0.46 0.014 240);
   --z-500: oklch(0.50 0.015 240);
   --z-600: oklch(0.56 0.015 240);
-  --z-700: oklch(0.85 0.007 240);
-  --z-800: oklch(0.90 0.006 240);
-  --z-900: oklch(0.965 0.004 240);
-  --z-950: oklch(0.975 0.003 240);
+  --z-700: oklch(0.83 0.010 240);
+  --z-800: oklch(0.88 0.009 240);
+  --z-900: oklch(0.95 0.008 240);   /* panels / cards — soft off-white */
+  --z-950: oklch(0.965 0.007 240);  /* deepest well */
   --ac-300: oklch(0.72 0.13 200);
   --ac-400: oklch(0.60 0.16 200);
   --ac-500: oklch(0.52 0.16 200);
   --ac-600: oklch(0.47 0.15 203);
   --ac-700: oklch(0.43 0.13 205);
 
-  --background: oklch(0.935 0.006 240);
-  --foreground: oklch(0.25 0.012 240);
-  --card: oklch(0.965 0.004 240);
-  --card-foreground: oklch(0.25 0.012 240);
-  --popover: oklch(0.975 0.003 240);
-  --popover-foreground: oklch(0.25 0.012 240);
-  --primary: oklch(0.25 0.012 240);
+  --background: oklch(0.912 0.009 240);   /* calm light-gray app floor */
+  --foreground: oklch(0.26 0.012 240);
+  --card: oklch(0.95 0.008 240);          /* soft off-white panels */
+  --card-foreground: oklch(0.26 0.012 240);
+  --popover: oklch(0.965 0.007 240);
+  --popover-foreground: oklch(0.26 0.012 240);
+  --primary: oklch(0.26 0.012 240);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.905 0.006 240);
-  --secondary-foreground: oklch(0.25 0.012 240);
-  --muted: oklch(0.905 0.006 240);
+  --secondary: oklch(0.89 0.009 240);
+  --secondary-foreground: oklch(0.26 0.012 240);
+  --muted: oklch(0.89 0.009 240);
   --muted-foreground: oklch(0.50 0.015 240);
-  --accent: oklch(0.905 0.006 240);
-  --accent-foreground: oklch(0.25 0.012 240);
+  --accent: oklch(0.89 0.009 240);
+  --accent-foreground: oklch(0.26 0.012 240);
   --destructive: oklch(0.58 0.20 25);
-  --border: oklch(0.88 0.006 240);
-  --input: oklch(0.87 0.007 240);
+  --border: oklch(0.865 0.009 240);
+  --input: oklch(0.855 0.009 240);
   --ring: oklch(0.57 0.16 200);
   --chart-1: oklch(0.57 0.16 200);
   --chart-2: oklch(0.58 0.13 150);
@@ -120,18 +120,18 @@
   --chart-4: oklch(0.52 0.16 280);
   --chart-5: oklch(0.56 0.18 20);
   --radius: 0.625rem;
-  --sidebar: oklch(0.96 0.004 240);
-  --sidebar-foreground: oklch(0.25 0.012 240);
-  --sidebar-primary: oklch(0.57 0.16 200);
+  --sidebar: oklch(0.94 0.008 240);
+  --sidebar-foreground: oklch(0.26 0.012 240);
+  --sidebar-primary: oklch(0.55 0.16 200);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.905 0.006 240);
-  --sidebar-accent-foreground: oklch(0.25 0.012 240);
-  --sidebar-border: oklch(0.88 0.006 240);
-  --sidebar-ring: oklch(0.57 0.16 200);
+  --sidebar-accent: oklch(0.89 0.009 240);
+  --sidebar-accent-foreground: oklch(0.26 0.012 240);
+  --sidebar-border: oklch(0.865 0.009 240);
+  --sidebar-ring: oklch(0.55 0.16 200);
 
   --canvas-atmos:
-    radial-gradient(72% 46% at 50% -6%, oklch(0.57 0.16 200 / 0.05), transparent 72%),
-    radial-gradient(135% 130% at 50% 42%, transparent 64%, oklch(0.50 0.02 240 / 0.07) 100%);
+    radial-gradient(72% 46% at 50% -6%, oklch(0.57 0.16 200 / 0.06), transparent 72%),
+    radial-gradient(135% 130% at 50% 42%, transparent 60%, oklch(0.48 0.03 240 / 0.10) 100%);
   --grid-dot: rgba(70, 85, 115, 0.20);
   --grid-line: rgba(70, 85, 115, 0.05);
   --edge-idle: rgba(90, 105, 130, 0.45);
