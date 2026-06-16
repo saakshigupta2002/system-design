@@ -642,7 +642,6 @@ export const PROBLEMS: Problem[] = [
         { source: "app-server", target: "rate-limiter" },
         { source: "app-server", target: "nosql-db" },
         { source: "app-server", target: "object-storage" },
-        { source: "app-server", target: "message-queue" },
         { source: "nosql-db", target: "search" },
         { source: "app-server", target: "monitoring" },
       ],
