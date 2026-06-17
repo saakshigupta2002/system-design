@@ -188,7 +188,7 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex min-w-0 items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100"
           >
-            <span className="max-w-[120px] truncate md:max-w-none">
+            <span className="max-w-[120px] truncate md:max-w-[160px] lg:max-w-[240px]">
               {currentProblem?.title ?? "Select Problem"}
             </span>
             <ChevronDown className="h-3 w-3 shrink-0 text-zinc-500" />
