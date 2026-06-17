@@ -44,12 +44,13 @@ function AnimatedEdgeInner({
   const isRunning = useSimulationStore((s) => s.isRunning);
   const result = useSimulationStore((s) => s.result);
   const deleteEdge = useCanvasStore((s) => s.deleteEdge);
-  // Traffic keeps flowing once a simulation has run (not only during the brief
-  // compute window), so the canvas visibly "comes alive" after you Simulate.
-  const flowing = isRunning || result !== null;
   // Traffic carried by this wire in the latest simulation (if any).
   const flow =
     result?.edgeFlows instanceof Map ? result.edgeFlows.get(`${source}→${target}`) : undefined;
+  // A wire only "flows" if it's actually carrying traffic. Once a result
+  // exists, edges with zero flow (e.g. leaving an offline node) go dead
+  // instead of misleadingly animating. Before/while computing, animate all.
+  const flowing = result !== null ? (flow ?? 0) > 0 : isRunning;
   const edgeData = (data ?? {}) as CustomEdgeData;
   const isAsync = edgeData.async === true;
   const protocol = edgeData.protocol;
