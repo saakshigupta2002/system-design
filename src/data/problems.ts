@@ -2885,6 +2885,267 @@ export const PROBLEMS: Problem[] = [
     },
     tags: ["Consistent Hashing", "Replication", "Quorum", "Distributed"],
   },
+  {
+    id: "pastebin",
+    title: "Pastebin",
+    difficulty: "Easy",
+    description:
+      "Design a service like Pastebin where users paste a block of text or code and get a short link others can open to read it. It's a close cousin of a URL shortener, but instead of storing a tiny URL you store an arbitrary chunk of content, so the key design question becomes where that content lives. Like most link-based services it's heavily read-biased — a paste is written once and read many times — and entries usually expire after a set time.",
+    requirements: {
+      readsPerSec: 50000,
+      writesPerSec: 1000,
+      storageGB: 1000,
+      latencyMs: 200,
+      users: "10M DAU",
+    },
+    constraints: [
+      "Each paste gets a unique, hard-to-guess short key (base62)",
+      "Reads vastly outnumber writes — optimize the read path",
+      "Pastes can expire after a TTL or be set to never expire",
+      "Support large pastes (up to a few MB) without bloating the metadata store",
+      "Optional privacy: unlisted pastes reachable only by direct link",
+      "Basic abuse protection — rate limit creation and cap paste size",
+    ],
+    hints: [
+      {
+        title: "Split content from metadata",
+        content:
+          "Keep small metadata (key, created time, expiry, owner) in a fast database, but store the actual paste body in object storage. The DB row just points to the blob.",
+      },
+      {
+        title: "Lean on caching",
+        content:
+          "Popular pastes are read repeatedly. A cache in front of storage absorbs most reads and keeps latency low.",
+      },
+      {
+        title: "Generate keys like a URL shortener",
+        content:
+          "Use base62 over a counter or hash to mint short, unique keys. The same collision-avoidance ideas as a URL shortener apply here.",
+      },
+      {
+        title: "Advanced: Expiry cleanup",
+        content:
+          "Use a TTL on the metadata and a background job to delete expired blobs from object storage, so storage doesn't grow forever.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 100, y: 280 },
+        { componentId: "load-balancer", x: 300, y: 280 },
+        { componentId: "app-server", x: 500, y: 280 },
+        { componentId: "cache", x: 500, y: 130 },
+        { componentId: "object-storage", x: 720, y: 130 },
+        { componentId: "nosql-db", x: 720, y: 280 },
+        { componentId: "monitoring", x: 720, y: 430 },
+      ],
+      edges: [
+        { source: "dns", target: "load-balancer" },
+        { source: "load-balancer", target: "app-server" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "object-storage" },
+        { source: "app-server", target: "nosql-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["Storage", "Caching", "Read-Heavy"],
+  },
+  {
+    id: "image-hosting",
+    title: "Image Hosting Service",
+    difficulty: "Easy",
+    description:
+      "Design a simple image hosting service like a basic Imgur: users upload images and get links that load fast anywhere in the world. This is the gentle introduction to the media-serving pattern that powers Instagram, e-commerce product photos, and avatars everywhere. The two core ideas are storing large binary files in object storage rather than a database, and serving them through a CDN so bytes come from a server near the viewer.",
+    requirements: {
+      readsPerSec: 100000,
+      writesPerSec: 2000,
+      storageGB: 50000,
+      latencyMs: 150,
+      users: "50M DAU",
+    },
+    constraints: [
+      "Store and serve images up to ~20MB each",
+      "Image loads should be fast worldwide (serve via CDN edge)",
+      "Reads massively outnumber uploads",
+      "Generate resized thumbnails for previews",
+      "Each image has a stable, shareable URL",
+      "Validate uploads (type, size) and rate limit to prevent abuse",
+    ],
+    hints: [
+      {
+        title: "Don't put blobs in the database",
+        content:
+          "Store image bytes in object storage and keep only metadata (id, owner, size, URL) in the database. Databases are bad at large binary blobs.",
+      },
+      {
+        title: "Serve through a CDN",
+        content:
+          "Put a CDN in front of object storage so images are cached at edge locations close to users. The origin only sees cache misses.",
+      },
+      {
+        title: "Generate thumbnails asynchronously",
+        content:
+          "After upload, create resized versions so feeds and previews load small images instead of the full-resolution original.",
+      },
+      {
+        title: "Advanced: Direct-to-storage uploads",
+        content:
+          "Issue pre-signed URLs so clients upload straight to object storage, bypassing your app servers for the heavy byte transfer.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 100, y: 280 },
+        { componentId: "cdn", x: 300, y: 130 },
+        { componentId: "load-balancer", x: 300, y: 280 },
+        { componentId: "app-server", x: 520, y: 280 },
+        { componentId: "cache", x: 520, y: 430 },
+        { componentId: "object-storage", x: 740, y: 130 },
+        { componentId: "nosql-db", x: 740, y: 280 },
+        { componentId: "monitoring", x: 740, y: 430 },
+      ],
+      edges: [
+        { source: "dns", target: "cdn" },
+        { source: "dns", target: "load-balancer" },
+        { source: "cdn", target: "object-storage" },
+        { source: "load-balancer", target: "app-server" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "object-storage" },
+        { source: "app-server", target: "nosql-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["Storage", "CDN", "Media", "Read-Heavy"],
+  },
+  {
+    id: "view-counter",
+    title: "View / Like Counter",
+    difficulty: "Easy",
+    description:
+      "Design the service that counts how many views a video got or how many likes a post has, across a system with billions of events a day. It looks trivial — just increment a number — but a single hot row (a viral video) can receive tens of thousands of increments per second, far more than one database row can handle. This is a clean introduction to write-heavy design, sharded counters, and accepting eventual consistency for numbers that don't need to be exact to the millisecond.",
+    requirements: {
+      readsPerSec: 200000,
+      writesPerSec: 500000,
+      storageGB: 500,
+      latencyMs: 100,
+      users: "1B events/day",
+    },
+    constraints: [
+      "Handle huge write bursts on a single hot item (viral content)",
+      "Counts can be eventually consistent — a small display lag is fine",
+      "Reads of the current count must be fast and cheap",
+      "Never lose increments (durably persist counts)",
+      "Avoid double-counting from client retries where it matters",
+      "Support counting many item types (views, likes, shares)",
+    ],
+    hints: [
+      {
+        title: "One row can't take the load",
+        content:
+          "A single counter row becomes a write hot spot. Split it into many shard counters and sum them on read — this spreads writes across the store.",
+      },
+      {
+        title: "Buffer the writes",
+        content:
+          "Send increments through a queue and aggregate them, so a burst becomes a steady stream of batched updates instead of hammering the database.",
+      },
+      {
+        title: "Cache the read value",
+        content:
+          "Most reads just want the current total. Serve it from a cache that's refreshed periodically rather than recomputing the sum every time.",
+      },
+      {
+        title: "Advanced: Approximate at extreme scale",
+        content:
+          "For counts where exactness doesn't matter (e.g. 'seen by ~2.3M'), probabilistic structures like HyperLogLog give huge memory savings for unique counts.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 100, y: 280 },
+        { componentId: "load-balancer", x: 300, y: 280 },
+        { componentId: "app-server", x: 500, y: 280 },
+        { componentId: "sharded-counter", x: 500, y: 130 },
+        { componentId: "message-queue", x: 500, y: 430 },
+        { componentId: "cache", x: 720, y: 130 },
+        { componentId: "nosql-db", x: 720, y: 280 },
+        { componentId: "monitoring", x: 720, y: 430 },
+      ],
+      edges: [
+        { source: "dns", target: "load-balancer" },
+        { source: "load-balancer", target: "app-server" },
+        { source: "app-server", target: "message-queue" },
+        { source: "message-queue", target: "sharded-counter" },
+        { source: "sharded-counter", target: "nosql-db" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["Write-Heavy", "Counters", "Eventual Consistency"],
+  },
+  {
+    id: "todo-app",
+    title: "To-Do / Notes App",
+    difficulty: "Easy",
+    description:
+      "Design the backend for a personal notes or to-do app like Google Keep or Todoist, where signed-in users create, edit, and organize their own items. It's the most approachable full-stack system design: the perfect first problem for seeing how the standard web stack fits together — load balancing, stateless app servers, authentication, a database for per-user data, and a cache for speed. The scale is modest, so the focus is correct structure and a clean read/write path rather than exotic distributed tricks.",
+    requirements: {
+      readsPerSec: 20000,
+      writesPerSec: 5000,
+      storageGB: 200,
+      latencyMs: 200,
+      users: "5M DAU",
+    },
+    constraints: [
+      "Each user sees and edits only their own notes (authentication + authorization)",
+      "Standard CRUD: create, read, update, delete, list with simple filters",
+      "Edits should feel instant; recent notes load quickly",
+      "Data must be durable — a user's notes are never silently lost",
+      "Stateless app servers so any instance can serve any request",
+      "Reasonable scaling as the user base grows (read replicas, caching)",
+    ],
+    hints: [
+      {
+        title: "The classic stateless stack",
+        content:
+          "Clients → load balancer → stateless app servers → database. Keeping app servers stateless lets you add or remove them freely behind the load balancer.",
+      },
+      {
+        title: "Authenticate every request",
+        content:
+          "An auth service verifies the user (e.g. a token) so each request only touches that user's data. Sessions/tokens, not server memory, carry identity.",
+      },
+      {
+        title: "A relational DB fits well",
+        content:
+          "Notes have clear structure and per-user ownership — a SQL database with an index on user_id handles this naturally. Add read replicas as reads grow.",
+      },
+      {
+        title: "Advanced: Cache and offline sync",
+        content:
+          "Cache a user's recent notes for snappy loads, and add a sync protocol (last-write-wins or per-field merge) if you later support offline edits across devices.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 100, y: 280 },
+        { componentId: "load-balancer", x: 300, y: 280 },
+        { componentId: "app-server", x: 500, y: 280 },
+        { componentId: "auth-service", x: 500, y: 130 },
+        { componentId: "cache", x: 720, y: 130 },
+        { componentId: "sql-db", x: 720, y: 280 },
+        { componentId: "monitoring", x: 720, y: 430 },
+      ],
+      edges: [
+        { source: "dns", target: "load-balancer" },
+        { source: "load-balancer", target: "app-server" },
+        { source: "app-server", target: "auth-service" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "sql-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["CRUD", "Authentication", "Fundamentals"],
+  },
 ];
 
 export function getProblemById(id: string): Problem | undefined {

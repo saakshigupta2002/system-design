@@ -8,7 +8,16 @@ export const LEARNING_PATH: LearningTier[] = [
   {
     name: "Foundations",
     description: "Master the basic building blocks",
-    problemIds: ["url-shortener", "rate-limiter", "parking-lot", "id-generator-service"],
+    problemIds: [
+      "url-shortener",
+      "todo-app",
+      "rate-limiter",
+      "pastebin",
+      "image-hosting",
+      "parking-lot",
+      "view-counter",
+      "id-generator-service",
+    ],
   },
   {
     name: "Intermediate",
@@ -252,6 +261,26 @@ export const PROBLEM_CONCEPTS: ConceptPrerequisite[] = [
     problemId: "id-generator-service",
     concepts: ["snowflake-id", "coordination", "clock-skew"],
     prerequisites: ["hashing"],
+  },
+  {
+    problemId: "todo-app",
+    concepts: ["crud", "authentication", "stateless-services"],
+    prerequisites: [],
+  },
+  {
+    problemId: "pastebin",
+    concepts: ["object-storage", "caching", "read-heavy-design"],
+    prerequisites: [],
+  },
+  {
+    problemId: "image-hosting",
+    concepts: ["object-storage", "cdn", "media-storage"],
+    prerequisites: ["caching"],
+  },
+  {
+    problemId: "view-counter",
+    concepts: ["sharded-counter", "write-heavy-design", "eventual-consistency"],
+    prerequisites: ["caching"],
   },
   {
     problemId: "leaderboard",
