@@ -2118,6 +2118,701 @@ export const EDITORIALS: Record<string, Editorial> = {
     ],
   },
 
+  "id-generator-service": {
+    summary:
+      "Every record in a big system needs a unique ID, but a single database counter can't keep up and dies in a failover. The trick is to let each machine mint IDs on its own with no network call per ID, by packing a timestamp, a machine number, and a per-millisecond counter into one 64-bit integer. That gives you billions of collision-free IDs a day that are still roughly sorted by time.",
+    componentNotes: {
+      dns: "Resolves the service name to an address — first stop for callers.",
+      "load-balancer": "Spreads ID requests across the generator nodes.",
+      "id-generator": "Mints 64-bit IDs locally (timestamp + machine ID + counter), no per-ID network call.",
+      "coordination-service": "Hands out a unique machine ID to each node at startup so two nodes never collide.",
+      "config-service": "Holds the epoch and datacenter/bit-layout config the nodes share.",
+      monitoring: "Watches clock drift across nodes and alerts before it can cause duplicates.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "We need to generate unique identifiers across many machines, fast, forever. The catch is three goals that pull against each other: every ID must be unique, IDs should be sortable by creation time (so they index well), and they must be small.",
+        ],
+        bullets: [
+          "What it must do: produce a never-repeating ID on demand from any node, with no central bottleneck.",
+          "How well: thousands to millions per second, sub-millisecond, and survive a coordinator outage.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "k-sorted = roughly, not perfectly, time-ordered. IDs made in the same millisecond may be out of order relative to each other, but later milliseconds always sort after earlier ones.",
+          },
+        ],
+      },
+      {
+        heading: "2. Why the obvious answers fall short",
+        table: {
+          headers: ["Approach", "Problem"],
+          rows: [
+            ["DB auto-increment", "One row is a bottleneck and a single point of failure"],
+            ["UUIDv4 (random)", "128 bits and fully random — bloats keys and destroys index locality"],
+            ["Central ticket server", "Every ID is a network round-trip; the server is a bottleneck"],
+          ],
+        },
+        body: ["The winning idea generates locally and encodes time, so it's fast AND sortable AND compact."],
+      },
+      {
+        heading: "3. The Snowflake bit layout",
+        body: ["Pack a signed 64-bit integer like this (Twitter's Snowflake):"],
+        code: "| 1 bit | 41 bits timestamp (ms) | 10 bits machine ID | 12 bits sequence |\n unused   ~69 years from epoch     1024 machines        4096 IDs / ms / machine",
+        callouts: [
+          {
+            kind: "tip",
+            text: "12 sequence bits = 4096 IDs per millisecond per machine = ~4M/sec per node. With 1024 machines that's billions per second — far more than you'll ever need.",
+          },
+        ],
+      },
+      {
+        heading: "4. Assigning machine IDs",
+        body: [
+          "The whole scheme breaks if two nodes share a machine ID. So at startup each node asks a coordination service (ZooKeeper/etcd) for a free machine number and holds a lease on it. When the node dies, the lease expires and the number can be reused.",
+        ],
+      },
+      {
+        heading: "5. Generating an ID",
+        code: "now = current_ms()\nif now == last_ms:\n    seq = (seq + 1) & 4095        # same ms: bump the counter\n    if seq == 0: wait_next_ms()   # ran out of 4096 — spin to next ms\nelse:\n    seq = 0                       # new ms: reset the counter\nlast_ms = now\nid = (now - EPOCH) << 22 | machine_id << 12 | seq",
+        body: ["No locks across machines, no database — just local arithmetic. That's why it's sub-microsecond."],
+      },
+      {
+        heading: "6. The tricky part: clocks",
+        body: [
+          "Everything hinges on time moving forward. If NTP corrects the clock backwards, you could reissue a timestamp you already used and produce duplicates.",
+        ],
+        callouts: [
+          {
+            kind: "warning",
+            text: "Common mistake: ignoring clock skew. If the wall clock jumps backwards, refuse to issue IDs until it catches up (or borrow sequence bits). Always monitor drift across nodes.",
+          },
+          {
+            kind: "tip",
+            text: "In one line: 64-bit IDs = timestamp + machine ID + per-ms counter, generated locally, with machine IDs leased from a coordination service.",
+          },
+        ],
+      },
+    ],
+  },
+
+  leaderboard: {
+    summary:
+      "A leaderboard has to answer 'who's the top 100?' and 'what's my rank?' instantly, even as scores change thousands of times a second. A naive 'COUNT players with a higher score' query is far too slow over millions of rows. The answer is a sorted set — a structure that keeps members ordered by score and gives you rank and ranges in logarithmic time — fronted by a queue so write bursts don't overwhelm it.",
+    componentNotes: {
+      dns: "Resolves the service name for clients.",
+      "load-balancer": "Distributes read and write requests across app servers.",
+      "app-server": "Reads ranks from the sorted set and forwards score updates.",
+      cache: "Redis sorted set (ZSET) — the live leaderboard; gives O(log N) rank and top-N.",
+      "message-queue": "Buffers score updates so bursts become a steady stream.",
+      "stream-processor": "Applies queued updates to the sorted set and persists them.",
+      "nosql-db": "Durable store of authoritative scores; the sorted set can be rebuilt from it.",
+      monitoring: "Tracks update lag and query latency.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Two very different queries share one dataset: the global top-N (a range read) and a single player's rank plus neighbors (a position lookup). Both must be fast while scores update constantly.",
+        ],
+        bullets: [
+          "What it must do: top-N, a player's rank, and a 'rank window' around a player; support daily/weekly/all-time boards.",
+          "How well: reads and the occasional write spike, ranks fresh within seconds, scores never lost.",
+        ],
+      },
+      {
+        heading: "2. Why a plain database struggles",
+        body: [
+          "To get a rank from a normal table you essentially count everyone with a higher score. That's a scan of millions of rows per query — hopeless at leaderboard read rates. You need a structure that maintains order as data changes.",
+        ],
+      },
+      {
+        heading: "3. The key data structure: a sorted set",
+        body: ["A Redis Sorted Set (ZSET) stores each member with a score and keeps them ordered automatically."],
+        code: "ZADD board 1500 player:42      # set/update a score\nZREVRANK board player:42       # this player's rank  (O(log N))\nZREVRANGE board 0 99 WITHSCORES # top 100             (O(log N + 100))\nZREVRANGE board <r-3> <r+3>     # the window around a player",
+        callouts: [
+          {
+            kind: "note",
+            text: "O(log N) means the cost grows with the logarithm of the player count — going from 1M to 1B players only roughly doubles the work, not multiplies it by a thousand.",
+          },
+        ],
+      },
+      {
+        heading: "4. Handle write bursts and durability",
+        bullets: [
+          "Tournament finishes and viral moments cause score-update spikes. Send updates through a message queue so a burst is absorbed and applied at a steady rate.",
+          "The sorted set is fast but is a serving layer. Persist authoritative scores in a durable database so you can rebuild the board after a cache restart.",
+          "A stream processor reads the queue, updates the ZSET (ZADD/ZINCRBY), and writes through to the database.",
+        ],
+      },
+      {
+        heading: "5. Multiple boards and time windows",
+        body: [
+          "Daily/weekly boards are just separate sorted sets keyed by period (board:2026-06-18). Set a TTL so old daily boards expire on their own. Per-region boards are separate keys too.",
+        ],
+      },
+      {
+        heading: "6. Scaling and trade-offs",
+        table: {
+          headers: ["Concern", "Approach"],
+          rows: [
+            ["Hundreds of millions of entries", "Shard the ZSET by score range across nodes; merge top-N results"],
+            ["Exact rank deep in the tail", "Use bucketed/approximate ranks — nobody needs exact rank #4,210,118"],
+            ["Hot top of the board", "Cache the top-N list itself; it changes slowly relative to reads"],
+          ],
+        },
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: a Redis sorted set for instant rank/top-N, fed by a queue, with durable scores behind it for rebuilds.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "job-scheduler": {
+    summary:
+      "A job scheduler runs millions of tasks at their due time — one-off, recurring, or retried — reliably, even as worker machines crash. The design splits into three jobs: store tasks indexed by when they run, have a leader-elected dispatcher claim due tasks without double-dispatching, and let a separate pool of stateless workers actually execute them off a queue. Idempotency keys turn 'at least once' into effectively 'exactly once'.",
+    componentNotes: {
+      dns: "Resolves the API endpoint for clients submitting jobs.",
+      "api-gateway": "Public API to submit, cancel, and query jobs.",
+      "nosql-db": "Durable job store, indexed on next_run_at; also holds job status/history.",
+      "task-scheduler": "Leader-elected dispatcher that scans for due jobs and enqueues them.",
+      "coordination-service": "Leader election and locks so only one dispatcher claims a time bucket.",
+      "message-queue": "Holds ready-to-run jobs; gives workers visibility timeouts and retries.",
+      "app-server": "Stateless worker pool that consumes the queue and runs the work.",
+      monitoring: "Tracks scheduling delay, failures, and dead-letter volume.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Users submit work to run later — once at a time, on a cron schedule, or as a delayed retry. The system must fire each close to its due time and run it despite crashes. The tension: don't miss a job, don't run it twice, and don't let the dispatcher become a bottleneck or single point of failure.",
+        ],
+        bullets: [
+          "What it must do: schedule one-off and recurring jobs, run near their due time, survive worker crashes, support cancel/reschedule and status queries.",
+          "How well: millions of jobs/day, at-least-once execution made idempotent, horizontally scalable dispatch.",
+        ],
+      },
+      {
+        heading: "2. Store jobs by due time",
+        body: [
+          "Persist each job with a next_run_at timestamp and an index on it. The scheduler never scans everything — it asks for 'jobs due in the next minute', a cheap indexed range query.",
+        ],
+        code: "jobs: id | payload | next_run_at | status | schedule(cron?) | attempts | lock_until",
+      },
+      {
+        heading: "3. Don't dispatch the same job twice",
+        body: [
+          "If several scheduler instances run for availability, they must not all enqueue the same job. Two common ways to coordinate:",
+        ],
+        table: {
+          headers: ["Approach", "How it works"],
+          rows: [
+            ["Leader election", "One instance is leader (via coordination service) and does the scanning"],
+            ["Sharded + atomic claim", "Partition time buckets across instances; claim a job with a compare-and-set on its status"],
+          ],
+        },
+        callouts: [
+          {
+            kind: "note",
+            text: "Compare-and-set (CAS) = update a row only if it's still in the state you expect (e.g. status='pending'). If two workers race, only one's update succeeds — the other knows it lost.",
+          },
+        ],
+      },
+      {
+        heading: "4. Decouple dispatch from execution",
+        body: [
+          "The scheduler should be lightweight: when a job is due it just drops it on a message queue. A separate pool of stateless workers consumes the queue and runs the actual work, so you scale execution independently of scheduling.",
+        ],
+      },
+      {
+        heading: "5. Surviving worker crashes",
+        bullets: [
+          "When a worker pulls a job it gets a visibility timeout: the message is hidden, not deleted.",
+          "If the worker finishes, it acks and the message is removed.",
+          "If it crashes (no ack before the timeout), the message becomes visible again and another worker picks it up.",
+          "Repeated failures go to a dead-letter queue for inspection, with exponential backoff between retries.",
+        ],
+        callouts: [
+          {
+            kind: "warning",
+            text: "Because jobs can run more than once (a crash after the work but before the ack), make the work idempotent — use an idempotency key so re-running has no extra effect.",
+          },
+        ],
+      },
+      {
+        heading: "6. Recurring jobs and trade-offs",
+        body: [
+          "For a cron job, when it completes, compute the next fire time from its schedule and write a fresh next_run_at — recurrence is just 'reschedule on completion'. Tight due-time accuracy means scanning more often (more load); looser accuracy means cheaper scans.",
+        ],
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: jobs stored by due time, a leader-elected dispatcher enqueues them, stateless workers run them with visibility timeouts, idempotency keys make retries safe.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "ad-click-aggregator": {
+    summary:
+      "Counting ad clicks at billions/day means two different needs from one firehose: advertisers want near-real-time dashboards, and billing wants exact numbers. The lambda architecture serves both — capture every click to a durable log, run a fast streaming path for approximate live counts, and a slower batch path that reprocesses the raw events for accuracy, with the batch results reconciling the streaming ones.",
+    componentNotes: {
+      dns: "Resolves the ingestion endpoint.",
+      "load-balancer": "Spreads the click firehose across ingestion servers.",
+      "app-server": "Validates each click and writes it to the log — does almost nothing else.",
+      monitoring: "Tracks ingestion lag, drop rate, and processing health.",
+      "message-queue": "Durable partitioned log (Kafka) — absorbs bursts, feeds both paths.",
+      "stream-processor": "Speed layer (Flink) — maintains rolling, approximate counts.",
+      "object-storage": "Data lake of raw events for replay and batch recomputation.",
+      "data-warehouse": "Batch layer — recomputes exact aggregates from raw events.",
+      "nosql-db": "Serves aggregates to dashboards (streaming for recent, batch for historical).",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Clicks arrive in enormous, bursty volume; some are duplicates or fraud. Advertisers need 'how's my campaign right now?' (fresh, approximate is fine) and, separately, billing-grade totals (exact, can lag). One pipeline must satisfy both.",
+        ],
+        bullets: [
+          "What it must do: ingest without dropping, show live counts, produce exact billing totals, dedupe/fraud-filter, aggregate by campaign/ad/region/device/time.",
+          "How well: 1M+ events/sec with bursts, dashboards within seconds, billing exact, raw events retained for replay.",
+        ],
+      },
+      {
+        heading: "2. Capture first, process later",
+        body: [
+          "The single most important move: the ingestion service should do almost nothing but validate a click and append it to a durable, partitioned log. This absorbs bursts and decouples the firehose from all downstream processing.",
+        ],
+        callouts: [
+          {
+            kind: "warning",
+            text: "Common mistake: aggregating inside the ingestion request. A traffic spike then overwhelms your counters and you drop clicks. Append to the log and aggregate asynchronously.",
+          },
+        ],
+      },
+      {
+        heading: "3. Two paths from one log (lambda architecture)",
+        table: {
+          headers: ["Layer", "Speed (streaming)", "Batch"],
+          rows: [
+            ["Reads from", "The log, continuously", "Raw events in the data lake"],
+            ["Produces", "Approximate counts, seconds fresh", "Exact counts, minutes/hours later"],
+            ["Used for", "Live dashboards", "Billing and corrections"],
+          ],
+        },
+        body: ["The same events land in object storage so the batch job can recompute totals from the source of truth."],
+        callouts: [
+          {
+            kind: "note",
+            text: "Lambda architecture = run a fast-but-approximate streaming layer and a slow-but-exact batch layer in parallel, then let the batch results correct the streaming ones.",
+          },
+        ],
+      },
+      {
+        heading: "4. Idempotent counting",
+        body: [
+          "Network retries mean the same click can arrive more than once. Attach a unique click ID at the source and dedupe in the stream processor (e.g. a set over a time window) so you don't double-count.",
+        ],
+      },
+      {
+        heading: "5. Aggregation and serving",
+        body: [
+          "Aggregate along many dimensions and time buckets (per-minute, per-hour). Store results keyed by (campaign, dimension, time-bucket) so dashboards do fast lookups, not scans. Serve recent buckets from the streaming results and closed buckets from the batch results.",
+        ],
+        code: "key:   campaign:123|region:US|minute:2026-06-18T10:05\nvalue: { clicks, unique_users, spend }",
+      },
+      {
+        heading: "6. Reconciliation and trade-offs",
+        body: [
+          "For a time window that's still open, show streaming numbers; once the batch job finalizes that window, overwrite with exact numbers. Dashboards are thus both fresh and eventually correct.",
+        ],
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: append clicks to a durable log, count them fast for dashboards and exactly in batch for billing, dedupe by click ID, reconcile batch over streaming.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "key-value-store": {
+    summary:
+      "A Dynamo-style key-value store stays writable through failures and scales by adding machines. Two ideas carry the whole design: consistent hashing spreads keys evenly across a ring so adding a node moves minimal data, and quorum replication (write to W, read from R of N replicas) lets you dial the trade-off between consistency, availability, and latency. There's no master — any node can coordinate a request.",
+    componentNotes: {
+      dns: "Resolves the cluster endpoint for clients.",
+      "load-balancer": "Routes a request to any node, which acts as its coordinator.",
+      "app-server": "Coordinator: hashes the key, talks to the replica nodes, enforces the quorum.",
+      "coordination-service": "Tracks ring membership and detects node failures (often via gossip, shown here as a service).",
+      "config-service": "Holds the partition map / ring metadata nodes share.",
+      cache: "Optional read cache for hot keys.",
+      "nosql-db": "The storage nodes that hold replicated key ranges.",
+      monitoring: "Watches replica lag, quorum failures, and node health.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Store and fetch values by key, fast, at huge scale, and stay available for writes during node failures and network partitions. This is the canonical CAP trade-off problem: Dynamo chooses availability (AP), accepting that replicas can be briefly inconsistent.",
+        ],
+        bullets: [
+          "What it must do: get/put by key; scale by adding nodes; no single point of failure.",
+          "How well: single-digit-ms reads/writes, write-available under partitions, even load, tunable consistency.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "CAP theorem: during a network partition you can keep either Consistency or Availability, not both. Dynamo-style stores pick Availability (AP) and reconcile later.",
+          },
+        ],
+      },
+      {
+        heading: "2. Partitioning: consistent hashing",
+        body: [
+          "Place both nodes and keys on a hash ring. A key belongs to the first node clockwise from its hash. Adding or removing a node only reshuffles the keys in its arc — not the whole dataset, which a plain hash-mod-N would.",
+        ],
+        callouts: [
+          {
+            kind: "tip",
+            text: "Virtual nodes: give each physical node many points on the ring. This evens out load and means a failed node's work spreads across many peers, not one unlucky neighbor.",
+          },
+        ],
+      },
+      {
+        heading: "3. Replication",
+        body: [
+          "Store each key on the next N nodes around the ring (the 'preference list'). Any node can receive the request and act as coordinator — it forwards to the replicas. No special primary means no single point of failure.",
+        ],
+      },
+      {
+        heading: "4. Tunable consistency with quorums",
+        body: ["With N replicas, require W acknowledgements to write and R responses to read."],
+        code: "R + W > N   →  read and write sets overlap → you read your writes\nW = N       →  strong writes, but a single down replica blocks writes\nW = 1, R = 1 →  fastest & most available, weakest consistency",
+        table: {
+          headers: ["Goal", "Setting"],
+          rows: [
+            ["Strong-ish consistency", "R + W > N (e.g. N=3, R=2, W=2)"],
+            ["Max availability/latency", "Low R and W (e.g. R=1, W=1)"],
+            ["Read-heavy", "Low R, higher W"],
+          ],
+        },
+      },
+      {
+        heading: "5. Failures: hinted handoff and repair",
+        bullets: [
+          "Hinted handoff: if a replica is down, another node temporarily accepts the write and hands it off when the replica returns — writes stay available.",
+          "Anti-entropy: nodes compare data with Merkle trees and sync only the differences to repair divergence in the background.",
+          "Conflicts from concurrent writes are detected with version vectors and resolved (last-write-wins or app-level merge).",
+        ],
+        callouts: [
+          {
+            kind: "warning",
+            text: "Eventual consistency means a read right after a write might return a stale value. Choose R + W > N if your use case can't tolerate that.",
+          },
+        ],
+      },
+      {
+        heading: "6. Membership and trade-offs",
+        body: [
+          "Nodes learn who's in the ring and who's down via a gossip protocol — decentralized, no central registry to fail. The big trade-off throughout is consistency vs. availability/latency, tuned per-request with R and W.",
+        ],
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: consistent hashing with virtual nodes to partition, N replicas with tunable R/W quorums, gossip membership, hinted handoff and Merkle repair for failures.",
+          },
+        ],
+      },
+    ],
+  },
+
+  pastebin: {
+    summary:
+      "Pastebin is a URL shortener whose value is a whole blob of text, not a tiny URL. That one difference drives the design: keep small metadata (key, expiry, owner) in a fast database, but store the actual paste body in object storage so big content doesn't bloat the database. Like all link services it's read-heavy, so a cache fronts the reads.",
+    componentNotes: {
+      dns: "Resolves the domain for every request.",
+      "load-balancer": "Spreads traffic across stateless app servers.",
+      "app-server": "Creates pastes, mints keys, and resolves reads.",
+      cache: "Holds popular pastes in memory so hot reads skip storage.",
+      "object-storage": "Stores the paste bodies (arbitrary, possibly large content).",
+      "nosql-db": "Stores small metadata: key → blob pointer, expiry, owner.",
+      monitoring: "Tracks latency and storage growth.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Users submit a block of text and get a short link others open to read it. Writes are rare, reads are common, and entries usually expire. The defining question versus a URL shortener: where does the (potentially large) content live?",
+        ],
+        bullets: [
+          "What it must do: create a paste, return a short key, serve it back, support TTL and unlisted/private pastes.",
+          "How well: read-heavy, fast reads, large pastes allowed, abuse-resistant.",
+        ],
+      },
+      {
+        heading: "2. Split content from metadata",
+        body: [
+          "Databases are poor at storing big blobs — they bloat rows, caches, and backups. Keep only metadata in the database and put the paste body in object storage; the metadata row just points at the blob.",
+        ],
+        code: "metadata (DB):  key | blob_url | owner | created_at | expires_at | visibility\nbody (object storage):  the actual paste text, addressed by key",
+        callouts: [
+          {
+            kind: "warning",
+            text: "Common mistake: storing multi-MB paste bodies directly in the database. It works at first, then wrecks query latency and backup size. Blobs belong in object storage.",
+          },
+        ],
+      },
+      {
+        heading: "3. API and key generation",
+        code: "POST /api/paste { content, ttl?, visibility? } → { key, url }\nGET  /{key}                                    → the paste",
+        body: [
+          "Mint the short key the same way a URL shortener does: base62 over a counter, or a random unused key from a small pool. Unlisted pastes simply use an unguessable key and aren't indexed.",
+        ],
+      },
+      {
+        heading: "4. The read path",
+        body: [
+          "A read checks the cache first; on a miss it fetches metadata, then the body from object storage, and populates the cache. With reads dominating, a warm cache serves most requests cheaply.",
+        ],
+      },
+      {
+        heading: "5. Expiry and cleanup",
+        body: [
+          "Set a TTL on the metadata so expired pastes stop resolving immediately. A background job then deletes the corresponding blobs from object storage so storage doesn't grow forever.",
+        ],
+      },
+      {
+        heading: "6. Trade-offs",
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: metadata in a fast DB, bodies in object storage, cache-first reads, TTL plus a cleanup job for expiry.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "image-hosting": {
+    summary:
+      "An image host is the gentle introduction to serving media: store the big binary files in object storage (never the database), keep only metadata in the database, and serve the bytes through a CDN so they come from a server near the viewer. Uploads are rare, views are everywhere, so the CDN is what makes it fast and cheap.",
+    componentNotes: {
+      dns: "Resolves both the API and the CDN hostnames.",
+      cdn: "Caches images at edge locations near users; serves most view traffic.",
+      "load-balancer": "Spreads upload/API traffic across app servers.",
+      "app-server": "Handles uploads, validation, and metadata; issues image URLs.",
+      cache: "Caches hot metadata lookups.",
+      "object-storage": "Stores the image bytes; acts as the CDN's origin.",
+      "nosql-db": "Stores metadata: id, owner, size, dimensions, URL.",
+      monitoring: "Tracks CDN hit rate, upload errors, and latency.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Users upload images and get links that load fast worldwide. This is the foundational media pattern behind Instagram, product photos, and avatars. Two ideas do the heavy lifting: object storage for the files and a CDN for delivery.",
+        ],
+        bullets: [
+          "What it must do: upload images, serve them by stable URL, make thumbnails, validate uploads.",
+          "How well: reads ≫ uploads, fast globally, large files allowed.",
+        ],
+      },
+      {
+        heading: "2. Don't put blobs in the database",
+        body: [
+          "Image bytes go in object storage; the database holds only metadata pointing at them. Databases are expensive and slow for large binaries.",
+        ],
+        code: "metadata (DB): id | owner | object_key | size | width | height | created_at\nbytes (object storage): the image file + generated thumbnails",
+      },
+      {
+        heading: "3. Serve through a CDN",
+        body: [
+          "Put a CDN in front of object storage. The first request for an image fetches from the origin and caches it at the edge; everyone after that is served locally, close to the user. The origin only sees cache misses.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "Origin = the source of truth the CDN pulls from on a cache miss (here, object storage). Edge = the CDN's many local servers that cache copies near users.",
+          },
+        ],
+      },
+      {
+        heading: "4. Thumbnails",
+        body: [
+          "After an upload, generate resized versions asynchronously (via a worker) so feeds and previews load small images instead of full-resolution originals. Store the variants alongside the original.",
+        ],
+      },
+      {
+        heading: "5. Faster uploads with pre-signed URLs",
+        body: [
+          "For big files, hand the client a pre-signed URL so it uploads straight to object storage, bypassing your app servers for the heavy byte transfer. The app server only records metadata.",
+        ],
+        callouts: [
+          {
+            kind: "warning",
+            text: "Always validate type and size and rate-limit uploads. Pre-signed URLs should be short-lived and scoped to a single object key.",
+          },
+        ],
+      },
+      {
+        heading: "6. Trade-offs",
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: bytes in object storage, metadata in a DB, delivery via CDN, async thumbnails, pre-signed direct uploads.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "view-counter": {
+    summary:
+      "Counting views or likes looks trivial until one item goes viral and a single database row gets tens of thousands of writes per second. The fixes are write-heavy classics: shard one logical counter into many rows that you sum on read, and buffer increments through a queue so a burst becomes batched updates. Counts can be eventually consistent — a small display lag is fine.",
+    componentNotes: {
+      dns: "Resolves the service endpoint.",
+      "load-balancer": "Spreads read/increment traffic across app servers.",
+      "app-server": "Accepts increments and serves current counts.",
+      "sharded-counter": "Splits a hot count across many shards to avoid a single write hot spot.",
+      "message-queue": "Buffers increments so spikes become steady batched writes.",
+      cache: "Serves the current total cheaply for the many read requests.",
+      "nosql-db": "Durably persists the counts.",
+      monitoring: "Tracks write throughput and lag.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Increment a number per item and read it back, across billions of events/day with extreme skew — one viral item can dwarf everything else. The numbers don't need to be exact to the millisecond, which is the freedom that makes this solvable.",
+        ],
+        bullets: [
+          "What it must do: count views/likes/shares per item, read the current total fast.",
+          "How well: handle huge bursts on one hot item, never lose increments, reads cheap.",
+        ],
+      },
+      {
+        heading: "2. Why one row breaks",
+        body: [
+          "Every increment to the same row contends on the same lock/record, serializing updates. A viral item's writes pile up and the row becomes a hot spot that no single machine can keep up with.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "Hot spot = one key/row/partition receiving a disproportionate share of traffic, so the rest of the cluster sits idle while that one piece melts.",
+          },
+        ],
+      },
+      {
+        heading: "3. Fix #1: shard the counter",
+        body: ["Split one logical counter into K shard rows. Each increment hits a random shard; a read sums the shards."],
+        code: "increment: shard = rand(0..K-1);  counter[item][shard] += 1\nread:      total = sum(counter[item][0..K-1])",
+      },
+      {
+        heading: "4. Fix #2: buffer the writes",
+        body: [
+          "Send increments to a queue and aggregate them, so a burst of single +1s becomes occasional batched '+1500' updates to the store. This smooths write load dramatically.",
+        ],
+      },
+      {
+        heading: "5. Make reads cheap",
+        body: [
+          "Most reads just want the current total. Serve it from a cache refreshed periodically (or updated as batches land) instead of summing shards on every request.",
+        ],
+      },
+      {
+        heading: "6. Trade-offs and extreme scale",
+        table: {
+          headers: ["Need", "Technique"],
+          rows: [
+            ["Exact counts", "Sharded counters + durable store, summed on read"],
+            ["Unique views (dedupe)", "Track seen users; at huge scale use HyperLogLog for approximate uniques"],
+            ["No double-count on retry", "Attach a request/event ID and dedupe where it matters"],
+          ],
+        },
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: shard the hot counter, buffer increments through a queue, serve reads from cache, accept eventual consistency.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "todo-app": {
+    summary:
+      "A notes/to-do app is the cleanest example of the standard web stack: a load balancer in front of stateless app servers, an auth service to verify who's calling, a database for per-user data, and a cache for speed. There's no exotic trick here — the lesson is how the everyday pieces fit and why keeping app servers stateless is what lets you scale.",
+    componentNotes: {
+      dns: "Resolves the domain for clients.",
+      "load-balancer": "Distributes requests across the app servers.",
+      "app-server": "Stateless CRUD logic; any instance can serve any request.",
+      "auth-service": "Verifies the user (token/session) so requests only touch that user's data.",
+      cache: "Caches a user's recent notes and sessions for snappy loads.",
+      "sql-db": "Stores notes with an index on user_id; add read replicas as reads grow.",
+      monitoring: "Tracks latency, errors, and database load.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Signed-in users create, edit, and organize their own notes. The scale is modest, so the focus is correct structure and a clean read/write path — exactly the fundamentals every larger system builds on.",
+        ],
+        bullets: [
+          "What it must do: per-user CRUD on notes, with auth so users see only their own data.",
+          "How well: instant-feeling edits, durable data, scale with the user base.",
+        ],
+      },
+      {
+        heading: "2. The classic stateless stack",
+        body: [
+          "Clients → load balancer → stateless app servers → database. Keeping app servers stateless (no per-user data in their memory) is the key move: any server can handle any request, so you add or remove servers freely behind the load balancer.",
+        ],
+        callouts: [
+          {
+            kind: "warning",
+            text: "Common mistake: storing sessions or note data in an app server's memory. The next request may hit a different server and lose it. Keep state in the database/cache, not the server.",
+          },
+        ],
+      },
+      {
+        heading: "3. Authenticate every request",
+        body: [
+          "An auth service verifies identity (typically a token) on each request, and the app enforces that a user can only read/write their own notes. Identity travels in the token, not in server memory.",
+        ],
+      },
+      {
+        heading: "4. Data model",
+        body: ["Notes have clear structure and per-user ownership — a relational table fits naturally."],
+        code: "users: id | email | created_at\nnotes: id | user_id (indexed) | title | body | updated_at | done",
+      },
+      {
+        heading: "5. API design",
+        code: "GET    /api/notes          → list my notes\nPOST   /api/notes          → create\nPUT    /api/notes/{id}     → update\nDELETE /api/notes/{id}     → delete",
+      },
+      {
+        heading: "6. Scaling and trade-offs",
+        bullets: [
+          "Cache a user's recent notes so loads feel instant; invalidate on write.",
+          "As reads grow, add read replicas of the database; writes still go to the primary.",
+          "If you later support offline edits across devices, add a sync protocol (last-write-wins, or per-field merge for fewer conflicts).",
+        ],
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: load-balanced stateless app servers, token auth, a relational DB indexed by user, and a cache — the foundation everything else extends.",
+          },
+        ],
+      },
+    ],
+  },
+
 };
 
 export function getEditorial(id: string): Editorial | undefined {
