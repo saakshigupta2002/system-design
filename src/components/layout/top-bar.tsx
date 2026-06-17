@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Play,
-  Trophy,
   ChevronDown,
   Zap,
   PanelLeft,
@@ -18,7 +17,6 @@ import {
   FolderOpen,
   StickyNote,
   GraduationCap,
-  Plus,
   MoreHorizontal,
   Keyboard,
   LayoutGrid,
@@ -39,20 +37,17 @@ import { createShareLink } from "@/lib/shareDesign";
 
 interface TopBarProps {
   onSimulate: () => void;
-  onScore: () => void;
   onClearCanvas: () => void;
   onSave: () => void;
   onLoad: () => void;
   onStartInterview: () => void;
-  onCreateProblem: () => void;
   onOpenShortcuts: () => void;
   onToggleAI: () => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
 }
 
-export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onStartInterview, onCreateProblem, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+export function TopBar({ onSimulate, onClearCanvas, onSave, onLoad, onStartInterview, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const { getViewport, fitView } = useReactFlow();
@@ -80,7 +75,6 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
   }, []);
 
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
-  const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
   const theme = useAppStore((s) => s.theme);
   const toggleTheme = useAppStore((s) => s.toggleTheme);
 
@@ -181,84 +175,6 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
         </div>
 
         <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
-
-        {/* Problem selector */}
-        <div className="relative min-w-0 flex-shrink">
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex min-w-0 items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100"
-          >
-            <span className="max-w-[120px] truncate md:max-w-[160px] lg:max-w-[240px]">
-              {currentProblem?.title ?? "Select Problem"}
-            </span>
-            <ChevronDown className="h-3 w-3 shrink-0 text-zinc-500" />
-          </button>
-
-          {dropdownOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setDropdownOpen(false)}
-              />
-              <div className="absolute left-0 top-full z-50 mt-1 max-h-80 w-56 overflow-y-auto rounded-md border border-zinc-700 bg-zinc-800 py-1 shadow-lg">
-                {/* Create custom problem */}
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    onCreateProblem();
-                  }}
-                  className="flex w-full items-center gap-1.5 border-b border-zinc-700 px-3 py-1.5 text-left text-xs font-medium text-violet-400 transition-colors hover:bg-zinc-700"
-                >
-                  <Plus className="h-3 w-3" />
-                  Create Custom Problem
-                </button>
-
-                {/* Custom problems */}
-                {customProblems.map((problem) => (
-                  <button
-                    key={problem.id}
-                    onClick={() => {
-                      setSelectedProblem(problem.id);
-                      setDropdownOpen(false);
-                    }}
-                    className={`flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-xs transition-colors hover:bg-zinc-700 ${
-                      problem.id === selectedProblemId
-                        ? "text-cyan-500"
-                        : "text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    <span className="flex-1 truncate">{problem.title}</span>
-                    <span className="shrink-0 rounded bg-violet-500/10 px-1 py-0.5 text-[9px] font-medium text-violet-400">
-                      Custom
-                    </span>
-                  </button>
-                ))}
-
-                {customProblems.length > 0 && (
-                  <div className="my-0.5 h-px bg-zinc-700" />
-                )}
-
-                {/* Predefined problems */}
-                {PROBLEMS.map((problem) => (
-                  <button
-                    key={problem.id}
-                    onClick={() => {
-                      setSelectedProblem(problem.id);
-                      setDropdownOpen(false);
-                    }}
-                    className={`flex w-full items-center px-3 py-1.5 text-left text-xs transition-colors hover:bg-zinc-700 ${
-                      problem.id === selectedProblemId
-                        ? "text-cyan-500"
-                        : "text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    {problem.title}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
 
         {selectedProblemId && !selectedProblemId.startsWith("custom-") && (
           <button
@@ -520,15 +436,6 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
         >
           <Play className="h-3 w-3" />
           Simulate
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onScore}
-          className="h-7 gap-1.5 border border-zinc-700 bg-transparent px-2.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 sm:px-3"
-        >
-          <Trophy className="h-3 w-3" />
-          <span className="hidden sm:inline">Score</span>
         </Button>
 
         {/* Divider before utility controls */}

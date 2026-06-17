@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Trophy } from "lucide-react";
+import { CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Trophy, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useScoreHistoryStore } from "@/store/scoreHistoryStore";
@@ -227,7 +227,7 @@ function verdictBgClass(verdictColor: string): string {
   return VERDICT_BG[verdictColor] ?? "bg-zinc-500/5";
 }
 
-export function ScoreReport() {
+export function ScoreReport({ onScore }: { onScore?: () => void }) {
   const scoreResult = useSimulationStore((s) => s.scoreResult);
 
   if (!scoreResult) {
@@ -239,9 +239,18 @@ export function ScoreReport() {
         <div>
           <p className="text-xs font-medium text-zinc-300">Ready to evaluate</p>
           <p className="mt-1 max-w-[220px] text-xs text-zinc-500">
-            Design your system on the canvas, then click <span className="text-cyan-500">Score</span> to see how you did
+            Design your system on the canvas, then score it to see how you did
           </p>
         </div>
+        {onScore && (
+          <button
+            onClick={onScore}
+            className="mt-1 flex items-center gap-1.5 rounded-md bg-cyan-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-cyan-500"
+          >
+            <Trophy className="h-3.5 w-3.5" />
+            Score my design
+          </button>
+        )}
       </div>
     );
   }
@@ -339,6 +348,16 @@ export function ScoreReport() {
         )}
 
         <ScoreHistory />
+
+        {onScore && (
+          <button
+            onClick={onScore}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Re-score design
+          </button>
+        )}
       </div>
     </ScrollArea>
   );

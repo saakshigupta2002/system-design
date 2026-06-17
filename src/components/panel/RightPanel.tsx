@@ -26,10 +26,11 @@ import { InterviewPhasePanel } from "@/components/interview/InterviewPhasePanel"
 interface RightPanelProps {
   open?: boolean;
   onSimulate: () => void;
+  onScore: () => void;
   variant?: "desktop" | "mobile";
 }
 
-function RightTabs({ onSimulate }: { onSimulate: () => void }) {
+function RightTabs({ onSimulate, onScore }: { onSimulate: () => void; onScore: () => void }) {
   const activeRightTab = useAppStore((s) => s.activeRightTab);
   const setActiveRightTab = useAppStore((s) => s.setActiveRightTab);
 
@@ -65,7 +66,7 @@ function RightTabs({ onSimulate }: { onSimulate: () => void }) {
 
       <TabsContent value="score" className="mt-0 flex-1 overflow-hidden">
         <div className="h-full p-3">
-          <ScoreReport />
+          <ScoreReport onScore={onScore} />
         </div>
       </TabsContent>
 
@@ -90,7 +91,7 @@ function RightTabs({ onSimulate }: { onSimulate: () => void }) {
   );
 }
 
-export function RightPanel({ open = true, onSimulate, variant = "desktop" }: RightPanelProps) {
+export function RightPanel({ open = true, onSimulate, onScore, variant = "desktop" }: RightPanelProps) {
   const interviewMode = useInterviewStore((s) => s.mode);
   const currentPhase = useInterviewStore((s) => s.currentPhase);
   const phases = useInterviewStore((s) => s.phases);
@@ -107,7 +108,7 @@ export function RightPanel({ open = true, onSimulate, variant = "desktop" }: Rig
   if (variant === "mobile") {
     return (
       <div className="flex h-full w-full flex-col bg-zinc-900">
-        {showInterviewPhasePanel ? <InterviewPhasePanel /> : <RightTabs onSimulate={onSimulate} />}
+        {showInterviewPhasePanel ? <InterviewPhasePanel /> : <RightTabs onSimulate={onSimulate} onScore={onScore} />}
       </div>
     );
   }
@@ -125,7 +126,7 @@ export function RightPanel({ open = true, onSimulate, variant = "desktop" }: Rig
         <InterviewPhasePanel />
       ) : (
         <div className="flex flex-1 flex-col min-h-0" style={{ width }}>
-          <RightTabs onSimulate={onSimulate} />
+          <RightTabs onSimulate={onSimulate} onScore={onScore} />
         </div>
       )}
       {open && (

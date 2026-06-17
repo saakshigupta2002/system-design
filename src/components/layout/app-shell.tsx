@@ -322,12 +322,10 @@ export function AppShell() {
         {interviewMode === "interview" && <InterviewBar />}
         <TopBar
           onSimulate={handleSimulate}
-          onScore={handleScore}
           onClearCanvas={() => setClearConfirmOpen(true)}
           onSave={handleSave}
           onLoad={handleLoad}
           onStartInterview={() => setInterviewDialogOpen(true)}
-          onCreateProblem={() => setCreateProblemDialogOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
           onToggleAI={() => setAiOpen((v) => !v)}
           onToggleLeft={handleToggleLeft}
@@ -361,7 +359,7 @@ export function AppShell() {
           />
 
           {/* Desktop inline right panel (hidden on mobile) */}
-          <RightPanel open={rightPanelOpen} onSimulate={handleSimulate} variant="desktop" />
+          <RightPanel open={rightPanelOpen} onSimulate={handleSimulate} onScore={handleScore} variant="desktop" />
 
           {/* Mobile: sidebar drawer from left */}
           {isMobile && (
@@ -452,7 +450,7 @@ export function AppShell() {
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 pb-[env(safe-area-inset-bottom)]">
-                  <RightPanel onSimulate={handleSimulate} variant="mobile" />
+                  <RightPanel onSimulate={handleSimulate} onScore={handleScore} variant="mobile" />
                 </div>
               </div>
             </>
