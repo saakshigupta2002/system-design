@@ -8,7 +8,7 @@ export const LEARNING_PATH: LearningTier[] = [
   {
     name: "Foundations",
     description: "Master the basic building blocks",
-    problemIds: ["url-shortener", "rate-limiter", "parking-lot"],
+    problemIds: ["url-shortener", "rate-limiter", "parking-lot", "id-generator-service"],
   },
   {
     name: "Intermediate",
@@ -24,6 +24,7 @@ export const LEARNING_PATH: LearningTier[] = [
       "reddit",
       "code-editor",
       "cicd-pipeline",
+      "leaderboard",
     ],
   },
   {
@@ -40,6 +41,7 @@ export const LEARNING_PATH: LearningTier[] = [
       "airbnb",
       "food-delivery",
       "zoom",
+      "job-scheduler",
     ],
   },
   {
@@ -58,6 +60,8 @@ export const LEARNING_PATH: LearningTier[] = [
       "tiktok",
       "digital-wallet",
       "message-queue-design",
+      "ad-click-aggregator",
+      "key-value-store",
     ],
   },
 ];
@@ -243,5 +247,30 @@ export const PROBLEM_CONCEPTS: ConceptPrerequisite[] = [
     problemId: "message-queue-design",
     concepts: ["append-only-log", "partitioning", "consumer-offsets"],
     prerequisites: ["replication", "consistent-hashing", "message-queue"],
+  },
+  {
+    problemId: "id-generator-service",
+    concepts: ["snowflake-id", "coordination", "clock-skew"],
+    prerequisites: ["hashing"],
+  },
+  {
+    problemId: "leaderboard",
+    concepts: ["sorted-set", "ranking", "real-time-aggregation"],
+    prerequisites: ["caching", "async-processing"],
+  },
+  {
+    problemId: "job-scheduler",
+    concepts: ["leader-election", "visibility-timeout", "at-least-once"],
+    prerequisites: ["message-queue", "distributed-locking", "async-processing"],
+  },
+  {
+    problemId: "ad-click-aggregator",
+    concepts: ["lambda-architecture", "stream-processing", "idempotency"],
+    prerequisites: ["message-queue", "stream-processing", "idempotency"],
+  },
+  {
+    problemId: "key-value-store",
+    concepts: ["consistent-hashing", "quorum", "gossip-membership"],
+    prerequisites: ["consistent-hashing", "replication", "hashing"],
   },
 ];

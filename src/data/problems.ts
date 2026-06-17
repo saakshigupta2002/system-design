@@ -2554,6 +2554,337 @@ export const PROBLEMS: Problem[] = [
     },
     tags: ["Pipeline", "Deployment", "Orchestration", "Caching"],
   },
+  {
+    id: "id-generator-service",
+    title: "Distributed Unique ID Generator",
+    difficulty: "Easy",
+    description:
+      "Design a service that generates unique, roughly time-ordered 64-bit IDs across many machines — the kind of system Twitter built with Snowflake. Every order, message, and event in a large system needs a unique identifier, and a single database auto-increment column can't keep up or survive a failover cleanly. The challenge is producing billions of collision-free IDs per day from independent nodes with no coordination on the hot path, while keeping them sortable by creation time.",
+    requirements: {
+      readsPerSec: 0,
+      writesPerSec: 1000000,
+      storageGB: 1,
+      latencyMs: 10,
+      users: "Internal platform service",
+    },
+    constraints: [
+      "IDs must be globally unique with zero collisions, even across data centers",
+      "IDs should be roughly sortable by creation time (k-sorted) for efficient indexing",
+      "Generation must be fast (< 1ms) and not require a network call per ID",
+      "The service must keep working if the coordination service is briefly unavailable",
+      "Handle clock skew and NTP clock-rewind without producing duplicate IDs",
+      "Fit in 64 bits so IDs stay compact as database keys and in URLs",
+    ],
+    hints: [
+      {
+        title: "Why not a database sequence?",
+        content:
+          "A single auto-increment is a bottleneck and a single point of failure. UUIDv4 is unique but random — it's 128 bits and destroys index locality. The goal is unique AND time-sortable AND compact.",
+      },
+      {
+        title: "The Snowflake layout",
+        content:
+          "Pack a 64-bit integer as: timestamp (41 bits, ms since a custom epoch) + machine/worker ID (10 bits) + per-ms sequence counter (12 bits). Each node generates locally with no coordination per request.",
+      },
+      {
+        title: "Assigning worker IDs",
+        content:
+          "Each node needs a unique worker ID at startup. Use a coordination service (ZooKeeper/etcd) to hand out and lease worker IDs so two nodes never share one.",
+      },
+      {
+        title: "Advanced: Clock safety",
+        content:
+          "If the wall clock moves backwards (NTP correction), refuse to issue IDs until time catches up, or borrow from the sequence bits. Monitor clock drift across nodes and alert before it causes problems.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 100, y: 280 },
+        { componentId: "load-balancer", x: 300, y: 280 },
+        { componentId: "id-generator", x: 520, y: 280 },
+        { componentId: "coordination-service", x: 760, y: 150 },
+        { componentId: "config-service", x: 760, y: 280 },
+        { componentId: "monitoring", x: 760, y: 410 },
+      ],
+      edges: [
+        { source: "dns", target: "load-balancer" },
+        { source: "load-balancer", target: "id-generator" },
+        { source: "id-generator", target: "coordination-service" },
+        { source: "id-generator", target: "config-service" },
+        { source: "id-generator", target: "monitoring" },
+      ],
+    },
+    tags: ["Hashing", "Coordination", "Write-Heavy", "Distributed"],
+  },
+  {
+    id: "leaderboard",
+    title: "Gaming Leaderboard",
+    difficulty: "Medium",
+    description:
+      "Design a real-time leaderboard for a game with tens of millions of players, like the ranking systems behind mobile games or competitive ladders. Players' scores change constantly, and the system must answer two questions fast: 'what is the global top 100?' and 'what is my rank and the players right around me?'. The hard part is computing a player's rank cheaply when scores update thousands of times per second — a naive COUNT query over millions of rows is far too slow.",
+    requirements: {
+      readsPerSec: 500000,
+      writesPerSec: 100000,
+      storageGB: 200,
+      latencyMs: 100,
+      users: "50M players",
+    },
+    constraints: [
+      "Return the global top-N and a player's rank in < 100ms",
+      "Support 'rank window' queries — the N players just above and below a given player",
+      "Scores update in real time; a player's rank should reflect updates within seconds",
+      "Handle write bursts during peak play and tournament finishes",
+      "Support multiple leaderboards (daily, weekly, all-time, per-region)",
+      "Durable scores — a cache restart must not lose player progress",
+    ],
+    hints: [
+      {
+        title: "The right data structure",
+        content:
+          "A Redis Sorted Set (ZSET) keeps members ordered by score and gives O(log N) rank and range queries. ZADD to update a score, ZREVRANK for rank, ZREVRANGE for top-N — this is the core of the design.",
+      },
+      {
+        title: "Decouple writes",
+        content:
+          "Funnel score updates through a queue so write bursts don't overwhelm the store. A stream processor applies them to the sorted set and persists them durably.",
+      },
+      {
+        title: "Durability behind the cache",
+        content:
+          "The sorted set is the fast serving layer, but persist authoritative scores in a database. You can rebuild the leaderboard from the DB if the cache is lost.",
+      },
+      {
+        title: "Advanced: Sharding huge boards",
+        content:
+          "For hundreds of millions of entries, shard the sorted set by score range across nodes and merge results, or keep approximate ranks using bucketed counters for the long tail where exact rank doesn't matter.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 100, y: 280 },
+        { componentId: "load-balancer", x: 300, y: 280 },
+        { componentId: "app-server", x: 500, y: 280 },
+        { componentId: "cache", x: 500, y: 130 },
+        { componentId: "monitoring", x: 720, y: 130 },
+        { componentId: "message-queue", x: 500, y: 430 },
+        { componentId: "stream-processor", x: 720, y: 430 },
+        { componentId: "nosql-db", x: 940, y: 360 },
+      ],
+      edges: [
+        { source: "dns", target: "load-balancer" },
+        { source: "load-balancer", target: "app-server" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "message-queue" },
+        { source: "app-server", target: "monitoring" },
+        { source: "message-queue", target: "stream-processor" },
+        { source: "stream-processor", target: "cache" },
+        { source: "stream-processor", target: "nosql-db" },
+      ],
+    },
+    tags: ["Caching", "Ranking", "Real-Time", "Write-Heavy"],
+  },
+  {
+    id: "job-scheduler",
+    title: "Distributed Job Scheduler",
+    difficulty: "Medium",
+    description:
+      "Design a system that runs millions of scheduled and recurring jobs reliably — think cron at scale, or the backend that fires 'your subscription renews tomorrow' emails and nightly report builds. Users submit jobs to run once at a future time or on a repeating schedule, and the system must execute each one close to its due time, exactly once, even as worker machines crash and restart. The interesting tension is between not missing a job, not running it twice, and scaling the dispatcher without it becoming a single point of failure.",
+    requirements: {
+      readsPerSec: 50000,
+      writesPerSec: 50000,
+      storageGB: 5000,
+      latencyMs: 1000,
+      users: "10M jobs/day",
+    },
+    constraints: [
+      "Jobs must run close to their scheduled time (within a few seconds)",
+      "At-least-once execution by default, with idempotency keys to make effects exactly-once",
+      "Support one-off jobs, recurring (cron) schedules, and delayed retries with backoff",
+      "Survive worker crashes — an in-flight job must be picked up by another worker",
+      "The dispatcher must scale horizontally without double-dispatching a job",
+      "Query job status and history; cancel or reschedule pending jobs",
+    ],
+    hints: [
+      {
+        title: "Store jobs by due time",
+        content:
+          "Persist jobs in a database indexed on next_run_at. The scheduler repeatedly queries 'jobs due in the next window' rather than scanning everything.",
+      },
+      {
+        title: "Don't dispatch twice",
+        content:
+          "Use a coordination service for leader election (or per-shard locks) so only one scheduler instance claims a given time bucket. Claim jobs with an atomic compare-and-set on their status.",
+      },
+      {
+        title: "Decouple dispatch from execution",
+        content:
+          "The scheduler only enqueues due jobs into a message queue. A separate pool of stateless workers consumes the queue and runs the work, so you scale execution independently.",
+      },
+      {
+        title: "Advanced: Visibility timeouts and retries",
+        content:
+          "When a worker picks up a job, give it a visibility timeout. If it doesn't ack before the timeout (it crashed), the job becomes visible again for another worker. Use exponential backoff and a dead-letter queue for repeatedly failing jobs.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 80, y: 280 },
+        { componentId: "api-gateway", x: 280, y: 280 },
+        { componentId: "nosql-db", x: 280, y: 430 },
+        { componentId: "task-scheduler", x: 500, y: 280 },
+        { componentId: "coordination-service", x: 500, y: 130 },
+        { componentId: "message-queue", x: 720, y: 280 },
+        { componentId: "app-server", x: 940, y: 280 },
+        { componentId: "monitoring", x: 940, y: 130 },
+      ],
+      edges: [
+        { source: "dns", target: "api-gateway" },
+        { source: "api-gateway", target: "nosql-db" },
+        { source: "task-scheduler", target: "nosql-db" },
+        { source: "task-scheduler", target: "coordination-service" },
+        { source: "task-scheduler", target: "message-queue" },
+        { source: "message-queue", target: "app-server" },
+        { source: "app-server", target: "nosql-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["Scheduling", "Queues", "Coordination", "Reliability"],
+  },
+  {
+    id: "ad-click-aggregator",
+    title: "Ad Click Aggregator",
+    difficulty: "Hard",
+    description:
+      "Design the analytics backend that counts ad clicks for an advertising platform handling billions of events a day. Advertisers need near-real-time dashboards ('how is my campaign doing right now?') and, separately, billing-grade accurate totals. Clicks arrive in enormous, bursty volume and some are duplicates or fraudulent. The core design decision is the classic lambda architecture: a fast streaming path for approximate live counts and a slower batch path that reprocesses raw events for correctness.",
+    requirements: {
+      readsPerSec: 100000,
+      writesPerSec: 1000000,
+      storageGB: 100000,
+      latencyMs: 1000,
+      users: "10B clicks/day",
+    },
+    constraints: [
+      "Ingest 1M+ click events/sec with bursts, without dropping events",
+      "Real-time dashboards updated within seconds (approximate is acceptable)",
+      "Billing-accurate aggregates computed by a reconciling batch job",
+      "Deduplicate clicks and filter fraud (same user spamming a click)",
+      "Aggregate along many dimensions: campaign, ad, region, device, time bucket",
+      "Raw events retained for replay and recomputation if logic changes",
+    ],
+    hints: [
+      {
+        title: "Capture first, process later",
+        content:
+          "The ingestion service should do almost nothing but validate and write each click to a durable, partitioned log (Kafka). This absorbs bursts and decouples producers from consumers.",
+      },
+      {
+        title: "Two paths from one log",
+        content:
+          "Speed layer: a stream processor reads the log and maintains rolling counts in a fast store for live dashboards. Batch layer: the same events land in object storage and a periodic job recomputes exact totals.",
+      },
+      {
+        title: "Idempotent counting",
+        content:
+          "Network retries mean the same click can arrive twice. Attach a unique click ID and dedupe in the stream processor (e.g., a windowed set) so you don't double-count.",
+      },
+      {
+        title: "Advanced: Reconciliation",
+        content:
+          "The batch layer's accurate aggregates overwrite the speed layer's approximate numbers for closed time windows. Serve 'recent = streaming, historical = batch' so dashboards are both fresh and eventually correct.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 80, y: 300 },
+        { componentId: "load-balancer", x: 280, y: 300 },
+        { componentId: "app-server", x: 480, y: 300 },
+        { componentId: "monitoring", x: 480, y: 150 },
+        { componentId: "message-queue", x: 480, y: 450 },
+        { componentId: "stream-processor", x: 700, y: 450 },
+        { componentId: "object-storage", x: 700, y: 150 },
+        { componentId: "data-warehouse", x: 920, y: 150 },
+        { componentId: "nosql-db", x: 920, y: 380 },
+      ],
+      edges: [
+        { source: "dns", target: "load-balancer" },
+        { source: "load-balancer", target: "app-server" },
+        { source: "app-server", target: "monitoring" },
+        { source: "app-server", target: "message-queue" },
+        { source: "message-queue", target: "stream-processor" },
+        { source: "stream-processor", target: "nosql-db" },
+        { source: "message-queue", target: "object-storage" },
+        { source: "object-storage", target: "data-warehouse" },
+        { source: "data-warehouse", target: "nosql-db" },
+      ],
+    },
+    tags: ["Stream Processing", "Analytics", "Write-Heavy", "Big Data"],
+  },
+  {
+    id: "key-value-store",
+    title: "Distributed Key-Value Store",
+    difficulty: "Hard",
+    description:
+      "Design a distributed key-value store that is highly available and horizontally scalable, in the spirit of Amazon Dynamo and Cassandra. It should stay writable even during network partitions and node failures, scale by simply adding machines, and spread data evenly with no hot spots. This problem is the canonical lens for the deepest distributed-systems trade-offs: consistent hashing for partitioning, replication with tunable quorums, and choosing availability over strong consistency.",
+    requirements: {
+      readsPerSec: 1000000,
+      writesPerSec: 500000,
+      storageGB: 100000,
+      latencyMs: 10,
+      users: "Multi-tenant platform",
+    },
+    constraints: [
+      "Single-digit-millisecond reads and writes at p99",
+      "Stay available for writes during node failures and network partitions (AP)",
+      "Scale linearly — adding nodes rebalances data with minimal movement",
+      "Even key distribution; no single node becomes a hot spot",
+      "Tunable consistency via quorum (configurable N replicas, R reads, W writes)",
+      "No single point of failure; decentralized membership and failure detection",
+    ],
+    hints: [
+      {
+        title: "Partition with consistent hashing",
+        content:
+          "Place nodes on a hash ring and route each key to the node clockwise from its hash. Adding/removing a node only moves the keys in its neighboring arc. Use virtual nodes to keep the load even.",
+      },
+      {
+        title: "Replicate for durability",
+        content:
+          "Store each key on the next N nodes around the ring. A coordinator node handles the request and talks to the replicas — there's no special master.",
+      },
+      {
+        title: "Quorum reads and writes",
+        content:
+          "With N replicas, require W acks to write and R responses to read. If R + W > N you get read-your-writes consistency; lowering them trades consistency for availability and latency.",
+      },
+      {
+        title: "Advanced: Membership and anti-entropy",
+        content:
+          "Nodes learn the ring via a gossip protocol and detect failures without a central coordinator. Use hinted handoff so writes survive a temporarily-down replica, and Merkle trees to repair divergent replicas in the background.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "dns", x: 100, y: 280 },
+        { componentId: "load-balancer", x: 300, y: 280 },
+        { componentId: "app-server", x: 520, y: 280 },
+        { componentId: "coordination-service", x: 520, y: 130 },
+        { componentId: "config-service", x: 520, y: 430 },
+        { componentId: "cache", x: 760, y: 130 },
+        { componentId: "nosql-db", x: 760, y: 280 },
+        { componentId: "monitoring", x: 760, y: 430 },
+      ],
+      edges: [
+        { source: "dns", target: "load-balancer" },
+        { source: "load-balancer", target: "app-server" },
+        { source: "app-server", target: "coordination-service" },
+        { source: "app-server", target: "config-service" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "nosql-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["Consistent Hashing", "Replication", "Quorum", "Distributed"],
+  },
 ];
 
 export function getProblemById(id: string): Problem | undefined {
