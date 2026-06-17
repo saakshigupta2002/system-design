@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, type DragEvent } from "react";
 import {
   ReactFlow,
   Controls,
+  ControlButton,
   MiniMap,
   Background,
   BackgroundVariant,
@@ -19,7 +20,7 @@ import { edgeTypes } from "./edges/edgeTypes";
 import { useCanvasStore, sanitizeEdges, type ComponentNodeData } from "@/store/canvasStore";
 import { usePenStore } from "@/store/penStore";
 import { getComponentById } from "@/data/components";
-import { BookOpen, GraduationCap, Layers, MousePointer2, Sparkles } from "lucide-react";
+import { BookOpen, GraduationCap, Layers, MousePointer2, Sparkles, Trash2 } from "lucide-react";
 import { CanvasTabBar } from "./CanvasTabBar";
 import { PenOverlay } from "./PenOverlay";
 import { PenToolbar } from "./PenToolbar";
@@ -28,9 +29,10 @@ interface DesignCanvasProps {
   onPickProblem?: () => void;
   onLoadReference?: () => void;
   onStartInterview?: () => void;
+  onClearCanvas?: () => void;
 }
 
-export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview }: DesignCanvasProps = {}) {
+export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview, onClearCanvas }: DesignCanvasProps = {}) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
@@ -211,7 +213,18 @@ export function DesignCanvas({ onPickProblem, onLoadReference, onStartInterview 
         <Controls
           className="!rounded-md !border !border-zinc-800 !bg-zinc-900 !shadow-sm [&>button]:!border-zinc-800 [&>button]:!bg-zinc-900 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-800 [&>button:hover]:!text-zinc-200"
           position="bottom-left"
-        />
+        >
+          {!isEmpty && onClearCanvas && (
+            <ControlButton
+              onClick={onClearCanvas}
+              title="Clear canvas"
+              aria-label="Clear canvas"
+              className="!text-rose-400 [&:hover]:!bg-rose-500/10 [&:hover]:!text-rose-300"
+            >
+              <Trash2 />
+            </ControlButton>
+          )}
+        </Controls>
         <MiniMap
           className="!hidden !rounded-md !border !border-zinc-800 !bg-zinc-900 md:!block"
           maskColor="var(--minimap-mask)"

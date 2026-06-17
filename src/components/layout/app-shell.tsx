@@ -354,6 +354,7 @@ export function AppShell() {
             onPickProblem={handlePickProblem}
             onLoadReference={handleLoadReference}
             onStartInterview={() => setInterviewDialogOpen(true)}
+            onClearCanvas={() => setClearConfirmOpen(true)}
           />
 
           {/* Desktop inline right panel (hidden on mobile) */}
