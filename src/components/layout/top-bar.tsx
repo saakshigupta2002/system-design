@@ -260,7 +260,7 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
           )}
         </div>
 
-        {!selectedProblemId.startsWith("custom-") && (
+        {selectedProblemId && !selectedProblemId.startsWith("custom-") && (
           <button
             onClick={loadReference}
             className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 md:flex"
@@ -317,7 +317,7 @@ export function TopBar({ onSimulate, onScore, onClearCanvas, onSave, onLoad, onS
               <div className="fixed inset-0 z-40" onClick={() => setMobileMoreOpen(false)} />
               <div className="absolute left-0 top-full z-50 mt-1 w-60 rounded-md border border-zinc-700 bg-zinc-900 py-1 shadow-lg">
                 {/* Design actions */}
-                {!selectedProblemId.startsWith("custom-") && (
+                {selectedProblemId && !selectedProblemId.startsWith("custom-") && (
                   <button
                     onClick={() => { setMobileMoreOpen(false); loadReference(); }}
                     className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
