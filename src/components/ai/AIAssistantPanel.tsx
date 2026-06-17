@@ -375,15 +375,27 @@ function ConfigView({ onDone }: { onDone: () => void }) {
             value={keys[provider]}
             onChange={(e) => setKey(provider, e.target.value)}
             placeholder={`Paste your ${PROVIDER_LABELS[provider].replace(/ \(.*\)/, "")} key`}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 pr-8 font-mono text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-cyan-500"
+            className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 pr-14 font-mono text-xs text-zinc-200 placeholder-zinc-500 outline-none focus:border-cyan-500"
           />
-          <button
-            onClick={() => setShowKey((v) => !v)}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-            title={showKey ? "Hide" : "Show"}
-          >
-            {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
+          <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
+            <button
+              onClick={() => setShowKey((v) => !v)}
+              className="text-zinc-500 hover:text-zinc-300"
+              title={showKey ? "Hide" : "Show"}
+            >
+              {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+            {keys[provider] && (
+              <button
+                onClick={() => { setKey(provider, ""); setShowKey(false); }}
+                className="text-zinc-500 hover:text-rose-400"
+                title="Remove this API key"
+                aria-label="Remove API key"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -416,7 +428,7 @@ function ConfigView({ onDone }: { onDone: () => void }) {
       <p className="rounded-md border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-[11px] leading-relaxed text-zinc-500">
         Your key is stored only in this browser and sent directly to{" "}
         {PROVIDER_LABELS[provider].replace(/ \(.*\)/, "")} when you chat. It never passes through
-        any server we run. Clear it any time by emptying this field.
+        any server we run. Remove it any time with the × in the field above.
       </p>
 
       <button
