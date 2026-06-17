@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import type { ComponentNodeData } from "@/store/canvasStore";
 import { useCanvasStore } from "@/store/canvasStore";
 import { useSimulationStore } from "@/store/simulationStore";
-import { Server, Power } from "lucide-react";
+import { Server, Power, Trash2 } from "lucide-react";
 import { ICON_MAP } from "@/lib/icons";
 
 type ComponentNode = Node<ComponentNodeData, "component">;
@@ -56,6 +56,7 @@ function ComponentNodeInner({ id, data, selected }: NodeProps<ComponentNode>) {
   const [editLabel, setEditLabel] = useState(nodeData.label);
   const inputRef = useRef<HTMLInputElement>(null);
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const deleteNode = useCanvasStore((s) => s.deleteNode);
   const isFailed = useSimulationStore((s) => s.failedNodeIds.includes(id));
   const toggleFailed = useSimulationStore((s) => s.toggleFailed);
 
@@ -112,6 +113,19 @@ function ComponentNodeInner({ id, data, selected }: NodeProps<ComponentNode>) {
         aria-label={isFailed ? "Bring component online" : "Take component offline"}
       >
         <Power className="h-3 w-3" />
+      </button>
+
+      {/* Delete this component */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          deleteNode(id);
+        }}
+        className="absolute -bottom-2 -left-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-zinc-400 opacity-0 shadow-sm transition-all hover:border-rose-500/50 hover:text-rose-400 group-hover:opacity-100"
+        title="Delete component"
+        aria-label="Delete component"
+      >
+        <Trash2 className="h-3 w-3" />
       </button>
 
       {/* OFFLINE tag */}
