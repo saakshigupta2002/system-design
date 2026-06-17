@@ -48,6 +48,29 @@ export function ArchitectureDiagram({
 }) {
   const ref = getProblemById(problemId)?.referenceSolution;
   if (!ref || ref.nodes.length === 0) return null;
+  return <ComponentDiagram nodes={ref.nodes} edges={ref.edges} notes={notes} />;
+}
+
+/**
+ * Renders an arbitrary set of components + wires as a layered architecture
+ * diagram. Used by the editorial (via a problem's reference) and by the
+ * Spot-the-Flaw practice mode (with standalone designs). Set `showLegend` to
+ * false to hide the descriptive legend (e.g. so a quiz doesn't give the
+ * answer away).
+ */
+export function ComponentDiagram({
+  nodes,
+  edges,
+  notes,
+  showLegend = true,
+}: {
+  nodes: Array<{ componentId: string; x: number; y: number }>;
+  edges: Array<{ source: string; target: string }>;
+  notes?: Record<string, string>;
+  showLegend?: boolean;
+}) {
+  const ref = { nodes, edges };
+  if (ref.nodes.length === 0) return null;
 
   // Unique components in author order, remembering the authored y for stable
   // row ordering within a column.
@@ -224,7 +247,7 @@ export function ArchitectureDiagram({
       </div>
 
       {/* Legend — what each component is and why it's here */}
-      {legend.length > 0 && (
+      {showLegend && legend.length > 0 && (
         <ul className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3">
           {legend.map((item, i) => (
             <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed">

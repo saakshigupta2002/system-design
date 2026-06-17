@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ChevronDown, ChevronRight, Star } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Star, Search } from "lucide-react";
 import { LEARNING_PATH, PROBLEM_CONCEPTS } from "@/data/learningPath";
 import { PROBLEMS } from "@/data/problems";
 import { useAppStore } from "@/store/appStore";
@@ -44,7 +44,10 @@ function getConceptsForProblem(problemId: string): string[] {
   return PROBLEM_CONCEPTS.find((p) => p.problemId === problemId)?.concepts ?? [];
 }
 
-export function LearningPath({ onOpenEditorial }: { onOpenEditorial?: () => void } = {}) {
+export function LearningPath({
+  onOpenEditorial,
+  onOpenSpotFlaw,
+}: { onOpenEditorial?: () => void; onOpenSpotFlaw?: () => void } = {}) {
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(["Foundations"]));
@@ -101,6 +104,24 @@ export function LearningPath({ onOpenEditorial }: { onOpenEditorial?: () => void
         <p className="px-0.5 pb-1 text-[11px] leading-tight text-zinc-500">
           A guided path — follow the recommended order and track your progress.
         </p>
+
+        {/* Concept practice */}
+        {onOpenSpotFlaw && (
+          <button
+            onClick={onOpenSpotFlaw}
+            className="mb-1.5 flex w-full items-center gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2.5 text-left transition-colors hover:border-amber-500/40 hover:bg-amber-500/10"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-500/15">
+              <Search className="h-3.5 w-3.5 text-amber-400" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-zinc-200">Spot the Flaw</span>
+              <span className="block text-[10px] leading-tight text-zinc-500">
+                Practice diagnosing designs — find the flaw in each one
+              </span>
+            </span>
+          </button>
+        )}
         {LEARNING_PATH.map((tier) => {
           const isExpanded = expandedTiers.has(tier.name);
           const completedCount = tier.problemIds.filter((id) => completed.has(id)).length;

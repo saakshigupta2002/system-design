@@ -25,6 +25,7 @@ import { InterviewStartDialog } from "@/components/interview/InterviewStartDialo
 import { CreateProblemDialog } from "@/components/dialogs/CreateProblemDialog";
 import { CreateComponentDialog } from "@/components/dialogs/CreateComponentDialog";
 import { EditorialDialog } from "@/components/dialogs/EditorialDialog";
+import { SpotTheFlawDialog } from "@/components/dialogs/SpotTheFlawDialog";
 import { ShortcutsDialog } from "@/components/dialogs/ShortcutsDialog";
 import { AIAssistantPanel } from "@/components/ai/AIAssistantPanel";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
@@ -48,6 +49,7 @@ export function AppShell() {
   const [createProblemDialogOpen, setCreateProblemDialogOpen] = useState(false);
   const [createComponentDialogOpen, setCreateComponentDialogOpen] = useState(false);
   const [editorialDialogOpen, setEditorialDialogOpen] = useState(false);
+  const [spotFlawDialogOpen, setSpotFlawDialogOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -347,6 +349,7 @@ export function AppShell() {
               setCreateComponentDialogOpen(true);
             }}
             onOpenEditorial={() => setEditorialDialogOpen(true)}
+            onOpenSpotFlaw={() => setSpotFlawDialogOpen(true)}
             variant="desktop"
           />
 
@@ -412,6 +415,10 @@ export function AppShell() {
                       setEditorialDialogOpen(true);
                       setMobileSidebarOpen(false);
                     }}
+                    onOpenSpotFlaw={() => {
+                      setSpotFlawDialogOpen(true);
+                      setMobileSidebarOpen(false);
+                    }}
                     variant="mobile"
                   />
                 </div>
@@ -474,6 +481,7 @@ export function AppShell() {
           }}
         />
         <EditorialDialog open={editorialDialogOpen} onClose={() => setEditorialDialogOpen(false)} />
+        <SpotTheFlawDialog open={spotFlawDialogOpen} onClose={() => setSpotFlawDialogOpen(false)} />
         <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
         <AIAssistantPanel open={aiOpen} onClose={() => setAiOpen(false)} />
         <ConfirmDialog

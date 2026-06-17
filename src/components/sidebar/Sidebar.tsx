@@ -15,6 +15,7 @@ interface SidebarProps {
   onCreateCustomComponent?: () => void;
   onEditCustomComponent?: (id: string) => void;
   onOpenEditorial?: () => void;
+  onOpenSpotFlaw?: () => void;
   variant?: "desktop" | "mobile";
 }
 
@@ -26,6 +27,7 @@ function SidebarTabs({
   onCreateCustomComponent,
   onEditCustomComponent,
   onOpenEditorial,
+  onOpenSpotFlaw,
 }: SidebarTabsProps) {
   const activeLeftTab = useAppStore((s) => s.activeLeftTab);
   const setActiveLeftTab = useAppStore((s) => s.setActiveLeftTab);
@@ -64,7 +66,7 @@ function SidebarTabs({
       </TabsContent>
 
       <TabsContent value="learn" className="mt-0 flex-1 min-h-0 overflow-hidden">
-        <LearningPath onOpenEditorial={onOpenEditorial} />
+        <LearningPath onOpenEditorial={onOpenEditorial} onOpenSpotFlaw={onOpenSpotFlaw} />
       </TabsContent>
     </Tabs>
   );
@@ -77,6 +79,7 @@ export function Sidebar({
   onCreateCustomComponent,
   onEditCustomComponent,
   onOpenEditorial,
+  onOpenSpotFlaw,
   variant = "desktop",
 }: SidebarProps) {
   const width = useAppStore((s) => s.leftPanelWidth);
@@ -89,6 +92,7 @@ export function Sidebar({
     onCreateCustomComponent,
     onEditCustomComponent,
     onOpenEditorial,
+    onOpenSpotFlaw,
   };
 
   if (variant === "mobile") {
