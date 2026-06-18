@@ -4,7 +4,8 @@ export type ComponentCategory =
   | "compute"
   | "storage"
   | "messaging"
-  | "infrastructure";
+  | "infrastructure"
+  | "aws";
 
 export interface SystemComponent {
   id: string;

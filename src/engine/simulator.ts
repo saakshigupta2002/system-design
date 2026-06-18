@@ -17,6 +17,10 @@ export const LOAD_BALANCING_COMPONENTS = new Set([
   "dns",
   "reverse-proxy",
   "origin-shield",
+  // AWS equivalents that also split traffic across backends.
+  "aws-elb",
+  "aws-api-gateway",
+  "aws-route53",
 ]);
 
 /** Components that are out-of-band for user-facing request latency:

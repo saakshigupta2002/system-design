@@ -29,6 +29,11 @@ import {
   ShieldCheck,
   Users,
   Box,
+  Cpu,
+  Boxes,
+  Cog,
+  Cloud,
+  Container,
 } from "lucide-react";
 
 export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -62,4 +67,9 @@ export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }
   ShieldCheck,
   Users,
   Box,
+  Cpu,
+  Boxes,
+  Cog,
+  Cloud,
+  Container,
 };

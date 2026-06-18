@@ -18,6 +18,7 @@ const CATEGORY_COLORS: Record<string, { border: string; icon: string }> = {
   storage: { border: "border-zinc-700", icon: "text-amber-400" },
   messaging: { border: "border-zinc-700", icon: "text-emerald-400" },
   infrastructure: { border: "border-zinc-700", icon: "text-cyan-400" },
+  aws: { border: "border-zinc-700", icon: "text-orange-400" },
 };
 
 const STATUS_DOT: Record<string, string> = {

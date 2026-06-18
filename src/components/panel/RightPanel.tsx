@@ -372,6 +372,26 @@ function PropertiesTab() {
 
             {/* Replicas slider — scalable components scale horizontally;
                 stateful ones (e.g. SQL DB) replicate for redundancy/reads. */}
+            {/* Editable max QPS per instance */}
+            <div>
+              <label className="text-xs text-zinc-400">Max QPS (per instance)</label>
+              <input
+                type="number"
+                min={1}
+                step={100}
+                value={Number.isFinite(data.maxQPS as number) ? (data.maxQPS as number) : ""}
+                onChange={(e) => {
+                  const v = Math.max(1, Math.round(Number(e.target.value) || 0));
+                  if (v > 0) updateNodeData(selectedNode.id, { maxQPS: v });
+                }}
+                className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 font-mono text-xs text-zinc-200 outline-none focus:border-cyan-500"
+                aria-label="Max QPS per instance"
+              />
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Capacity of one instance. Total = this × replicas.
+              </p>
+            </div>
+
             {(data.scalable || getComponentById(data.componentId as string)?.stateful) && (
               <div>
                 <div className="mb-1.5 flex items-center justify-between">

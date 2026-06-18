@@ -496,6 +496,205 @@ export const SYSTEM_COMPONENTS: SystemComponent[] = [
     description:
       "Centralized dynamic configuration management for feature flags, A/B test parameters, and runtime settings without redeployment. Supports versioning, rollback, targeted rollouts by user segment, and real-time propagation to all service instances. AWS AppConfig, LaunchDarkly, Unleash, and etcd-backed config stores are common implementations.",
   },
+
+  // Compute — background processing
+  {
+    id: "worker",
+    label: "Worker / Consumer",
+    category: "compute",
+    icon: "Cog",
+    maxQPS: 5000,
+    latencyMs: 50,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 25,
+    description:
+      "A background worker (consumer) that pulls jobs/messages off a queue and processes them asynchronously — sending emails, encoding video, updating search indexes, running ETL, etc. Scale the worker pool horizontally to drain a queue faster. Pairs with a message queue: producer → queue → worker pool, so spikes are absorbed and slow work never blocks the request path.",
+  },
+
+  // AWS — common managed services (map to the generic concepts above)
+  {
+    id: "aws-route53",
+    label: "Route 53 (DNS)",
+    category: "aws",
+    icon: "Globe",
+    maxQPS: 100000,
+    latencyMs: 10,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 20,
+    description:
+      "AWS Route 53 — managed DNS with health checks, latency/geo routing, and failover. The AWS equivalent of the DNS component; the first hop that resolves your domain to an endpoint.",
+  },
+  {
+    id: "aws-cloudfront",
+    label: "CloudFront (CDN)",
+    category: "aws",
+    icon: "Cloud",
+    maxQPS: 500000,
+    latencyMs: 15,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 150,
+    description:
+      "AWS CloudFront — global CDN that caches content at edge locations near users. Use for static assets and media; the origin (S3 or your servers) only handles cache misses.",
+  },
+  {
+    id: "aws-elb",
+    label: "ELB / ALB",
+    category: "aws",
+    icon: "Network",
+    maxQPS: 1000000,
+    latencyMs: 1,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 25,
+    description:
+      "AWS Elastic / Application Load Balancer — distributes incoming traffic across targets (EC2, containers, Lambda) with health checks. The AWS equivalent of the load balancer; it splits traffic across healthy backends.",
+  },
+  {
+    id: "aws-api-gateway",
+    label: "API Gateway",
+    category: "aws",
+    icon: "Router",
+    maxQPS: 100000,
+    latencyMs: 10,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 35,
+    description:
+      "AWS API Gateway — managed entry point for APIs: routing, throttling/rate limiting, auth, and request transformation. Fronts Lambda or backend services as a single client endpoint.",
+  },
+  {
+    id: "aws-ec2",
+    label: "EC2 (Compute)",
+    category: "aws",
+    icon: "Server",
+    maxQPS: 5000,
+    latencyMs: 50,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 30,
+    description:
+      "AWS EC2 — virtual servers you run your application on. The AWS equivalent of an app server; scale horizontally behind a load balancer in an auto scaling group.",
+  },
+  {
+    id: "aws-lambda",
+    label: "Lambda (Serverless)",
+    category: "aws",
+    icon: "Cpu",
+    maxQPS: 10000,
+    latencyMs: 80,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 15,
+    description:
+      "AWS Lambda — serverless functions that run on demand and scale automatically per request, with no servers to manage. Great for event-driven and spiky workloads; watch for cold-start latency.",
+  },
+  {
+    id: "aws-s3",
+    label: "S3 (Object Storage)",
+    category: "aws",
+    icon: "Archive",
+    maxQPS: 50000,
+    latencyMs: 30,
+    scalable: true,
+    stateful: true,
+    monthlyCost: 25,
+    description:
+      "AWS S3 — durable, virtually unlimited object storage for files, images, video, and backups. The AWS equivalent of object storage; commonly used as a CDN origin and a data lake.",
+  },
+  {
+    id: "aws-rds",
+    label: "RDS (SQL)",
+    category: "aws",
+    icon: "Database",
+    maxQPS: 8000,
+    latencyMs: 20,
+    scalable: false,
+    stateful: true,
+    monthlyCost: 120,
+    description:
+      "AWS RDS — managed relational database (PostgreSQL, MySQL, etc.) with backups, replicas, and failover. The AWS equivalent of the SQL database; scale reads with replicas, writes via a single primary.",
+  },
+  {
+    id: "aws-dynamodb",
+    label: "DynamoDB (NoSQL)",
+    category: "aws",
+    icon: "Boxes",
+    maxQPS: 100000,
+    latencyMs: 10,
+    scalable: true,
+    stateful: true,
+    monthlyCost: 80,
+    description:
+      "AWS DynamoDB — managed key-value / wide-column NoSQL store with single-digit-millisecond latency at massive scale. The AWS equivalent of the NoSQL database; partition by a well-chosen key.",
+  },
+  {
+    id: "aws-elasticache",
+    label: "ElastiCache (Redis)",
+    category: "aws",
+    icon: "Zap",
+    maxQPS: 200000,
+    latencyMs: 2,
+    scalable: true,
+    stateful: true,
+    monthlyCost: 60,
+    description:
+      "AWS ElastiCache — managed in-memory cache (Redis/Memcached). The AWS equivalent of the cache; put it in front of databases on read-heavy paths to cut latency and load.",
+  },
+  {
+    id: "aws-sqs",
+    label: "SQS (Queue)",
+    category: "aws",
+    icon: "MessageSquare",
+    maxQPS: 100000,
+    latencyMs: 5,
+    scalable: true,
+    stateful: true,
+    monthlyCost: 10,
+    description:
+      "AWS SQS — managed message queue for decoupling producers from consumers, with at-least-once delivery and visibility timeouts. The AWS equivalent of the message queue; pair with worker/Lambda consumers.",
+  },
+  {
+    id: "aws-sns",
+    label: "SNS (Pub/Sub)",
+    category: "aws",
+    icon: "Radio",
+    maxQPS: 100000,
+    latencyMs: 5,
+    scalable: true,
+    stateful: false,
+    monthlyCost: 10,
+    description:
+      "AWS SNS — managed pub/sub for fan-out: publish once, deliver to many subscribers (queues, Lambdas, HTTP). Often combined with SQS (SNS→SQS fan-out).",
+  },
+  {
+    id: "aws-kinesis",
+    label: "Kinesis (Streams)",
+    category: "aws",
+    icon: "Waves",
+    maxQPS: 200000,
+    latencyMs: 10,
+    scalable: true,
+    stateful: true,
+    monthlyCost: 40,
+    description:
+      "AWS Kinesis — managed streaming for high-volume, ordered event data with replay. The AWS equivalent of a partitioned log/stream processor input; used for real-time analytics and ingestion pipelines.",
+  },
+  {
+    id: "aws-opensearch",
+    label: "OpenSearch",
+    category: "aws",
+    icon: "Search",
+    maxQPS: 20000,
+    latencyMs: 25,
+    scalable: true,
+    stateful: true,
+    monthlyCost: 90,
+    description:
+      "AWS OpenSearch — managed search and analytics engine (Elasticsearch-compatible) with an inverted index. The AWS equivalent of the search component; keep it in sync with your source of truth via change data capture.",
+  },
 ];
 
 export const COMPONENT_CATEGORIES = [
@@ -505,6 +704,7 @@ export const COMPONENT_CATEGORIES = [
   { key: "storage", label: "Storage" },
   { key: "messaging", label: "Messaging" },
   { key: "infrastructure", label: "Infrastructure" },
+  { key: "aws", label: "AWS" },
 ] as const;
 
 export function getComponentById(id: string): SystemComponent | undefined {

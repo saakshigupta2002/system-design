@@ -31,6 +31,7 @@ const CATEGORY_ACCENT: Record<string, string> = {
   storage: "text-amber-400",
   messaging: "text-emerald-400",
   infrastructure: "text-cyan-400",
+  aws: "text-orange-400",
 };
 
 interface ComponentPaletteProps {
