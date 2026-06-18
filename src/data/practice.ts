@@ -16,9 +16,13 @@ export interface PracticeQuestion {
   prompt: string;
   /** Optional context shown above the options. */
   scenario?: string;
-  /** Optional diagram (spot-the-flaw style). */
-  nodes?: Array<{ componentId: string; x: number; y: number }>;
+  /** Optional diagram. A node may carry an `id` (so a component can repeat,
+   *  e.g. a primary + replica) and a `label` override; edges reference id
+   *  (or componentId when no id is given). */
+  nodes?: Array<{ componentId: string; x: number; y: number; id?: string; label?: string }>;
   edges?: Array<{ source: string; target: string }>;
+  /** Short per-node role text shown under the box (keyed by node id/componentId). */
+  captions?: Record<string, string>;
   options: string[];
   correctIndex: number;
   explanation: string;
@@ -51,6 +55,29 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "scaling-1",
         prompt: "What best describes horizontal scaling?",
+        scenario: "The architecture below grows by adding identical app servers behind a load balancer.",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 160 },
+          { componentId: "app-server", id: "app1", label: "App 1", x: 320, y: 40 },
+          { componentId: "app-server", id: "app2", label: "App 2", x: 320, y: 160 },
+          { componentId: "app-server", id: "app3", label: "App 3", x: 320, y: 280 },
+          { componentId: "sql-db", x: 560, y: 160 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "app1" },
+          { source: "load-balancer", target: "app2" },
+          { source: "load-balancer", target: "app3" },
+          { source: "app1", target: "sql-db" },
+          { source: "app2", target: "sql-db" },
+          { source: "app3", target: "sql-db" },
+        ],
+        captions: {
+          "load-balancer": "spreads requests",
+          app1: "identical, stateless",
+          app2: "identical, stateless",
+          app3: "add more to grow",
+          "sql-db": "shared state",
+        },
         options: [
           "Adding more machines and distributing load across them",
           "Upgrading one machine with more CPU and RAM",
@@ -59,11 +86,30 @@ const TOPICS: PracticeTopic[] = [
         ],
         correctIndex: 0,
         explanation:
-          "Horizontal scaling means scaling OUT — more nodes behind a load balancer. Vertical scaling (scale UP) means a bigger single box, which has a ceiling and remains a single point of failure.",
+          "Horizontal scaling means scaling OUT — more nodes behind a load balancer (like App 1/2/3 above). Vertical scaling (scale UP) means a bigger single box, which has a ceiling and remains a single point of failure.",
       },
       {
         id: "scaling-2",
         prompt: "Why must app servers be stateless to scale horizontally?",
+        scenario: "Two app servers sit behind a load balancer. Where should a user's session live?",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 150 },
+          { componentId: "app-server", id: "appA", label: "App A", x: 320, y: 60 },
+          { componentId: "app-server", id: "appB", label: "App B", x: 320, y: 240 },
+          { componentId: "cache", label: "Session Store", x: 560, y: 150 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "appA" },
+          { source: "load-balancer", target: "appB" },
+          { source: "appA", target: "cache" },
+          { source: "appB", target: "cache" },
+        ],
+        captions: {
+          "load-balancer": "may route to either",
+          appA: "holds no session",
+          appB: "holds no session",
+          cache: "shared sessions",
+        },
         options: [
           "So any instance can serve any request — state lives in a shared store, not local memory",
           "So each server can keep its own private copy of every session",
@@ -78,6 +124,24 @@ const TOPICS: PracticeTopic[] = [
         id: "scaling-3",
         prompt:
           "A service runs fine on one large server, but a single failure causes downtime. What's the better direction?",
+        scenario: "Today everything runs on one big box. The diagram shows the redundant alternative.",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 150 },
+          { componentId: "app-server", id: "n1", label: "Node 1", x: 320, y: 40 },
+          { componentId: "app-server", id: "n2", label: "Node 2", x: 320, y: 150 },
+          { componentId: "app-server", id: "n3", label: "Node 3", x: 320, y: 260 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "n1" },
+          { source: "load-balancer", target: "n2" },
+          { source: "load-balancer", target: "n3" },
+        ],
+        captions: {
+          "load-balancer": "routes around failures",
+          n1: "if one dies…",
+          n2: "…the others",
+          n3: "…keep serving",
+        },
         options: [
           "Run several smaller instances behind a load balancer for redundancy",
           "Buy an even bigger single server",
@@ -91,6 +155,20 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "scaling-4",
         prompt: "Why can 'sticky sessions' (always routing a user to the same server) make scaling harder?",
+        scenario: "A user is pinned to App 1, which holds their session in memory.",
+        nodes: [
+          { componentId: "load-balancer", label: "LB (sticky)", x: 80, y: 150 },
+          { componentId: "app-server", id: "app1", label: "App 1", x: 320, y: 60 },
+          { componentId: "app-server", id: "app2", label: "App 2", x: 320, y: 240 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "app1" },
+        ],
+        captions: {
+          "load-balancer": "always → App 1",
+          app1: "holds the session",
+          app2: "idle / can't help",
+        },
         options: [
           "Load becomes uneven and a server's failure loses its users' sessions",
           "They make the database run faster",
@@ -104,6 +182,23 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "scaling-5",
         prompt: "With autoscaling, instances start and stop automatically. What must your app handle?",
+        scenario: "An autoscaler adds App 3 during a spike and will remove it when load drops.",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 160 },
+          { componentId: "app-server", id: "app1", label: "App 1", x: 320, y: 50 },
+          { componentId: "app-server", id: "app2", label: "App 2", x: 320, y: 160 },
+          { componentId: "app-server", id: "app3", label: "App 3 (new)", x: 320, y: 270 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "app1" },
+          { source: "load-balancer", target: "app2" },
+          { source: "load-balancer", target: "app3" },
+        ],
+        captions: {
+          app1: "steady",
+          app2: "steady",
+          app3: "appears/vanishes by load",
+        },
         options: [
           "Instances terminating at any time — externalize state, drain connections, start fast",
           "A fixed, never-changing server count",
@@ -132,7 +227,24 @@ const TOPICS: PracticeTopic[] = [
     questions: [
       {
         id: "lb-1",
-        prompt: "What is the core job of a load balancer?",
+        prompt: "What is the core job of the highlighted component?",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 160 },
+          { componentId: "app-server", id: "s1", label: "Server 1", x: 320, y: 50 },
+          { componentId: "app-server", id: "s2", label: "Server 2", x: 320, y: 160 },
+          { componentId: "app-server", id: "s3", label: "Server 3", x: 320, y: 270 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "s1" },
+          { source: "load-balancer", target: "s2" },
+          { source: "load-balancer", target: "s3" },
+        ],
+        captions: {
+          "load-balancer": "the entry point",
+          s1: "healthy",
+          s2: "healthy",
+          s3: "skipped if down",
+        },
         options: [
           "Distribute incoming requests across multiple servers and avoid dead ones",
           "Store the application's data durably",
@@ -185,6 +297,23 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "lb-5",
         prompt: "You add a load balancer in front of your servers. What new risk must you address?",
+        scenario: "All traffic now funnels through a single load balancer.",
+        nodes: [
+          { componentId: "dns", x: 60, y: 150 },
+          { componentId: "load-balancer", label: "LB (only one)", x: 280, y: 150 },
+          { componentId: "app-server", id: "a1", label: "App 1", x: 520, y: 60 },
+          { componentId: "app-server", id: "a2", label: "App 2", x: 520, y: 240 },
+        ],
+        edges: [
+          { source: "dns", target: "load-balancer" },
+          { source: "load-balancer", target: "a1" },
+          { source: "load-balancer", target: "a2" },
+        ],
+        captions: {
+          "load-balancer": "every request passes here",
+          a1: "fine, but unreachable…",
+          a2: "…if the LB dies",
+        },
         options: [
           "The load balancer itself is now a single point of failure — make it redundant",
           "The servers can no longer share a database",
@@ -228,6 +357,21 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "cache-2",
         prompt: "In the cache-aside (lazy loading) pattern, what happens on a cache miss?",
+        scenario: "The app checks the cache first, and only reads the database when the cache doesn't have the value.",
+        nodes: [
+          { componentId: "app-server", x: 80, y: 150 },
+          { componentId: "cache", label: "Cache (1st)", x: 320, y: 60 },
+          { componentId: "sql-db", label: "DB (on miss)", x: 320, y: 240 },
+        ],
+        edges: [
+          { source: "app-server", target: "cache" },
+          { source: "app-server", target: "sql-db" },
+        ],
+        captions: {
+          "app-server": "read path",
+          cache: "checked first",
+          "sql-db": "only on miss, then cache it",
+        },
         options: [
           "The app reads from the database, returns it, and stores it in the cache for next time",
           "The request fails until the cache is manually warmed",
@@ -255,6 +399,22 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "cache-4",
         prompt: "A cache that fronts almost all reads suddenly restarts empty. What's the danger?",
+        scenario: "Normally the cache absorbs ~95% of reads. It just restarted cold.",
+        nodes: [
+          { componentId: "load-balancer", x: 60, y: 150 },
+          { componentId: "app-server", x: 280, y: 150 },
+          { componentId: "cache", label: "Cache (empty)", x: 520, y: 60 },
+          { componentId: "sql-db", x: 520, y: 240 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "app-server" },
+          { source: "app-server", target: "cache" },
+          { source: "app-server", target: "sql-db" },
+        ],
+        captions: {
+          cache: "0% hit rate now",
+          "sql-db": "suddenly gets 100% of reads",
+        },
         options: [
           "Every read misses at once and stampedes the database, which may collapse",
           "Nothing — the database is always sized for full load",
@@ -297,6 +457,21 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "cdn-1",
         prompt: "Why does a CDN reduce latency for global users?",
+        scenario: "A user requests an image; the CDN edge serves it instead of the distant origin.",
+        nodes: [
+          { componentId: "dns", label: "User", x: 60, y: 150 },
+          { componentId: "cdn", label: "CDN edge", x: 300, y: 150 },
+          { componentId: "object-storage", label: "Origin", x: 540, y: 150 },
+        ],
+        edges: [
+          { source: "dns", target: "cdn" },
+          { source: "cdn", target: "object-storage" },
+        ],
+        captions: {
+          dns: "in Tokyo",
+          cdn: "nearby cached copy",
+          "object-storage": "far away, only on miss",
+        },
         options: [
           "It serves cached content from an edge server geographically near the user",
           "It makes the origin server's CPU faster",
@@ -405,6 +580,15 @@ const TOPICS: PracticeTopic[] = [
         id: "db-2",
         prompt:
           "A social graph needs 'friends of friends' and shortest-path queries over billions of relationships. Best store?",
+        scenario: "Pick the store for deeply connected, traversal-heavy data.",
+        nodes: [
+          { componentId: "app-server", x: 100, y: 150 },
+          { componentId: "graph-db", x: 360, y: 150 },
+        ],
+        edges: [{ source: "app-server", target: "graph-db" }],
+        captions: {
+          "graph-db": "edges are first-class → fast traversals",
+        },
         options: [
           "A graph database",
           "A single relational table with self-joins",
@@ -474,6 +658,23 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "repl-1",
         prompt: "In primary-replica replication, what does adding read replicas scale?",
+        scenario: "Writes go to the primary; reads are spread across replicas that copy from it.",
+        nodes: [
+          { componentId: "app-server", x: 80, y: 150 },
+          { componentId: "sql-db", id: "primary", label: "Primary", x: 320, y: 150 },
+          { componentId: "sql-db", id: "rep1", label: "Replica 1", x: 560, y: 50 },
+          { componentId: "sql-db", id: "rep2", label: "Replica 2", x: 560, y: 250 },
+        ],
+        edges: [
+          { source: "app-server", target: "primary" },
+          { source: "primary", target: "rep1" },
+          { source: "primary", target: "rep2" },
+        ],
+        captions: {
+          primary: "all writes",
+          rep1: "serves reads",
+          rep2: "serves reads",
+        },
         options: [
           "Read capacity — reads spread across replicas; writes still go to the primary",
           "Write capacity, because writes split across replicas",
@@ -565,6 +766,24 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "shard-1",
         prompt: "What does sharding primarily let you scale that read replicas don't?",
+        scenario: "The dataset is split across shards by a shard key; each shard owns part of the data and its writes.",
+        nodes: [
+          { componentId: "app-server", label: "Router", x: 80, y: 160 },
+          { componentId: "sql-db", id: "sh1", label: "Shard A", x: 340, y: 40 },
+          { componentId: "sql-db", id: "sh2", label: "Shard B", x: 340, y: 160 },
+          { componentId: "sql-db", id: "sh3", label: "Shard C", x: 340, y: 280 },
+        ],
+        edges: [
+          { source: "app-server", target: "sh1" },
+          { source: "app-server", target: "sh2" },
+          { source: "app-server", target: "sh3" },
+        ],
+        captions: {
+          "app-server": "routes by shard key",
+          sh1: "keys A–H",
+          sh2: "keys I–P",
+          sh3: "keys Q–Z",
+        },
         options: [
           "Write throughput and total storage, by splitting data across nodes",
           "Only read throughput",
@@ -591,6 +810,21 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "shard-3",
         prompt: "You shard by 'created_at' timestamp. What problem appears?",
+        scenario: "Shards hold time ranges. All of today's traffic lands on the newest shard.",
+        nodes: [
+          { componentId: "app-server", label: "Router", x: 80, y: 160 },
+          { componentId: "sql-db", id: "old1", label: "Jan", x: 340, y: 40 },
+          { componentId: "sql-db", id: "old2", label: "Feb", x: 340, y: 160 },
+          { componentId: "sql-db", id: "hot", label: "Today (hot)", x: 340, y: 280 },
+        ],
+        edges: [
+          { source: "app-server", target: "hot" },
+        ],
+        captions: {
+          old1: "idle",
+          old2: "idle",
+          hot: "all writes pile up here",
+        },
         options: [
           "All new writes hit the newest shard — a hot spot — while old shards sit idle",
           "Reads become impossible",
@@ -660,6 +894,21 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "cap-2",
         prompt: "Which use case most needs STRONG consistency?",
+        scenario: "Reads may be served by a replica that lags slightly behind the primary.",
+        nodes: [
+          { componentId: "app-server", x: 80, y: 150 },
+          { componentId: "sql-db", id: "primary", label: "Primary", x: 320, y: 60 },
+          { componentId: "sql-db", id: "replica", label: "Replica", x: 320, y: 240 },
+        ],
+        edges: [
+          { source: "app-server", target: "primary" },
+          { source: "primary", target: "replica" },
+          { source: "app-server", target: "replica" },
+        ],
+        captions: {
+          primary: "latest write",
+          replica: "may be stale (lag)",
+        },
         options: [
           "An account balance / inventory count where being wrong causes real harm",
           "A 'likes' counter on a post",
@@ -729,6 +978,21 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "mq-1",
         prompt: "What's the main benefit of putting a queue between a producer and a slow consumer?",
+        scenario: "A bursty producer writes to a queue; a slower worker drains it at its own pace.",
+        nodes: [
+          { componentId: "app-server", label: "Producer", x: 80, y: 150 },
+          { componentId: "message-queue", label: "Queue", x: 320, y: 150 },
+          { componentId: "stream-processor", label: "Worker", x: 560, y: 150 },
+        ],
+        edges: [
+          { source: "app-server", target: "message-queue" },
+          { source: "message-queue", target: "stream-processor" },
+        ],
+        captions: {
+          "app-server": "bursty, fast",
+          "message-queue": "buffers the spike",
+          "stream-processor": "steady, slower",
+        },
         options: [
           "It absorbs bursts and lets the consumer work at its own pace (backpressure)",
           "It makes the database schema simpler",
@@ -821,7 +1085,23 @@ const TOPICS: PracticeTopic[] = [
     questions: [
       {
         id: "rl-1",
-        prompt: "What's the primary purpose of rate limiting?",
+        prompt: "What's the primary purpose of the highlighted component?",
+        scenario: "It sits at the edge, in front of the app servers.",
+        nodes: [
+          { componentId: "dns", label: "Clients", x: 60, y: 150 },
+          { componentId: "rate-limiter", x: 280, y: 150 },
+          { componentId: "app-server", x: 500, y: 150 },
+          { componentId: "nosql-db", x: 700, y: 150 },
+        ],
+        edges: [
+          { source: "dns", target: "rate-limiter" },
+          { source: "rate-limiter", target: "app-server" },
+          { source: "app-server", target: "nosql-db" },
+        ],
+        captions: {
+          "rate-limiter": "caps requests per client",
+          "app-server": "protected from floods",
+        },
         options: [
           "Cap request rates to prevent abuse and protect the system from overload",
           "Encrypt requests in transit",
@@ -903,6 +1183,23 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "ch-1",
         prompt: "Why is plain 'hash(key) mod N' bad when the number of nodes changes?",
+        scenario: "Keys are distributed across cache nodes by a hash of the key.",
+        nodes: [
+          { componentId: "app-server", label: "Router", x: 80, y: 160 },
+          { componentId: "cache", id: "n1", label: "Node 1", x: 340, y: 40 },
+          { componentId: "cache", id: "n2", label: "Node 2", x: 340, y: 160 },
+          { componentId: "cache", id: "n3", label: "Node 3", x: 340, y: 280 },
+        ],
+        edges: [
+          { source: "app-server", target: "n1" },
+          { source: "app-server", target: "n2" },
+          { source: "app-server", target: "n3" },
+        ],
+        captions: {
+          "app-server": "key → which node?",
+          n2: "add/remove a node…",
+          n3: "…and mod N remaps most keys",
+        },
         options: [
           "Changing N remaps almost every key to a different node",
           "It can only hash strings",
@@ -1090,7 +1387,25 @@ const TOPICS: PracticeTopic[] = [
       },
       {
         id: "ms-2",
-        prompt: "What does an API gateway typically handle?",
+        prompt: "What does the highlighted component (the single entry point) typically handle?",
+        scenario: "Clients hit one entry point that fans out to several backend services.",
+        nodes: [
+          { componentId: "api-gateway", x: 80, y: 160 },
+          { componentId: "app-server", id: "svc1", label: "Users svc", x: 340, y: 40 },
+          { componentId: "app-server", id: "svc2", label: "Orders svc", x: 340, y: 160 },
+          { componentId: "app-server", id: "svc3", label: "Payments svc", x: 340, y: 280 },
+        ],
+        edges: [
+          { source: "api-gateway", target: "svc1" },
+          { source: "api-gateway", target: "svc2" },
+          { source: "api-gateway", target: "svc3" },
+        ],
+        captions: {
+          "api-gateway": "auth, routing, rate limit",
+          svc1: "own data",
+          svc2: "own data",
+          svc3: "own data",
+        },
         options: [
           "Routing, authentication, rate limiting, and aggregating calls behind one entry point",
           "Storing the primary copy of all data",
@@ -1160,6 +1475,20 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "se-1",
         prompt: "What data structure makes full-text search fast?",
+        scenario: "Search queries go to a dedicated engine; the database stays the source of truth.",
+        nodes: [
+          { componentId: "app-server", x: 80, y: 150 },
+          { componentId: "search", label: "Search index", x: 320, y: 60 },
+          { componentId: "sql-db", label: "Source of truth", x: 320, y: 240 },
+        ],
+        edges: [
+          { source: "app-server", target: "search" },
+          { source: "sql-db", target: "search" },
+        ],
+        captions: {
+          search: "inverted index: term → docs",
+          "sql-db": "streams changes to the index",
+        },
         options: [
           "An inverted index (term → documents containing it)",
           "A single B-tree on the primary key",
@@ -1242,6 +1571,20 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "obs-1",
         prompt: "What are the three pillars of observability?",
+        scenario: "Services emit signals to an observability stack.",
+        nodes: [
+          { componentId: "app-server", label: "Services", x: 80, y: 150 },
+          { componentId: "monitoring", x: 340, y: 60 },
+          { componentId: "timeseries-db", label: "Metrics store", x: 340, y: 240 },
+        ],
+        edges: [
+          { source: "app-server", target: "monitoring" },
+          { source: "app-server", target: "timeseries-db" },
+        ],
+        captions: {
+          "app-server": "emits logs, metrics, traces",
+          monitoring: "dashboards & alerts",
+        },
         options: [
           "Logs, metrics, and traces",
           "Cache, queue, and database",
@@ -1324,6 +1667,21 @@ const TOPICS: PracticeTopic[] = [
       {
         id: "conc-1",
         prompt: "Two users book the last seat at the same time and both succeed. What happened?",
+        scenario: "Both buyers read '1 seat left', then both write a booking.",
+        nodes: [
+          { componentId: "app-server", id: "a", label: "Buyer A", x: 80, y: 60 },
+          { componentId: "app-server", id: "b", label: "Buyer B", x: 80, y: 240 },
+          { componentId: "sql-db", label: "1 seat left", x: 360, y: 150 },
+        ],
+        edges: [
+          { source: "a", target: "sql-db" },
+          { source: "b", target: "sql-db" },
+        ],
+        captions: {
+          a: "reads 1, writes",
+          b: "reads 1, writes",
+          "sql-db": "no lock → both win",
+        },
         options: [
           "A race condition — concurrent read-modify-write without proper locking/atomicity",
           "The database ran out of storage",

@@ -2,8 +2,10 @@
 
 import { getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
+import { ICON_MAP } from "@/lib/icons";
+import { Server } from "lucide-react";
 
-/** Category accent colors for node borders (match the canvas palette). */
+/** Category accent colors for node borders/icons (match the canvas palette). */
 const CATEGORY_STROKE: Record<string, string> = {
   networking: "#60a5fa",
   compute: "#a78bfa",
@@ -12,17 +14,34 @@ const CATEGORY_STROKE: Record<string, string> = {
   infrastructure: "#22d3ee",
 };
 
-const NODE_W = 104;
-const NODE_H = 40;
-const H_GAP = 48;
+const NODE_W = 128;
+const H_GAP = 46;
 const V_GAP = 18;
 const PAD = 18;
+
+export interface DiagramNode {
+  componentId: string;
+  x: number;
+  y: number;
+  /** Optional unique id so the same component can appear more than once
+   *  (e.g. a primary + replica, or several shards). Defaults to componentId. */
+  id?: string;
+  /** Optional label override (e.g. "Primary", "Shard 1"). */
+  label?: string;
+}
+
+export interface DiagramEdge {
+  source: string; // references a node id (or componentId when no id given)
+  target: string;
+}
 
 interface Placed {
   cx: number;
   cy: number;
   label: string;
   color: string;
+  componentId: string;
+  caption?: string;
 }
 
 /** First sentence of a component's description, as a fallback legend note. */
@@ -34,10 +53,7 @@ function shortDescription(text: string | undefined): string {
 
 /**
  * Renders a problem's reference solution as an architecture diagram with a
- * plain-language legend. Nodes are laid out in dependency layers (each column
- * is one hop deeper from the entry point) computed from the edges, so the
- * diagram stays readable regardless of how the canvas positions were authored
- * — large designs previously overlapped when their positions were scaled down.
+ * plain-language legend.
  */
 export function ArchitectureDiagram({
   problemId,
@@ -53,37 +69,49 @@ export function ArchitectureDiagram({
 
 /**
  * Renders an arbitrary set of components + wires as a layered architecture
- * diagram. Used by the editorial (via a problem's reference) and by the
- * Spot-the-Flaw practice mode (with standalone designs). Set `showLegend` to
- * false to hide the descriptive legend (e.g. so a quiz doesn't give the
- * answer away).
+ * diagram with icons, category colors, and optional per-node captions. Used by
+ * the editorial (via a problem's reference) and by Concept Practice (with
+ * standalone designs). Nodes may repeat a componentId by giving each an `id`.
+ *
+ * - `captions` (keyed by node id/componentId) renders a short role line under
+ *   the box — great for making practice diagrams self-explanatory.
+ * - `showLegend` (default true) toggles the descriptive legend below.
  */
 export function ComponentDiagram({
   nodes,
   edges,
   notes,
+  captions,
   showLegend = true,
 }: {
-  nodes: Array<{ componentId: string; x: number; y: number }>;
-  edges: Array<{ source: string; target: string }>;
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
   notes?: Record<string, string>;
+  captions?: Record<string, string>;
   showLegend?: boolean;
 }) {
-  const ref = { nodes, edges };
-  if (ref.nodes.length === 0) return null;
+  if (nodes.length === 0) return null;
 
-  // Unique components in author order, remembering the authored y for stable
-  // row ordering within a column.
+  const hasCaptions = !!captions && nodes.some((n) => captions[n.id ?? n.componentId]);
+  const NODE_H = hasCaptions ? 58 : 44;
+
+  // Unique nodes by key (id ?? componentId), in author order, remembering the
+  // authored y for stable row ordering within a column.
   const ids: string[] = [];
   const refY = new Map<string, number>();
-  for (const n of ref.nodes) {
-    if (!refY.has(n.componentId)) {
-      refY.set(n.componentId, n.y);
-      ids.push(n.componentId);
+  const keyToComp = new Map<string, string>();
+  const keyToLabel = new Map<string, string>();
+  for (const n of nodes) {
+    const key = n.id ?? n.componentId;
+    if (!refY.has(key)) {
+      refY.set(key, n.y);
+      keyToComp.set(key, n.componentId);
+      if (n.label) keyToLabel.set(key, n.label);
+      ids.push(key);
     }
   }
 
-  // Build the dependency graph (deduped; edges reference componentIds).
+  // Build the dependency graph (deduped; edges reference node keys).
   const adj = new Map<string, string[]>();
   const indeg = new Map<string, number>();
   for (const id of ids) {
@@ -91,7 +119,7 @@ export function ComponentDiagram({
     indeg.set(id, 0);
   }
   const pairSeen = new Set<string>();
-  for (const e of ref.edges) {
+  for (const e of edges) {
     if (!adj.has(e.source) || !adj.has(e.target)) continue;
     const key = `${e.source}→${e.target}`;
     if (pairSeen.has(key)) continue;
@@ -137,22 +165,31 @@ export function ComponentDiagram({
   for (const [d, colIds] of cols) {
     const colH = colIds.length * NODE_H + (colIds.length - 1) * V_GAP;
     colIds.forEach((id, i) => {
-      const comp = getComponentById(id);
+      const componentId = keyToComp.get(id)!;
+      const comp = getComponentById(componentId);
       placedById.set(id, {
         cx: PAD + d * (NODE_W + H_GAP) + NODE_W / 2,
         cy: PAD + (viewH - PAD * 2 - colH) / 2 + i * (NODE_H + V_GAP) + NODE_H / 2,
-        label: comp?.label ?? id,
+        label: keyToLabel.get(id) ?? comp?.label ?? componentId,
         color: CATEGORY_STROKE[comp?.category ?? ""] ?? "#71717a",
+        componentId,
+        caption: captions?.[id],
       });
     });
   }
 
-  const legend = ids.map((id) => {
-    const comp = getComponentById(id);
+  // Legend lists unique components once (by componentId).
+  const legendIds: string[] = [];
+  for (const id of ids) {
+    const cid = keyToComp.get(id)!;
+    if (!legendIds.includes(cid)) legendIds.push(cid);
+  }
+  const legend = legendIds.map((cid) => {
+    const comp = getComponentById(cid);
     return {
-      label: comp?.label ?? id,
+      label: comp?.label ?? cid,
       color: CATEGORY_STROKE[comp?.category ?? ""] ?? "#71717a",
-      why: notes?.[id] ?? shortDescription(comp?.description),
+      why: notes?.[cid] ?? shortDescription(comp?.description),
     };
   });
 
@@ -183,7 +220,7 @@ export function ComponentDiagram({
           viewBox={`0 0 ${viewW} ${viewH}`}
           className="h-auto w-full"
           role="img"
-          aria-label="Reference architecture diagram"
+          aria-label="Architecture diagram"
         >
           <defs>
             <marker
@@ -195,7 +232,7 @@ export function ComponentDiagram({
               markerHeight="6"
               orient="auto-start-reverse"
             >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-zinc-600)" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-zinc-500)" />
             </marker>
           </defs>
 
@@ -209,40 +246,77 @@ export function ComponentDiagram({
                 y1={from.cy}
                 x2={tip.x}
                 y2={tip.y}
-                stroke="var(--color-zinc-600)"
-                strokeWidth={1.3}
+                stroke="var(--color-zinc-500)"
+                strokeWidth={1.4}
                 markerEnd="url(#arch-arrow)"
               />
             );
           })}
 
-          {/* Nodes */}
-          {[...placedById.values()].map((p, i) => (
-            <g key={i}>
-              <rect
+          {/* Nodes — icon + label (+ caption) via foreignObject so we get real icons */}
+          {[...placedById.values()].map((p, i) => {
+            const Icon = ICON_MAP[getComponentById(p.componentId)?.icon ?? ""] ?? Server;
+            return (
+              <foreignObject
+                key={i}
                 x={p.cx - NODE_W / 2}
                 y={p.cy - NODE_H / 2}
                 width={NODE_W}
                 height={NODE_H}
-                rx={7}
-                fill="var(--color-zinc-800)"
-                stroke={p.color}
-                strokeOpacity={0.5}
-                strokeWidth={1.2}
-              />
-              <text
-                x={p.cx}
-                y={p.cy}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={11}
-                fontFamily="system-ui, sans-serif"
-                fill="var(--color-zinc-100)"
               >
-                {p.label.length > 16 ? p.label.slice(0, 15) + "…" : p.label}
-              </text>
-            </g>
-          ))}
+                <div
+                  style={{
+                    boxSizing: "border-box",
+                    height: "100%",
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "1px",
+                    padding: "2px 4px",
+                    borderRadius: "8px",
+                    border: `1px solid ${p.color}66`,
+                    background: `${p.color}1f`,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", maxWidth: "100%" }}>
+                    <span style={{ color: p.color, display: "inline-flex", flexShrink: 0 }}>
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: "var(--color-zinc-100)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {p.label}
+                    </span>
+                  </div>
+                  {p.caption && (
+                    <span
+                      style={{
+                        fontSize: "8.5px",
+                        lineHeight: 1.15,
+                        color: "var(--color-zinc-400)",
+                        textAlign: "center",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {p.caption}
+                    </span>
+                  )}
+                </div>
+              </foreignObject>
+            );
+          })}
         </svg>
       </div>
 

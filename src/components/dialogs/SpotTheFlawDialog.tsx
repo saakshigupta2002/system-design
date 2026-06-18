@@ -317,6 +317,7 @@ export function SpotTheFlawDialog({ open, onClose }: SpotTheFlawDialogProps) {
                   <ComponentDiagram
                     nodes={question.nodes}
                     edges={question.edges ?? []}
+                    captions={question.captions}
                     showLegend={false}
                   />
                 </div>
