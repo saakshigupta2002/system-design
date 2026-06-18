@@ -169,66 +169,69 @@ export function ComponentPalette({ onCreateCustomComponent, onEditCustomComponen
                   const Icon = ICON_MAP[item.icon] ?? Server;
                   const accent = CATEGORY_ACCENT[item.category] ?? "text-cyan-400";
                   const concept = CONCEPT_LIBRARY[item.id];
-                  const tipText = concept?.whenToUse[0] ?? item.description;
+                  const tipText = (concept?.whenToUse[0] ?? item.description ?? "").trim();
                   const isCustom = customIds.has(item.id);
+                  const card = (
+                    <div
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item.id)}
+                      onClick={() => handleQuickAdd(item.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(item.id); }}
+                      title="Click to add to the canvas, or drag to place it"
+                      className="group flex cursor-pointer items-center gap-2.5 rounded-md border border-transparent px-2.5 py-2 transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:cursor-grabbing"
+                    >
+                      <Icon className={`h-4 w-4 shrink-0 ${accent}`} />
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-300">
+                        {item.label}
+                      </span>
+                      {isCustom && (
+                        <Badge
+                          variant="outline"
+                          className="h-4 shrink-0 border-cyan-500/30 bg-cyan-500/10 px-1.5 text-[10px] font-medium text-cyan-400"
+                        >
+                          Custom
+                        </Badge>
+                      )}
+                      <span
+                        className="shrink-0 font-mono text-[11px] tabular-nums text-zinc-500"
+                        title="Max throughput per instance (queries/sec, illustrative). Edit a placed component's QPS in the Inspect panel."
+                      >
+                        {item.maxQPS === Infinity ? "\u221e" : `${(item.maxQPS / 1000).toFixed(0)}k`}
+                      </span>
+                      {isCustom && onEditCustomComponent && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditCustomComponent(item.id);
+                          }}
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-colors hover:text-cyan-400 group-hover:opacity-100"
+                          title="Edit custom component (name, QPS, etc.)"
+                          aria-label={`Edit ${item.label}`}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      )}
+                      {isCustom && (
+                        <button
+                          onClick={(e) => handleDeleteCustom(e, item.id, item.label)}
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-colors hover:text-rose-400 group-hover:opacity-100"
+                          title="Delete custom component"
+                          aria-label={`Delete ${item.label}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+
+                  // Only wrap in a tooltip when there's text to show \u2014 otherwise
+                  // an empty tooltip renders just its arrow (the stray white nub).
+                  if (!tipText) return <div key={item.id}>{card}</div>;
                   return (
                     <Tooltip key={item.id}>
-                      <TooltipTrigger
-                        render={
-                          <div
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, item.id)}
-                            onClick={() => handleQuickAdd(item.id)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(item.id); }}
-                            title="Click to add to the canvas, or drag to place it"
-                            className="group flex cursor-pointer items-center gap-2.5 rounded-md border border-transparent px-2.5 py-2 transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:cursor-grabbing"
-                          >
-                            <Icon className={`h-4 w-4 shrink-0 ${accent}`} />
-                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-300">
-                              {item.label}
-                            </span>
-                            {isCustom && (
-                              <Badge
-                                variant="outline"
-                                className="h-4 shrink-0 border-cyan-500/30 bg-cyan-500/10 px-1.5 text-[10px] font-medium text-cyan-400"
-                              >
-                                Custom
-                              </Badge>
-                            )}
-                            <span
-                              className="shrink-0 font-mono text-[11px] tabular-nums text-zinc-500"
-                              title="Max throughput per instance (queries/sec, illustrative)"
-                            >
-                              {item.maxQPS === Infinity ? "\u221e" : `${(item.maxQPS / 1000).toFixed(0)}k`}
-                            </span>
-                            {isCustom && onEditCustomComponent && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onEditCustomComponent(item.id);
-                                }}
-                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-colors hover:text-cyan-400 group-hover:opacity-100"
-                                title="Edit custom component"
-                                aria-label={`Edit ${item.label}`}
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </button>
-                            )}
-                            {isCustom && (
-                              <button
-                                onClick={(e) => handleDeleteCustom(e, item.id, item.label)}
-                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 opacity-0 transition-colors hover:text-rose-400 group-hover:opacity-100"
-                                title="Delete custom component"
-                                aria-label={`Delete ${item.label}`}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        }
-                      />
+                      <TooltipTrigger render={card} />
                       <TooltipContent side="right" sideOffset={8} className="max-w-[220px]">
                         <p className="text-xs leading-relaxed">{tipText}</p>
                       </TooltipContent>
