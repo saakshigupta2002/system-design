@@ -1746,6 +1746,233 @@ const TOPICS: PracticeTopic[] = [
       },
     ],
   },
+
+  // ─────────────── System Design Challenges (complex, constraint-based) ───────────────
+  {
+    id: "system-challenges",
+    title: "System Design Challenges",
+    blurb: "Bigger architectures — read the constraints, find the weak point, pick the fix.",
+    study: [
+      "Start from the requirements, not the boxes: is it read-heavy or write-heavy? Global? Bursty? Latency-sensitive? Money-critical? The right design follows from these.",
+      "Trace a single request end-to-end through the diagram and ask what breaks first under the stated load.",
+      "Find the lowest-capacity component on the hot path — that's usually the bottleneck.",
+      "Check for the classics: missing cache on read-heavy paths, no CDN for global media, synchronous side-effects on the write path, single points of failure, and missing protection (rate limiting, auth, idempotency).",
+      "Match the data store to the access pattern: time-series → TSDB, proximity → geospatial index, full-text → search engine, relationships → graph DB.",
+      "Pick the change with the highest impact for the stated constraints — not just any valid improvement.",
+    ],
+    questions: [
+      {
+        id: "chal-feed-cache",
+        prompt: "Given these constraints, what's the single most important change?",
+        scenario:
+          "Social timeline service. Constraints: 50M daily users, read:write ≈ 100:1, timeline must load in < 150ms (p99). Today every timeline read goes straight to the database.",
+        nodes: [
+          { componentId: "dns", x: 60, y: 150 },
+          { componentId: "load-balancer", x: 240, y: 150 },
+          { componentId: "app-server", x: 430, y: 150 },
+          { componentId: "sql-db", x: 640, y: 150 },
+          { componentId: "monitoring", x: 430, y: 30 },
+        ],
+        edges: [
+          { source: "dns", target: "load-balancer" },
+          { source: "load-balancer", target: "app-server" },
+          { source: "app-server", target: "sql-db" },
+          { source: "app-server", target: "monitoring" },
+        ],
+        captions: {
+          "sql-db": "takes 100% of reads",
+        },
+        options: [
+          "Add a cache for timelines so the 100:1 reads don't all hit the database",
+          "Shard the database to scale writes",
+          "Put a CDN in front of the JSON API responses",
+          "Replace the load balancer with DNS round-robin",
+        ],
+        correctIndex: 0,
+        explanation:
+          "With a 100:1 read ratio and a tight p99, the database is the obvious bottleneck. A cache absorbs the vast majority of reads (low ms latency) and protects the DB. Sharding helps writes — but writes aren't the problem here.",
+      },
+      {
+        id: "chal-chat-backplane",
+        prompt: "Two users in the same room are on different servers and don't see each other's messages. Why, and what fixes it?",
+        scenario:
+          "Group chat. Clients open WebSockets to whichever server the load balancer picks. Each server writes messages to the shared database, but delivery to other connected users is missing across servers.",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 150 },
+          { componentId: "websocket-server", id: "ws1", label: "WS Server 1", x: 320, y: 50 },
+          { componentId: "websocket-server", id: "ws2", label: "WS Server 2", x: 320, y: 260 },
+          { componentId: "nosql-db", x: 600, y: 150 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "ws1" },
+          { source: "load-balancer", target: "ws2" },
+          { source: "ws1", target: "nosql-db" },
+          { source: "ws2", target: "nosql-db" },
+        ],
+        captions: {
+          ws1: "holds User A",
+          ws2: "holds User B",
+          "nosql-db": "stores, but doesn't notify",
+        },
+        options: [
+          "There's no backplane between servers — add pub/sub (e.g. Redis Pub/Sub or a queue) so a message fans out to every server holding a room member",
+          "WebSockets can't be load balanced — switch all clients to 1-second polling",
+          "The database needs more read replicas",
+          "Put a CDN in front of the WebSocket servers",
+        ],
+        correctIndex: 0,
+        explanation:
+          "A user's connection lives on one server, so a message must be broadcast to the other servers holding members of that room. A pub/sub backplane (plus a connection registry mapping user → server) delivers messages across the fleet. Persisting to the DB alone doesn't notify anyone.",
+      },
+      {
+        id: "chal-checkout-async",
+        prompt: "During flash sales, checkouts hang or fail. What's the core issue?",
+        scenario:
+          "E-commerce checkout. On each order the app server, in one synchronous request, writes the order, updates the search index, warms the cache, and sends a confirmation — then responds. Flash sales bring big bursts.",
+        nodes: [
+          { componentId: "api-gateway", x: 60, y: 160 },
+          { componentId: "app-server", x: 280, y: 160 },
+          { componentId: "sql-db", id: "order", label: "Order DB", x: 520, y: 30 },
+          { componentId: "search", x: 520, y: 130 },
+          { componentId: "cache", x: 520, y: 230 },
+          { componentId: "notification-service", x: 520, y: 330 },
+        ],
+        edges: [
+          { source: "api-gateway", target: "app-server" },
+          { source: "app-server", target: "order" },
+          { source: "app-server", target: "search" },
+          { source: "app-server", target: "cache" },
+          { source: "app-server", target: "notification-service" },
+        ],
+        captions: {
+          "app-server": "does it all inline",
+          search: "slow? order fails",
+          "notification-service": "slow? order fails",
+        },
+        options: [
+          "Too many synchronous side-effects on the write path — commit the order, then publish an event and update search/cache/email asynchronously",
+          "The API gateway is the bottleneck and should be removed",
+          "The order database should be switched to NoSQL",
+          "Add more DNS records to handle the burst",
+        ],
+        correctIndex: 0,
+        explanation:
+          "Chaining four synchronous calls makes the slowest one set checkout latency, and any single failure fails the order. Commit the order durably, then emit an event; separate consumers update search, warm the cache, and send the confirmation — so checkout is fast and resilient.",
+      },
+      {
+        id: "chal-metrics-tsdb",
+        prompt: "Why won't this scale, and what store fits the workload?",
+        scenario:
+          "Monitoring platform ingesting ~1,000,000 metric points/sec. The team stores them in a relational database and runs dashboard roll-ups with SQL GROUP BY over huge tables.",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 150 },
+          { componentId: "app-server", label: "Ingest", x: 300, y: 150 },
+          { componentId: "sql-db", x: 540, y: 150 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "app-server" },
+          { source: "app-server", target: "sql-db" },
+        ],
+        captions: {
+          "sql-db": "1M writes/sec? can't keep up",
+        },
+        options: [
+          "A relational DB can't take 1M time-series writes/sec — use a time-series database, with a stream processor pre-aggregating roll-ups",
+          "Add a cache in front of the SQL database",
+          "Serve the dashboards through a CDN",
+          "Switch to a graph database",
+        ],
+        correctIndex: 0,
+        explanation:
+          "Metrics are append-heavy time-series data. A purpose-built time-series database handles the write volume and time-bucketed queries; a stream processor can downsample/aggregate on the way in so dashboards read cheap pre-rolled data. A cache or CDN doesn't fix a write-throughput problem.",
+      },
+      {
+        id: "chal-geo-index",
+        prompt: "Matching is slow at city scale. What's the right fix?",
+        scenario:
+          "Ride-sharing. To find drivers near a rider, the app runs a SQL query over the whole drivers table computing distance to every driver on each request. p99 is seconds, not milliseconds.",
+        nodes: [
+          { componentId: "load-balancer", x: 80, y: 150 },
+          { componentId: "app-server", x: 300, y: 150 },
+          { componentId: "sql-db", label: "drivers (full scan)", x: 560, y: 150 },
+        ],
+        edges: [
+          { source: "load-balancer", target: "app-server" },
+          { source: "app-server", target: "sql-db" },
+        ],
+        captions: {
+          "sql-db": "distance math on every row",
+        },
+        options: [
+          "Use a geospatial index (geohash / quadtree) so 'drivers near me' is a fast bounded lookup, not a full-table scan",
+          "Add more app servers to parallelize the scan",
+          "Cache the entire drivers table in memory",
+          "Shard the drivers table by driver name",
+        ],
+        correctIndex: 0,
+        explanation:
+          "Computing distance to every driver is O(N) per request. A geospatial index buckets drivers by location (geohash/quadtree/H3) so you only examine drivers in nearby cells — turning proximity search into a fast bounded lookup.",
+      },
+      {
+        id: "chal-payment-idempotency",
+        prompt: "Identify the most serious risk to fix first.",
+        scenario:
+          "Payment service with a replicated database and redundant app servers. Clients frequently retry on timeout. The charge endpoint has no idempotency key, and money must never be lost or double-charged.",
+        nodes: [
+          { componentId: "api-gateway", x: 100, y: 150 },
+          { componentId: "app-server", x: 340, y: 150 },
+          { componentId: "sql-db", label: "Primary + replica", x: 580, y: 150 },
+        ],
+        edges: [
+          { source: "api-gateway", target: "app-server" },
+          { source: "app-server", target: "sql-db" },
+        ],
+        captions: {
+          "app-server": "no idempotency key",
+          "sql-db": "already replicated",
+        },
+        options: [
+          "No idempotency — a client retry can charge the customer twice; dedupe by a client-supplied idempotency key",
+          "The database needs another replica",
+          "The API gateway is a single point of failure",
+          "The app tier should scale vertically instead",
+        ],
+        correctIndex: 0,
+        explanation:
+          "The DB is already replicated and the app tier is redundant, so the glaring gap is idempotency: with frequent retries and a side-effecting charge, the same request can run twice and double-charge. A recorded idempotency key makes repeats safe.",
+      },
+      {
+        id: "chal-vod-cdn",
+        prompt: "Global users complain video is slow to start and buffers. What's the highest-impact fix?",
+        scenario:
+          "Video-on-demand with a worldwide audience and multi-GB files. Players currently fetch video segments directly from object storage in a single region, through the app servers.",
+        nodes: [
+          { componentId: "dns", x: 60, y: 150 },
+          { componentId: "load-balancer", x: 240, y: 150 },
+          { componentId: "app-server", x: 430, y: 150 },
+          { componentId: "object-storage", label: "Origin (1 region)", x: 660, y: 150 },
+        ],
+        edges: [
+          { source: "dns", target: "load-balancer" },
+          { source: "load-balancer", target: "app-server" },
+          { source: "app-server", target: "object-storage" },
+        ],
+        captions: {
+          "app-server": "proxies every byte",
+          "object-storage": "far from most users",
+        },
+        options: [
+          "Serve video segments via a CDN so bytes come from an edge near each viewer; the origin only handles cache misses",
+          "Add more app servers in the same region",
+          "Store the video files in a relational database",
+          "Increase the object storage bucket size",
+        ],
+        correctIndex: 0,
+        explanation:
+          "For global, large-file media, distance and origin bandwidth dominate. A CDN caches segments at edge locations worldwide so playback starts fast and the single-region origin only serves misses — exactly the pattern behind real streaming platforms.",
+      },
+    ],
+  },
 ];
 
 // Fold the existing diagram challenges in as a 'Spot the Flaw' topic so nothing

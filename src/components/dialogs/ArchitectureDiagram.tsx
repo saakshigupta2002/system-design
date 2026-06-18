@@ -236,16 +236,18 @@ export function ComponentDiagram({
             </marker>
           </defs>
 
-          {/* Edges (drawn first, behind nodes) */}
+          {/* Edges (drawn first, behind nodes). Trim BOTH ends to the box
+              borders so a line runs edge-to-edge, not from box center. */}
           {drawnEdges.map(({ from, to }, i) => {
-            const tip = borderPoint(from, to);
+            const start = borderPoint(to, from); // point on the source box border
+            const end = borderPoint(from, to); // point on the target box border
             return (
               <line
                 key={i}
-                x1={from.cx}
-                y1={from.cy}
-                x2={tip.x}
-                y2={tip.y}
+                x1={start.x}
+                y1={start.y}
+                x2={end.x}
+                y2={end.y}
                 stroke="var(--color-zinc-500)"
                 strokeWidth={1.4}
                 markerEnd="url(#arch-arrow)"
