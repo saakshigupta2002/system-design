@@ -31,10 +31,26 @@ export function SimulationControls({ onSimulate }: SimulationControlsProps) {
   const isRunning = useSimulationStore((s) => s.isRunning);
   const isRamping = useSimulationStore((s) => s.isRamping);
   const liveRps = useSimulationStore((s) => s.liveRps);
+  const result = useSimulationStore((s) => s.result);
   const failedCount = useSimulationStore((s) => s.failedNodeIds.length);
   const clearFailed = useSimulationStore((s) => s.clearFailed);
 
   const rampRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Stop the running simulation: clear the result (stops the flowing edges)
+  // and reset every node back to idle.
+  const stopSimulation = useCallback(() => {
+    const { nodes } = useCanvasStore.getState();
+    const updates = new Map<string, Record<string, unknown>>();
+    for (const n of nodes) {
+      if (n.type !== "text") {
+        updates.set(n.id, { utilization: 0, status: "idle", isBottleneck: false });
+      }
+    }
+    useCanvasStore.getState().updateAllNodeData(updates);
+    useSimulationStore.getState().setResult(null);
+    useSimulationStore.getState().setRunning(false);
+  }, []);
 
   const stopRamp = useCallback(() => {
     if (rampRef.current) {
@@ -169,6 +185,11 @@ export function SimulationControls({ onSimulate }: SimulationControlsProps) {
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Simulating...
               </>
+            ) : result !== null ? (
+              <>
+                <Play className="h-3 w-3" />
+                Re-run Simulation
+              </>
             ) : (
               <>
                 <Play className="h-3 w-3" />
@@ -176,6 +197,18 @@ export function SimulationControls({ onSimulate }: SimulationControlsProps) {
               </>
             )}
           </Button>
+          {result !== null && !isRunning && (
+            <Button
+              onClick={stopSimulation}
+              variant="outline"
+              className="w-full gap-2 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              size="sm"
+              title="Clear the simulation and reset the canvas to idle"
+            >
+              <Square className="h-3 w-3" />
+              Stop simulation
+            </Button>
+          )}
           <Button
             onClick={runRamp}
             disabled={isRunning}
