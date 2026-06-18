@@ -25,6 +25,7 @@ import type { SystemComponent } from "@/types/component";
 // Accent color per category — applied to the icon glyph only, matching how the
 // canvas nodes are colored, so the palette and the canvas read as one design.
 const CATEGORY_ACCENT: Record<string, string> = {
+  client: "text-pink-400",
   networking: "text-blue-400",
   compute: "text-violet-400",
   storage: "text-amber-400",

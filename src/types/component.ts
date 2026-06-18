@@ -1,4 +1,5 @@
 export type ComponentCategory =
+  | "client"
   | "networking"
   | "compute"
   | "storage"

@@ -2,6 +2,20 @@ import type { SystemComponent } from "@/types/component";
 import { useCustomComponentsStore } from "@/store/customComponentsStore";
 
 export const SYSTEM_COMPONENTS: SystemComponent[] = [
+  // Client
+  {
+    id: "client",
+    label: "Client / User",
+    category: "client",
+    icon: "Users",
+    maxQPS: 1000000,
+    latencyMs: 1,
+    scalable: false,
+    stateful: false,
+    monthlyCost: 0,
+    description:
+      "The end users or client apps that originate traffic — browsers, mobile apps, or external API callers. Place it at the start of your design as the entry point; the request load you set in the simulator flows out of here into the rest of the system (DNS, CDN, load balancer, and so on). It has no real capacity limit of its own — it's the source of traffic, not a server.",
+  },
   // Networking
   {
     id: "dns",
@@ -485,6 +499,7 @@ export const SYSTEM_COMPONENTS: SystemComponent[] = [
 ];
 
 export const COMPONENT_CATEGORIES = [
+  { key: "client", label: "Client" },
   { key: "networking", label: "Networking" },
   { key: "compute", label: "Compute" },
   { key: "storage", label: "Storage" },

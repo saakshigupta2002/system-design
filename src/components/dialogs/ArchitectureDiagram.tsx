@@ -7,6 +7,7 @@ import { Server } from "lucide-react";
 
 /** Category accent colors for node borders/icons (match the canvas palette). */
 const CATEGORY_STROKE: Record<string, string> = {
+  client: "#f472b6",
   networking: "#60a5fa",
   compute: "#a78bfa",
   storage: "#fbbf24",

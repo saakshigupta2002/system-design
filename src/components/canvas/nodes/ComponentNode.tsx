@@ -12,6 +12,7 @@ import { ICON_MAP } from "@/lib/icons";
 type ComponentNode = Node<ComponentNodeData, "component">;
 
 const CATEGORY_COLORS: Record<string, { border: string; icon: string }> = {
+  client: { border: "border-zinc-700", icon: "text-pink-400" },
   networking: { border: "border-zinc-700", icon: "text-blue-400" },
   compute: { border: "border-zinc-700", icon: "text-violet-400" },
   storage: { border: "border-zinc-700", icon: "text-amber-400" },
