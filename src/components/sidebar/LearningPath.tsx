@@ -115,9 +115,9 @@ export function LearningPath({
               <Search className="h-3.5 w-3.5 text-amber-400" />
             </span>
             <span className="min-w-0">
-              <span className="block text-xs font-semibold text-zinc-200">Spot the Flaw</span>
+              <span className="block text-xs font-semibold text-zinc-200">Concept Practice</span>
               <span className="block text-[10px] leading-tight text-zinc-500">
-                Practice diagnosing designs — find the flaw in each one
+                Study a topic, then test yourself — 100+ questions
               </span>
             </span>
           </button>
