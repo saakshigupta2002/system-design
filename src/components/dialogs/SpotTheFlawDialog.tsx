@@ -186,7 +186,7 @@ export function SpotTheFlawDialog({ open, onClose }: SpotTheFlawDialogProps) {
               </div>
 
               <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                What's the most serious flaw?
+                {challenge.prompt ?? "What's the most serious flaw?"}
               </p>
               <div className="space-y-2">
                 {view.options.map((opt, i) => {
