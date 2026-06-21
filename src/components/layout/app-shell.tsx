@@ -13,6 +13,7 @@ import { usePenStore } from "@/store/penStore";
 import { useSimulationStore } from "@/store/simulationStore";
 import { runSimulation } from "@/engine/simulator";
 import { scoreDesign } from "@/scoring/scorer";
+import { PROBLEMS } from "@/data/problems";
 import { openReferenceSolution } from "@/lib/referenceSolution";
 import { markCompleted } from "@/lib/learningProgress";
 import { applySharedDesignFromHash } from "@/lib/shareDesign";
@@ -187,16 +188,27 @@ export function AppShell() {
   }, [isMobile]);
 
   const handleLoadReference = useCallback(() => {
-    const problemId = useAppStore.getState().selectedProblemId;
-    if (problemId.startsWith("custom-")) {
-      useAppStore.getState().showToast("Custom problems don't have a reference solution", "info");
+    let problemId = useAppStore.getState().selectedProblemId;
+
+    // Nothing selected yet → open the Problems tab and pick a default problem,
+    // so the Reference button always opens a diagram.
+    if (!problemId) {
+      handlePickProblem();
+      problemId = PROBLEMS[0].id;
+      useAppStore.getState().setSelectedProblem(problemId);
+    } else if (problemId.startsWith("custom-")) {
+      useAppStore.getState().showToast(
+        "Custom problems have no reference — pick a built-in problem",
+        "info"
+      );
+      handlePickProblem();
       return;
     }
+
     if (openReferenceSolution(problemId)) {
-      useAppStore.getState().showToast("Reference opened in new tab", "success");
+      useAppStore.getState().showToast("Reference opened in a new tab", "success");
     } else {
-      useAppStore.getState().showToast("Pick a problem first", "info");
-      handlePickProblem();
+      useAppStore.getState().showToast("This problem has no reference solution", "info");
     }
   }, [handlePickProblem]);
 
@@ -322,6 +334,7 @@ export function AppShell() {
         {interviewMode === "interview" && <InterviewBar />}
         <TopBar
           onSimulate={handleSimulate}
+          onLoadReference={handleLoadReference}
           onClearCanvas={() => setClearConfirmOpen(true)}
           onSave={handleSave}
           onLoad={handleLoad}

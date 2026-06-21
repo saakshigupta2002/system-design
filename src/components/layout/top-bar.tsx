@@ -32,12 +32,12 @@ import { PROBLEMS } from "@/data/problems";
 import { useCustomProblemsStore } from "@/store/customProblemsStore";
 import { type Node, useReactFlow } from "@xyflow/react";
 import { exportAsPng, exportAsSvg, exportAsJSON } from "@/lib/exportCanvas";
-import { openReferenceSolution } from "@/lib/referenceSolution";
 import { createShareLink } from "@/lib/shareDesign";
 
 interface TopBarProps {
   onSimulate: () => void;
   onClearCanvas: () => void;
+  onLoadReference: () => void;
   onSave: () => void;
   onLoad: () => void;
   onStartInterview: () => void;
@@ -47,7 +47,7 @@ interface TopBarProps {
   onToggleRight: () => void;
 }
 
-export function TopBar({ onSimulate, onClearCanvas, onSave, onLoad, onStartInterview, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
+export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onLoad, onStartInterview, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const { getViewport, fitView } = useReactFlow();
@@ -147,13 +147,6 @@ export function TopBar({ onSimulate, onClearCanvas, onSave, onLoad, onStartInter
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleExportPng]);
 
-  const loadReference = useCallback(() => {
-    // Open reference in a NEW tab — user's design stays in "My Design" tab
-    if (openReferenceSolution(selectedProblemId)) {
-      useAppStore.getState().showToast("Reference opened in new tab — your design is safe", "success");
-    }
-  }, [selectedProblemId]);
-
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-900 px-2 md:gap-3 md:px-3">
       {/* Left section */}
@@ -176,16 +169,14 @@ export function TopBar({ onSimulate, onClearCanvas, onSave, onLoad, onStartInter
 
         <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
 
-        {selectedProblemId && !selectedProblemId.startsWith("custom-") && (
-          <button
-            onClick={loadReference}
-            className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 md:flex"
-            title="Load reference solution"
-          >
-            <Download className="h-3 w-3" />
-            Reference
-          </button>
-        )}
+        <button
+          onClick={onLoadReference}
+          className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 md:flex"
+          title="Open the reference solution (picks a problem if none is selected)"
+        >
+          <Download className="h-3 w-3" />
+          Reference
+        </button>
 
         <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
 
@@ -233,15 +224,13 @@ export function TopBar({ onSimulate, onClearCanvas, onSave, onLoad, onStartInter
               <div className="fixed inset-0 z-40" onClick={() => setMobileMoreOpen(false)} />
               <div className="absolute left-0 top-full z-50 mt-1 w-60 rounded-md border border-zinc-700 bg-zinc-900 py-1 shadow-lg">
                 {/* Design actions */}
-                {selectedProblemId && !selectedProblemId.startsWith("custom-") && (
-                  <button
-                    onClick={() => { setMobileMoreOpen(false); loadReference(); }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                  >
-                    <Download className="h-3.5 w-3.5 text-zinc-500" />
-                    Load reference solution
-                  </button>
-                )}
+                <button
+                  onClick={() => { setMobileMoreOpen(false); onLoadReference(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
+                >
+                  <Download className="h-3.5 w-3.5 text-zinc-500" />
+                  Load reference solution
+                </button>
                 <button
                   onClick={() => { setMobileMoreOpen(false); addTextNote(); }}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
