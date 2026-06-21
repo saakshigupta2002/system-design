@@ -246,6 +246,21 @@ export function ComponentPalette({ onCreateCustomComponent, onEditCustomComponen
             </div>
           );
         })}
+
+        {/* Trademark / attribution notice — logos identify the technologies only */}
+        <p className="px-0.5 pt-1 text-[10px] leading-relaxed text-zinc-600">
+          Logos are trademarks of their respective owners, used for identification
+          only — not affiliated with or endorsed by them. Icons via{" "}
+          <a
+            href="https://simpleicons.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline transition-colors hover:text-zinc-400"
+          >
+            Simple Icons
+          </a>{" "}
+          (CC0).
+        </p>
       </div>
     </div>
     </div>

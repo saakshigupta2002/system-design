@@ -1,10 +1,16 @@
 /**
  * Brand/technology logos via Simple Icons (https://simpleicons.org).
  *
- * Each icon renders as an SVG in its official brand color. Very dark logos
- * (e.g. Kafka, GitHub) are nudged to a light color so they stay visible on the
- * app's dark surfaces. Keyed by friendly names used in a component's `icon`
- * field, then merged into ICON_MAP alongside the generic lucide icons.
+ * Each icon renders as an SVG in its OFFICIAL brand color, unaltered. Very dark
+ * logos (e.g. Kafka, GitHub) are placed on a small light chip so they stay
+ * visible on the app's dark surfaces without changing the logo color itself.
+ * Keyed by friendly names used in a component's `icon` field, then merged into
+ * ICON_MAP alongside the generic lucide icons.
+ *
+ * Trademarks belong to their respective owners; logos are shown only to
+ * identify the technologies. To honor a takedown request, delete that icon's
+ * import + its BRAND_ICONS entry below — the component then falls back to a
+ * generic icon automatically (ICON_MAP lookup → Server). One-line change.
  */
 import {
   // databases / storage
@@ -88,14 +94,42 @@ function luminance(hex: string): number {
 }
 
 function makeBrandIcon(icon: RawIcon) {
-  // Keep near-black logos visible on dark surfaces.
-  const fill = luminance(icon.hex) < 0.22 ? "#e4e4e7" : `#${icon.hex}`;
+  const color = `#${icon.hex}`;
+  // Near-black logos get a light chip behind them so they're visible on dark
+  // surfaces — the logo keeps its true brand color (no alteration).
+  const needsChip = luminance(icon.hex) < 0.22;
   function BrandIcon({ className }: { className?: string }) {
+    if (needsChip) {
+      return (
+        <span
+          className={className}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f4f4f5",
+            borderRadius: "3px",
+            padding: "1.5px",
+            boxSizing: "border-box",
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill={color}
+            role="img"
+            aria-label={icon.title}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <path d={icon.path} />
+          </svg>
+        </span>
+      );
+    }
     return (
       <svg
         className={className}
         viewBox="0 0 24 24"
-        fill={fill}
+        fill={color}
         role="img"
         aria-label={icon.title}
       >
