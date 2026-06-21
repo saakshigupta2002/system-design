@@ -14,6 +14,9 @@ const CATEGORY_STROKE: Record<string, string> = {
   messaging: "#34d399",
   infrastructure: "#22d3ee",
   aws: "#fb923c",
+  gcp: "#38bdf8",
+  ai: "#e879f9",
+  saas: "#2dd4bf",
 };
 
 const NODE_W = 128;

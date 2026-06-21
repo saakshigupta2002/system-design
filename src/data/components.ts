@@ -695,6 +695,83 @@ export const SYSTEM_COMPONENTS: SystemComponent[] = [
     description:
       "AWS OpenSearch — managed search and analytics engine (Elasticsearch-compatible) with an inverted index. The AWS equivalent of the search component; keep it in sync with your source of truth via change data capture.",
   },
+
+  // ── Named databases & stores (Storage) ──
+  { id: "postgresql", label: "PostgreSQL", category: "storage", icon: "PostgreSQL", maxQPS: 8000, latencyMs: 15, scalable: false, stateful: true, monthlyCost: 100, description: "PostgreSQL — powerful open-source relational database with strong consistency, rich SQL, and extensions. Scale reads with replicas; writes via one primary." },
+  { id: "mysql", label: "MySQL", category: "storage", icon: "MySQL", maxQPS: 8000, latencyMs: 15, scalable: false, stateful: true, monthlyCost: 90, description: "MySQL — widely used open-source relational database. Great for transactional workloads; scale reads with replicas." },
+  { id: "mariadb", label: "MariaDB", category: "storage", icon: "MariaDB", maxQPS: 8000, latencyMs: 15, scalable: false, stateful: true, monthlyCost: 85, description: "MariaDB — community-developed fork of MySQL with extra engines and features." },
+  { id: "mongodb", label: "MongoDB", category: "storage", icon: "MongoDB", maxQPS: 30000, latencyMs: 12, scalable: true, stateful: true, monthlyCost: 90, description: "MongoDB — document (NoSQL) database storing flexible JSON-like records. Scales horizontally via sharding." },
+  { id: "cassandra", label: "Cassandra", category: "storage", icon: "Cassandra", maxQPS: 100000, latencyMs: 10, scalable: true, stateful: true, monthlyCost: 120, description: "Apache Cassandra — wide-column NoSQL store built for massive write throughput and multi-datacenter availability." },
+  { id: "cockroachdb", label: "CockroachDB", category: "storage", icon: "CockroachDB", maxQPS: 20000, latencyMs: 18, scalable: true, stateful: true, monthlyCost: 150, description: "CockroachDB — distributed SQL with horizontal scale and strong consistency; survives node/region failures." },
+  { id: "redis", label: "Redis", category: "storage", icon: "Redis", maxQPS: 200000, latencyMs: 1, scalable: true, stateful: true, monthlyCost: 60, description: "Redis — in-memory data store used as a cache, session store, queue, rate limiter, and for sorted-set leaderboards. Sub-millisecond." },
+  { id: "elasticsearch", label: "Elasticsearch", category: "storage", icon: "Elasticsearch", maxQPS: 20000, latencyMs: 25, scalable: true, stateful: true, monthlyCost: 110, description: "Elasticsearch — distributed search & analytics engine built on an inverted index. For full-text search and log analytics." },
+  { id: "clickhouse", label: "ClickHouse", category: "storage", icon: "ClickHouse", maxQPS: 50000, latencyMs: 20, scalable: true, stateful: true, monthlyCost: 100, description: "ClickHouse — columnar OLAP database for fast analytical queries over huge datasets." },
+  { id: "influxdb", label: "InfluxDB", category: "storage", icon: "InfluxDB", maxQPS: 200000, latencyMs: 10, scalable: true, stateful: true, monthlyCost: 70, description: "InfluxDB — time-series database optimized for high-write metrics, events, and sensor data." },
+  { id: "neo4j", label: "Neo4j", category: "storage", icon: "Neo4j", maxQPS: 10000, latencyMs: 20, scalable: false, stateful: true, monthlyCost: 130, description: "Neo4j — graph database storing relationships as first-class edges; ideal for deep traversals (friends-of-friends, paths)." },
+  { id: "snowflake", label: "Snowflake", category: "storage", icon: "Snowflake", maxQPS: 5000, latencyMs: 200, scalable: true, stateful: true, monthlyCost: 300, description: "Snowflake — cloud data warehouse for large-scale analytics with separated storage and compute." },
+  { id: "sqlite", label: "SQLite", category: "storage", icon: "SQLite", maxQPS: 2000, latencyMs: 5, scalable: false, stateful: true, monthlyCost: 0, description: "SQLite — embedded, file-based relational database. Great for small apps, edge, and local storage." },
+
+  // ── Messaging & streaming ──
+  { id: "kafka", label: "Apache Kafka", category: "messaging", icon: "Kafka", maxQPS: 1000000, latencyMs: 10, scalable: true, stateful: true, monthlyCost: 150, description: "Apache Kafka — distributed, partitioned append-only log for high-throughput event streaming and decoupling services. Consumers track offsets and can replay." },
+  { id: "rabbitmq", label: "RabbitMQ", category: "messaging", icon: "RabbitMQ", maxQPS: 100000, latencyMs: 8, scalable: true, stateful: true, monthlyCost: 50, description: "RabbitMQ — mature message broker with flexible routing (exchanges/queues). Good for task queues and RPC." },
+  { id: "nats", label: "NATS", category: "messaging", icon: "NATS", maxQPS: 500000, latencyMs: 3, scalable: true, stateful: false, monthlyCost: 40, description: "NATS — lightweight, high-performance pub/sub and request-reply messaging; JetStream adds persistence." },
+  { id: "pulsar", label: "Apache Pulsar", category: "messaging", icon: "Pulsar", maxQPS: 500000, latencyMs: 10, scalable: true, stateful: true, monthlyCost: 120, description: "Apache Pulsar — distributed messaging + streaming with multi-tenancy and tiered storage; queue and log semantics in one." },
+  { id: "rocketmq", label: "RocketMQ", category: "messaging", icon: "RocketMQ", maxQPS: 200000, latencyMs: 8, scalable: true, stateful: true, monthlyCost: 70, description: "Apache RocketMQ — high-throughput distributed messaging used widely for e-commerce and financial transaction streams." },
+
+  // ── Proxies, orchestration, observability, IaC (Infrastructure) ──
+  { id: "nginx", label: "Nginx", category: "infrastructure", icon: "Nginx", maxQPS: 500000, latencyMs: 2, scalable: true, stateful: false, monthlyCost: 20, description: "Nginx — high-performance web server, reverse proxy, and load balancer; terminates TLS and serves static content." },
+  { id: "kong", label: "Kong Gateway", category: "infrastructure", icon: "Kong", maxQPS: 100000, latencyMs: 5, scalable: true, stateful: false, monthlyCost: 40, description: "Kong — API gateway for routing, auth, rate limiting, and plugins in front of your services." },
+  { id: "envoy", label: "Envoy Proxy", category: "infrastructure", icon: "Envoy", maxQPS: 200000, latencyMs: 2, scalable: true, stateful: false, monthlyCost: 30, description: "Envoy — L7 proxy and the data plane behind most service meshes; handles retries, mTLS, and observability." },
+  { id: "istio", label: "Istio", category: "infrastructure", icon: "Istio", maxQPS: 100000, latencyMs: 3, scalable: true, stateful: false, monthlyCost: 40, description: "Istio — service mesh that manages traffic, security (mTLS), and telemetry between microservices via sidecars." },
+  { id: "consul", label: "Consul", category: "infrastructure", icon: "Consul", maxQPS: 50000, latencyMs: 5, scalable: true, stateful: true, monthlyCost: 30, description: "Consul — service discovery, health checking, and KV configuration for distributed systems." },
+  { id: "vault", label: "Vault", category: "infrastructure", icon: "Vault", maxQPS: 20000, latencyMs: 10, scalable: true, stateful: true, monthlyCost: 40, description: "HashiCorp Vault — secrets management: store and dynamically issue credentials, tokens, and encryption keys." },
+  { id: "etcd", label: "etcd", category: "infrastructure", icon: "etcd", maxQPS: 30000, latencyMs: 8, scalable: true, stateful: true, monthlyCost: 30, description: "etcd — strongly-consistent distributed key-value store used for coordination and configuration (Kubernetes' backing store)." },
+  { id: "docker", label: "Docker", category: "infrastructure", icon: "Docker", maxQPS: 5000, latencyMs: 50, scalable: true, stateful: false, monthlyCost: 0, description: "Docker — containers that package an app with its dependencies for consistent, portable deployment." },
+  { id: "kubernetes", label: "Kubernetes", category: "infrastructure", icon: "Kubernetes", maxQPS: 5000, latencyMs: 50, scalable: true, stateful: false, monthlyCost: 0, description: "Kubernetes — container orchestration: scheduling, autoscaling, self-healing, and rollouts across a cluster." },
+  { id: "terraform", label: "Terraform", category: "infrastructure", icon: "Terraform", maxQPS: 100, latencyMs: 100, scalable: false, stateful: false, monthlyCost: 0, description: "Terraform — infrastructure as code; declaratively provision and manage cloud resources." },
+  { id: "prometheus", label: "Prometheus", category: "infrastructure", icon: "Prometheus", maxQPS: 100000, latencyMs: 10, scalable: true, stateful: true, monthlyCost: 30, description: "Prometheus — metrics collection and alerting with a pull model and time-series storage." },
+  { id: "grafana", label: "Grafana", category: "infrastructure", icon: "Grafana", maxQPS: 5000, latencyMs: 30, scalable: true, stateful: false, monthlyCost: 20, description: "Grafana — dashboards and visualization for metrics, logs, and traces from many data sources." },
+  { id: "datadog", label: "Datadog", category: "infrastructure", icon: "Datadog", maxQPS: 100000, latencyMs: 20, scalable: true, stateful: true, monthlyCost: 150, description: "Datadog — hosted observability platform: metrics, traces, logs, and alerting in one place." },
+  { id: "sentry", label: "Sentry", category: "infrastructure", icon: "Sentry", maxQPS: 20000, latencyMs: 20, scalable: true, stateful: true, monthlyCost: 40, description: "Sentry — error and performance monitoring; captures exceptions with stack traces and context." },
+  { id: "jaeger", label: "Jaeger", category: "infrastructure", icon: "Jaeger", maxQPS: 50000, latencyMs: 15, scalable: true, stateful: true, monthlyCost: 30, description: "Jaeger — distributed tracing: follow a request across services to find where latency goes." },
+
+  // ── CDN / edge / hosting (Networking) ──
+  { id: "cloudflare", label: "Cloudflare", category: "networking", icon: "Cloudflare", maxQPS: 1000000, latencyMs: 10, scalable: true, stateful: false, monthlyCost: 50, description: "Cloudflare — global CDN, DNS, DDoS protection, and edge network in front of your origin." },
+  { id: "cloudflare-workers", label: "Cloudflare Workers", category: "networking", icon: "CloudflareWorkers", maxQPS: 500000, latencyMs: 5, scalable: true, stateful: false, monthlyCost: 30, description: "Cloudflare Workers — serverless functions that run at the edge, close to users, for low-latency logic." },
+  { id: "fastly", label: "Fastly", category: "networking", icon: "Fastly", maxQPS: 1000000, latencyMs: 10, scalable: true, stateful: false, monthlyCost: 80, description: "Fastly — programmable CDN/edge platform with instant cache purging and edge compute." },
+  { id: "akamai", label: "Akamai", category: "networking", icon: "Akamai", maxQPS: 1000000, latencyMs: 12, scalable: true, stateful: false, monthlyCost: 120, description: "Akamai — one of the largest CDNs, with extensive edge presence and security services." },
+  { id: "vercel", label: "Vercel", category: "networking", icon: "Vercel", maxQPS: 200000, latencyMs: 15, scalable: true, stateful: false, monthlyCost: 20, description: "Vercel — hosting/CDN for frontend apps and serverless/edge functions (Next.js platform)." },
+  { id: "netlify", label: "Netlify", category: "networking", icon: "Netlify", maxQPS: 200000, latencyMs: 15, scalable: true, stateful: false, monthlyCost: 20, description: "Netlify — hosting and CDN for static sites and serverless functions with CI/CD." },
+
+  // ── Runtime / API (Compute) ──
+  { id: "nodejs", label: "Node.js", category: "compute", icon: "NodeJS", maxQPS: 8000, latencyMs: 40, scalable: true, stateful: false, monthlyCost: 25, description: "Node.js — JavaScript runtime for building fast, event-driven backend services and APIs." },
+  { id: "graphql", label: "GraphQL API", category: "compute", icon: "GraphQL", maxQPS: 10000, latencyMs: 40, scalable: true, stateful: false, monthlyCost: 25, description: "GraphQL — query language and API layer; clients request exactly the fields they need from one endpoint." },
+
+  // ── Google Cloud ──
+  { id: "gcp-gce", label: "Compute Engine", category: "gcp", icon: "GoogleCloud", maxQPS: 5000, latencyMs: 50, scalable: true, stateful: false, monthlyCost: 30, description: "Google Compute Engine — virtual machines on Google Cloud; the GCP equivalent of an app server." },
+  { id: "gcp-gke", label: "GKE", category: "gcp", icon: "GoogleCloud", maxQPS: 5000, latencyMs: 50, scalable: true, stateful: false, monthlyCost: 40, description: "Google Kubernetes Engine — managed Kubernetes on GCP." },
+  { id: "gcp-bigquery", label: "BigQuery", category: "gcp", icon: "BigQuery", maxQPS: 5000, latencyMs: 200, scalable: true, stateful: true, monthlyCost: 200, description: "BigQuery — serverless data warehouse for fast SQL analytics over massive datasets." },
+  { id: "gcp-gcs", label: "Cloud Storage", category: "gcp", icon: "CloudStorage", maxQPS: 50000, latencyMs: 30, scalable: true, stateful: true, monthlyCost: 25, description: "Google Cloud Storage — durable object storage for files and media; common CDN origin and data lake." },
+  { id: "gcp-firestore", label: "Firestore", category: "gcp", icon: "Firebase", maxQPS: 50000, latencyMs: 15, scalable: true, stateful: true, monthlyCost: 60, description: "Firestore — serverless, real-time NoSQL document database with offline sync (Firebase)." },
+  { id: "gcp-pubsub", label: "Pub/Sub", category: "gcp", icon: "GoogleCloud", maxQPS: 500000, latencyMs: 10, scalable: true, stateful: true, monthlyCost: 40, description: "Google Cloud Pub/Sub — managed, global messaging for event ingestion and fan-out." },
+
+  // ── AI / ML ──
+  { id: "ai-anthropic", label: "Claude (Anthropic)", category: "ai", icon: "Anthropic", maxQPS: 500, latencyMs: 800, scalable: true, stateful: false, monthlyCost: 0, description: "Anthropic Claude — large language model API for chat, reasoning, extraction, and agents. Called over HTTPS; latency is seconds, so call it async where possible." },
+  { id: "ai-openai", label: "OpenAI / GPT", category: "ai", icon: "Sparkles", maxQPS: 500, latencyMs: 800, scalable: true, stateful: false, monthlyCost: 0, description: "OpenAI GPT — large language model API for generation and reasoning. Treat as a slow, rate-limited external dependency." },
+  { id: "ai-huggingface", label: "Hugging Face", category: "ai", icon: "HuggingFace", maxQPS: 1000, latencyMs: 300, scalable: true, stateful: false, monthlyCost: 50, description: "Hugging Face — model hub and inference endpoints for hosting and serving ML models." },
+  { id: "ai-ollama", label: "Ollama", category: "ai", icon: "Ollama", maxQPS: 200, latencyMs: 500, scalable: true, stateful: false, monthlyCost: 0, description: "Ollama — run open LLMs locally/self-hosted; useful for private, no-API-cost inference." },
+  { id: "ai-langchain", label: "LangChain", category: "ai", icon: "LangChain", maxQPS: 2000, latencyMs: 50, scalable: true, stateful: false, monthlyCost: 0, description: "LangChain — framework for orchestrating LLM calls, tools, retrieval, and agents." },
+  { id: "ai-vectordb", label: "Vector DB", category: "ai", icon: "Brain", maxQPS: 20000, latencyMs: 20, scalable: true, stateful: true, monthlyCost: 70, description: "Vector database — stores embeddings and serves approximate-nearest-neighbor search for semantic search and RAG." },
+
+  // ── SaaS / APIs / auth / dev ──
+  { id: "saas-stripe", label: "Stripe", category: "saas", icon: "Stripe", maxQPS: 5000, latencyMs: 200, scalable: true, stateful: false, monthlyCost: 0, description: "Stripe — payments API for charges, subscriptions, and payouts. External dependency; use idempotency keys and webhooks." },
+  { id: "saas-auth0", label: "Auth0", category: "saas", icon: "Auth0", maxQPS: 5000, latencyMs: 80, scalable: true, stateful: false, monthlyCost: 30, description: "Auth0 — hosted authentication and authorization (OAuth/OIDC, social login, MFA)." },
+  { id: "saas-okta", label: "Okta", category: "saas", icon: "Okta", maxQPS: 5000, latencyMs: 80, scalable: true, stateful: false, monthlyCost: 40, description: "Okta — enterprise identity and SSO provider for workforce and customer auth." },
+  { id: "saas-supabase", label: "Supabase", category: "saas", icon: "Supabase", maxQPS: 8000, latencyMs: 30, scalable: true, stateful: true, monthlyCost: 25, description: "Supabase — open-source backend: hosted Postgres, auth, storage, and realtime APIs." },
+  { id: "saas-twilio", label: "Twilio", category: "saas", icon: "MessageSquare", maxQPS: 2000, latencyMs: 300, scalable: true, stateful: false, monthlyCost: 0, description: "Twilio — APIs for SMS, voice, and messaging. External dependency; send via a queue/worker." },
+  { id: "saas-sendgrid", label: "SendGrid", category: "saas", icon: "Bell", maxQPS: 5000, latencyMs: 250, scalable: true, stateful: false, monthlyCost: 0, description: "SendGrid — transactional and marketing email delivery API. Send asynchronously from a worker." },
+  { id: "saas-github", label: "GitHub", category: "saas", icon: "GitHub", maxQPS: 5000, latencyMs: 150, scalable: true, stateful: false, monthlyCost: 0, description: "GitHub — code hosting, CI/CD (Actions), and webhooks; often a source/trigger in pipelines." },
+  { id: "saas-gitlab", label: "GitLab", category: "saas", icon: "GitLab", maxQPS: 5000, latencyMs: 150, scalable: true, stateful: false, monthlyCost: 0, description: "GitLab — code hosting and integrated CI/CD pipelines." },
 ];
 
 export const COMPONENT_CATEGORIES = [
@@ -705,6 +782,9 @@ export const COMPONENT_CATEGORIES = [
   { key: "messaging", label: "Messaging" },
   { key: "infrastructure", label: "Infrastructure" },
   { key: "aws", label: "AWS" },
+  { key: "gcp", label: "Google Cloud" },
+  { key: "ai", label: "AI / ML" },
+  { key: "saas", label: "SaaS / APIs" },
 ] as const;
 
 export function getComponentById(id: string): SystemComponent | undefined {

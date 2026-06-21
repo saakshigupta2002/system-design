@@ -34,7 +34,10 @@ import {
   Cog,
   Cloud,
   Container,
+  Sparkles,
+  Brain,
 } from "lucide-react";
+import { BRAND_ICONS } from "./brandIcons";
 
 export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Globe,
@@ -72,4 +75,8 @@ export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }
   Cog,
   Cloud,
   Container,
+  Sparkles,
+  Brain,
+  // Brand/technology logos (Redis, Postgres, Kafka, Cloudflare, Claude, …)
+  ...BRAND_ICONS,
 };

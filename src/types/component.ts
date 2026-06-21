@@ -5,7 +5,10 @@ export type ComponentCategory =
   | "storage"
   | "messaging"
   | "infrastructure"
-  | "aws";
+  | "aws"
+  | "gcp"
+  | "ai"
+  | "saas";
 
 export interface SystemComponent {
   id: string;
