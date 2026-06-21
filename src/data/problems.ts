@@ -3146,6 +3146,364 @@ export const PROBLEMS: Problem[] = [
     },
     tags: ["CRUD", "Authentication", "Fundamentals"],
   },
+  {
+    id: "rag-assistant",
+    title: "RAG Knowledge Assistant",
+    difficulty: "Medium",
+    description:
+      "Design a Retrieval-Augmented Generation (RAG) assistant that answers questions over a company's private documents — the pattern behind tools like Glean, Notion AI, and 'chat with your docs'. The model itself doesn't know your data, so the system retrieves the most relevant chunks from a knowledge base and feeds them to the LLM as context. The core design splits into an offline ingestion pipeline (chunk → embed → index) and an online query path (embed question → retrieve → generate), with grounding and citations to reduce hallucinations.",
+    requirements: {
+      readsPerSec: 5000,
+      writesPerSec: 200,
+      storageGB: 2000,
+      latencyMs: 3000,
+      users: "100k enterprise users",
+    },
+    constraints: [
+      "Answers must be grounded in retrieved documents, with citations",
+      "Respect per-user document permissions (don't leak restricted content)",
+      "Keep end-to-end latency acceptable despite slow LLM generation (stream tokens)",
+      "Re-index documents as they change (near-real-time freshness)",
+      "Control cost — LLM and embedding calls are the dominant expense",
+      "Reduce hallucinations; say 'I don't know' when retrieval finds nothing relevant",
+    ],
+    hints: [
+      {
+        title: "Two pipelines, not one",
+        content:
+          "Offline: chunk documents, create embeddings, and upsert them into a vector database. Online: embed the user's question, retrieve the top-k similar chunks, and pass them to the LLM. Keep these separate.",
+      },
+      {
+        title: "Retrieval quality is everything",
+        content:
+          "The answer is only as good as the retrieved context. Tune chunk size/overlap, use hybrid search (keyword + vector), and re-rank the top results before sending them to the LLM.",
+      },
+      {
+        title: "Cache and stream",
+        content:
+          "Cache embeddings and frequent answers (semantic cache). Stream the LLM's tokens to the client so it feels fast even though generation takes seconds.",
+      },
+      {
+        title: "Advanced: Permissions and grounding",
+        content:
+          "Filter retrieval by the user's access scope so they only see chunks they're allowed to. Require citations and add a guardrail that refuses to answer when retrieval confidence is low.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "client", x: 60, y: 300 },
+        { componentId: "api-gateway", x: 250, y: 300 },
+        { componentId: "guardrails", x: 250, y: 160 },
+        { componentId: "app-server", x: 450, y: 300 },
+        { componentId: "cache", x: 450, y: 160 },
+        { componentId: "embedding-model", x: 660, y: 200 },
+        { componentId: "vector-db", x: 870, y: 200 },
+        { componentId: "llm", x: 660, y: 360 },
+        { componentId: "object-storage", x: 250, y: 470 },
+        { componentId: "worker", x: 450, y: 470 },
+        { componentId: "monitoring", x: 870, y: 360 },
+      ],
+      edges: [
+        { source: "client", target: "api-gateway" },
+        { source: "api-gateway", target: "guardrails" },
+        { source: "api-gateway", target: "app-server" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "embedding-model" },
+        { source: "embedding-model", target: "vector-db" },
+        { source: "app-server", target: "llm" },
+        { source: "object-storage", target: "worker" },
+        { source: "worker", target: "embedding-model" },
+        { source: "worker", target: "vector-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["AI", "RAG", "Vector Search", "LLM"],
+  },
+  {
+    id: "ai-agent-platform",
+    title: "AI Agent Platform (Tools & MCP)",
+    difficulty: "Hard",
+    description:
+      "Design an autonomous AI agent platform that plans multi-step tasks, calls external tools, uses memory, and can execute code — the architecture behind agentic assistants and coding agents. Unlike a single LLM call, an agent runs a loop: the model decides the next action, a tool runs, the result is fed back, and it repeats until done. Tools are exposed through the Model Context Protocol (MCP) so the agent can connect to many data sources and services through one standard interface, with sandboxing and guardrails for safety.",
+    requirements: {
+      readsPerSec: 2000,
+      writesPerSec: 1000,
+      storageGB: 5000,
+      latencyMs: 30000,
+      users: "Long-running agent tasks",
+    },
+    constraints: [
+      "Run a plan → act → observe loop reliably, with a step/iteration cap",
+      "Connect to many tools via MCP (search, databases, APIs, file systems)",
+      "Persist run state so a task can resume after a crash and be audited",
+      "Short-term (working) memory plus long-term memory via retrieval",
+      "Execute model-generated code in an isolated sandbox (no host access)",
+      "Guardrails: approve risky actions, prevent prompt-injection and data exfiltration",
+    ],
+    hints: [
+      {
+        title: "The agent loop",
+        content:
+          "An orchestrator drives the loop: send the state to the LLM, get the next action (a tool call or 'finish'), execute it, append the observation, repeat. Cap iterations to avoid runaway loops.",
+      },
+      {
+        title: "Tools via MCP",
+        content:
+          "Expose tools/data through MCP servers so the agent talks to all of them through one protocol. Each MCP server wraps a capability (web search, SQL, internal API) with a typed schema.",
+      },
+      {
+        title: "Memory: short and long",
+        content:
+          "Keep working memory (current task context) in a fast store, and long-term memory as embeddings in a vector DB the agent can retrieve from. Persist the run/step log durably.",
+      },
+      {
+        title: "Advanced: Safety and isolation",
+        content:
+          "Run generated code in a sandbox (container/VM, no network or scoped network). Add a guardrail/approval step before destructive or external actions, and detect prompt-injection from tool outputs.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "client", x: 60, y: 300 },
+        { componentId: "api-gateway", x: 250, y: 300 },
+        { componentId: "agent-orchestrator", x: 460, y: 300 },
+        { componentId: "llm", x: 460, y: 150 },
+        { componentId: "mcp-server", x: 690, y: 150 },
+        { componentId: "vector-db", x: 690, y: 300 },
+        { componentId: "cache", x: 460, y: 450 },
+        { componentId: "worker", x: 690, y: 450 },
+        { componentId: "nosql-db", x: 900, y: 300 },
+        { componentId: "guardrails", x: 250, y: 160 },
+        { componentId: "monitoring", x: 900, y: 150 },
+      ],
+      edges: [
+        { source: "client", target: "api-gateway" },
+        { source: "api-gateway", target: "guardrails" },
+        { source: "api-gateway", target: "agent-orchestrator" },
+        { source: "agent-orchestrator", target: "llm" },
+        { source: "agent-orchestrator", target: "mcp-server" },
+        { source: "agent-orchestrator", target: "vector-db" },
+        { source: "agent-orchestrator", target: "cache" },
+        { source: "agent-orchestrator", target: "worker" },
+        { source: "agent-orchestrator", target: "nosql-db" },
+        { source: "agent-orchestrator", target: "monitoring" },
+      ],
+    },
+    tags: ["AI", "Agents", "MCP", "Tools", "LLM"],
+  },
+  {
+    id: "llm-chatbot",
+    title: "LLM Chatbot at Scale",
+    difficulty: "Hard",
+    description:
+      "Design a conversational AI application like ChatGPT or Claude.ai serving millions of users, with streaming responses and persistent conversation history. The defining challenges are serving slow, expensive LLM inference at scale (GPUs, batching, token streaming), managing the growing context of a conversation within the model's window, and keeping responses safe. It's a read/compute-heavy system where the model is the bottleneck and the dominant cost.",
+    requirements: {
+      readsPerSec: 50000,
+      writesPerSec: 50000,
+      storageGB: 20000,
+      latencyMs: 2000,
+      users: "10M DAU",
+    },
+    constraints: [
+      "Stream tokens to the user (time-to-first-token matters more than total time)",
+      "Persist and reload conversation history per user",
+      "Fit history into the model's context window (truncate/summarize older turns)",
+      "Moderate inputs and outputs for safety",
+      "Rate limit and meter usage per user/tier; the LLM is the costliest resource",
+      "Gracefully handle inference overload (queue, shed, or fall back to a smaller model)",
+    ],
+    hints: [
+      {
+        title: "Streaming, not request/response",
+        content:
+          "Use a streaming transport (SSE/WebSocket) so tokens appear as they're generated. Optimize time-to-first-token; users tolerate a long total response if it starts immediately.",
+      },
+      {
+        title: "Manage the context window",
+        content:
+          "A conversation grows unbounded but the model's context is fixed. Keep recent turns verbatim and summarize or drop older ones; store the full history separately for reload.",
+      },
+      {
+        title: "Serve inference efficiently",
+        content:
+          "GPU inference is the bottleneck. Batch concurrent requests, reuse the KV cache, and autoscale GPU workers by queue depth. Route simple queries to smaller/cheaper models.",
+      },
+      {
+        title: "Advanced: Cost, safety, and overload",
+        content:
+          "Cache common prompts/answers, meter tokens per user, run moderation on both input and output, and under overload queue requests or fall back to a smaller model instead of failing.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "client", x: 60, y: 320 },
+        { componentId: "load-balancer", x: 240, y: 320 },
+        { componentId: "api-gateway", x: 430, y: 320 },
+        { componentId: "rate-limiter", x: 430, y: 180 },
+        { componentId: "guardrails", x: 630, y: 180 },
+        { componentId: "app-server", x: 630, y: 320 },
+        { componentId: "model-server", x: 840, y: 250 },
+        { componentId: "cache", x: 630, y: 460 },
+        { componentId: "nosql-db", x: 840, y: 400 },
+        { componentId: "monitoring", x: 1030, y: 320 },
+      ],
+      edges: [
+        { source: "client", target: "load-balancer" },
+        { source: "load-balancer", target: "api-gateway" },
+        { source: "api-gateway", target: "rate-limiter" },
+        { source: "api-gateway", target: "app-server" },
+        { source: "app-server", target: "guardrails" },
+        { source: "app-server", target: "model-server" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "nosql-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["AI", "LLM", "Streaming", "Inference"],
+  },
+  {
+    id: "ai-image-generation",
+    title: "AI Image Generation Service",
+    difficulty: "Medium",
+    description:
+      "Design an image generation service like Midjourney, DALL·E, or a hosted Stable Diffusion. A user submits a text prompt and gets generated images back. Generation runs on GPUs and takes seconds to minutes, so the request can't be synchronous — it becomes an asynchronous job. The architecture is the classic queue + GPU worker pool pattern, plus prompt moderation, durable storage of results, and CDN delivery.",
+    requirements: {
+      readsPerSec: 20000,
+      writesPerSec: 2000,
+      storageGB: 100000,
+      latencyMs: 30000,
+      users: "5M users",
+    },
+    constraints: [
+      "Generation is slow (GPU) — accept the job and return results asynchronously",
+      "Absorb bursts without dropping jobs; let GPU workers drain at their pace",
+      "Moderate prompts (and outputs) to block disallowed content",
+      "Store generated images durably and serve them fast worldwide",
+      "Show job status/progress; support retries on worker failure",
+      "GPUs are the costly bottleneck — batch and autoscale by queue depth",
+    ],
+    hints: [
+      {
+        title: "Make it asynchronous",
+        content:
+          "The API validates and enqueues a job, returning a job id immediately. A pool of GPU workers consumes the queue and generates images — never block the request on generation.",
+      },
+      {
+        title: "Queue absorbs the burst",
+        content:
+          "A message queue between the API and GPU workers smooths spikes and lets you autoscale workers by queue depth. Use visibility timeouts so a crashed worker's job is retried.",
+      },
+      {
+        title: "Store and deliver",
+        content:
+          "Write images to object storage and serve them via a CDN. Keep job status in a fast store the client can poll or subscribe to.",
+      },
+      {
+        title: "Advanced: Moderation and cost",
+        content:
+          "Screen prompts before generation and images after. Batch on the GPU, and scale the worker pool to zero when idle to control cost.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "client", x: 60, y: 300 },
+        { componentId: "api-gateway", x: 250, y: 300 },
+        { componentId: "rate-limiter", x: 250, y: 160 },
+        { componentId: "guardrails", x: 450, y: 160 },
+        { componentId: "app-server", x: 450, y: 300 },
+        { componentId: "message-queue", x: 650, y: 300 },
+        { componentId: "model-server", x: 850, y: 220 },
+        { componentId: "object-storage", x: 1050, y: 220 },
+        { componentId: "cdn", x: 1050, y: 360 },
+        { componentId: "nosql-db", x: 650, y: 450 },
+        { componentId: "monitoring", x: 850, y: 380 },
+      ],
+      edges: [
+        { source: "client", target: "api-gateway" },
+        { source: "api-gateway", target: "rate-limiter" },
+        { source: "api-gateway", target: "app-server" },
+        { source: "app-server", target: "guardrails" },
+        { source: "app-server", target: "message-queue" },
+        { source: "message-queue", target: "model-server" },
+        { source: "model-server", target: "object-storage" },
+        { source: "object-storage", target: "cdn" },
+        { source: "app-server", target: "nosql-db" },
+        { source: "model-server", target: "nosql-db" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["AI", "GPU", "Async", "Media"],
+  },
+  {
+    id: "ai-coding-assistant",
+    title: "AI Coding Assistant",
+    difficulty: "Hard",
+    description:
+      "Design an AI coding assistant like GitHub Copilot or Cursor that suggests code completions inside the editor. The hard constraint is latency — suggestions must appear in a few hundred milliseconds as the developer types, which shapes everything. To suggest good code it needs context from the current file and the wider codebase, so it combines low-latency model inference with retrieval over an index of the repository (RAG for code).",
+    requirements: {
+      readsPerSec: 100000,
+      writesPerSec: 5000,
+      storageGB: 10000,
+      latencyMs: 400,
+      users: "2M developers",
+    },
+    constraints: [
+      "Completions must return in a few hundred ms (p95) — latency is the product",
+      "Use context: current file (fill-in-the-middle) plus relevant repo snippets",
+      "Cancel/debounce in-flight requests as the user keeps typing",
+      "Retrieve from a per-repository code index kept fresh as code changes",
+      "Don't leak secrets or other users' private code; filter sensitive output",
+      "Cache repeated completions; control inference cost at high request volume",
+    ],
+    hints: [
+      {
+        title: "Latency drives the design",
+        content:
+          "Aim for low time-to-first-token with a fast, smaller code model. Debounce keystrokes and cancel superseded requests so you only spend compute on the latest cursor position.",
+      },
+      {
+        title: "Context = file + repo retrieval",
+        content:
+          "Send the surrounding code (fill-in-the-middle) plus snippets retrieved from an embedded index of the repository, so suggestions match the project's APIs and patterns.",
+      },
+      {
+        title: "Cache aggressively",
+        content:
+          "Identical prefixes recur constantly. A completion cache keyed on the context hash cuts latency and cost dramatically.",
+      },
+      {
+        title: "Advanced: Privacy and freshness",
+        content:
+          "Index each repo separately and scope retrieval to the user's access. Re-embed changed files incrementally, and filter completions for secrets/licensed code.",
+      },
+    ],
+    referenceSolution: {
+      nodes: [
+        { componentId: "client", x: 60, y: 300 },
+        { componentId: "api-gateway", x: 250, y: 300 },
+        { componentId: "rate-limiter", x: 250, y: 160 },
+        { componentId: "app-server", x: 450, y: 300 },
+        { componentId: "cache", x: 450, y: 160 },
+        { componentId: "embedding-model", x: 660, y: 180 },
+        { componentId: "vector-db", x: 870, y: 180 },
+        { componentId: "model-server", x: 660, y: 360 },
+        { componentId: "guardrails", x: 450, y: 450 },
+        { componentId: "monitoring", x: 870, y: 360 },
+      ],
+      edges: [
+        { source: "client", target: "api-gateway" },
+        { source: "api-gateway", target: "rate-limiter" },
+        { source: "api-gateway", target: "app-server" },
+        { source: "app-server", target: "cache" },
+        { source: "app-server", target: "embedding-model" },
+        { source: "embedding-model", target: "vector-db" },
+        { source: "app-server", target: "model-server" },
+        { source: "app-server", target: "guardrails" },
+        { source: "app-server", target: "monitoring" },
+      ],
+    },
+    tags: ["AI", "LLM", "RAG", "Low-Latency"],
+  },
 ];
 
 export function getProblemById(id: string): Problem | undefined {

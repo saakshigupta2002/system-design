@@ -73,6 +73,17 @@ export const LEARNING_PATH: LearningTier[] = [
       "key-value-store",
     ],
   },
+  {
+    name: "AI Applications",
+    description: "Design modern LLM, RAG, and agent systems",
+    problemIds: [
+      "rag-assistant",
+      "llm-chatbot",
+      "ai-image-generation",
+      "ai-coding-assistant",
+      "ai-agent-platform",
+    ],
+  },
 ];
 
 export interface ConceptPrerequisite {
@@ -301,5 +312,30 @@ export const PROBLEM_CONCEPTS: ConceptPrerequisite[] = [
     problemId: "key-value-store",
     concepts: ["consistent-hashing", "quorum", "gossip-membership"],
     prerequisites: ["consistent-hashing", "replication", "hashing"],
+  },
+  {
+    problemId: "rag-assistant",
+    concepts: ["rag", "embeddings", "vector-search"],
+    prerequisites: ["caching", "object-storage"],
+  },
+  {
+    problemId: "llm-chatbot",
+    concepts: ["llm-inference", "token-streaming", "context-window"],
+    prerequisites: ["caching", "rate-limiting", "async-processing"],
+  },
+  {
+    problemId: "ai-image-generation",
+    concepts: ["async-jobs", "gpu-workers", "moderation"],
+    prerequisites: ["message-queue", "cdn", "object-storage"],
+  },
+  {
+    problemId: "ai-coding-assistant",
+    concepts: ["low-latency-inference", "code-retrieval", "caching"],
+    prerequisites: ["rag", "caching", "vector-search"],
+  },
+  {
+    problemId: "ai-agent-platform",
+    concepts: ["agent-loop", "mcp-tools", "agent-memory", "sandboxing"],
+    prerequisites: ["rag", "message-queue", "async-processing"],
   },
 ];

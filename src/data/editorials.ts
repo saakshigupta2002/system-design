@@ -2813,6 +2813,386 @@ export const EDITORIALS: Record<string, Editorial> = {
     ],
   },
 
+  "rag-assistant": {
+    summary:
+      "An LLM doesn't know your private documents, and you can't fit them all in its prompt. RAG fixes this: store your documents as vector embeddings, and at question time retrieve the few most relevant chunks and hand them to the model as context. So the design is really two pipelines — an offline one that chunks, embeds, and indexes documents, and an online one that embeds the question, retrieves, and generates a grounded answer.",
+    componentNotes: {
+      client: "The user asking a question.",
+      "api-gateway": "Entry point — auth, rate limiting, and routing.",
+      guardrails: "Screens the question and answer (safety, prompt injection, low-confidence refusals).",
+      "app-server": "RAG orchestrator: embeds the query, retrieves context, calls the LLM.",
+      cache: "Semantic/response cache for repeated or similar questions.",
+      "embedding-model": "Turns text into vectors — used for both documents and the query.",
+      "vector-db": "Stores document embeddings; returns the top-k most similar chunks.",
+      llm: "Generates the answer from the question + retrieved context.",
+      "object-storage": "The source documents (PDFs, wikis, tickets).",
+      worker: "Ingestion pipeline: chunk → embed → upsert into the vector DB.",
+      monitoring: "Tracks latency, cost, and retrieval quality.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "We want natural-language answers grounded in a private corpus, with citations, and without retraining the model. The model supplies language and reasoning; your data supplies the facts via retrieval.",
+        ],
+        bullets: [
+          "What it must do: answer questions over your documents, cite sources, respect permissions, stay fresh as docs change.",
+          "How well: read-heavy queries, generation takes seconds (stream it), and LLM/embedding calls dominate cost.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "RAG = Retrieval-Augmented Generation: retrieve relevant text first, then let the LLM generate an answer using it as context — instead of relying on the model's trained-in knowledge.",
+          },
+        ],
+      },
+      {
+        heading: "2. Pipeline 1 — ingestion (offline)",
+        body: ["Prepare the knowledge base ahead of time so queries are fast."],
+        bullets: [
+          "Chunk each document into passages (e.g. a few hundred tokens, with overlap).",
+          "Embed each chunk with an embedding model into a vector.",
+          "Upsert vectors (+ metadata: source, permissions) into a vector database.",
+          "Re-run incrementally when documents change so the index stays fresh.",
+        ],
+      },
+      {
+        heading: "3. Pipeline 2 — query (online)",
+        body: ["Follow one question through the diagram."],
+        code: "1. embed the question → query vector\n2. vector DB: top-k similar chunks (filtered by the user's permissions)\n3. build a prompt: question + retrieved chunks\n4. LLM generates a grounded answer (stream tokens)\n5. return the answer with citations",
+      },
+      {
+        heading: "4. Retrieval quality (the make-or-break)",
+        body: ["The answer can only be as good as what you retrieve."],
+        table: {
+          headers: ["Lever", "Why it matters"],
+          rows: [
+            ["Chunk size / overlap", "Too big = noisy context; too small = lost meaning"],
+            ["Hybrid search", "Combine keyword + vector so exact terms aren't missed"],
+            ["Re-ranking", "Re-score the top candidates before sending to the LLM"],
+            ["Top-k", "More context helps accuracy but costs tokens and latency"],
+          ],
+        },
+      },
+      {
+        heading: "5. Cost, caching, and latency",
+        bullets: [
+          "Cache embeddings (don't re-embed unchanged text) and answers (semantic cache for similar questions).",
+          "Stream the LLM's tokens so the answer starts appearing immediately.",
+          "Batch ingestion embeddings; they're a big share of the bill.",
+        ],
+      },
+      {
+        heading: "6. Grounding, permissions, trade-offs",
+        callouts: [
+          {
+            kind: "warning",
+            text: "Common mistake: retrieving without permission filters, so a user gets an answer built from documents they shouldn't see. Filter retrieval by the caller's access scope.",
+          },
+          {
+            kind: "tip",
+            text: "In one line: chunk+embed docs into a vector DB offline; at query time embed → retrieve (permission-filtered) → generate with citations, cached and streamed.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "ai-agent-platform": {
+    summary:
+      "A single LLM call answers a question; an agent gets things done. The difference is a loop: an orchestrator asks the model what to do next, runs that tool, feeds the result back, and repeats until the task is complete. Tools are connected through MCP (one standard protocol for many capabilities), memory comes from a vector store plus a working cache, generated code runs in a sandbox, and guardrails keep risky actions in check.",
+    componentNotes: {
+      client: "Submits a task/goal to the agent.",
+      "api-gateway": "Entry point — auth and routing.",
+      guardrails: "Approves risky actions; detects prompt-injection and exfiltration.",
+      "agent-orchestrator": "Drives the plan → act → observe loop and tool routing.",
+      llm: "The reasoning engine — decides the next action each step.",
+      "mcp-server": "Exposes tools/data (search, DB, APIs, files) via the Model Context Protocol.",
+      "vector-db": "Long-term memory the agent retrieves from.",
+      cache: "Short-term/working memory for the current task.",
+      worker: "Sandboxed execution of model-generated code.",
+      "nosql-db": "Durable run/step state for resume and audit.",
+      monitoring: "Traces each step, tool call, token, and cost.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "An agent autonomously completes a multi-step task: research, take actions via tools, write/run code, and produce a result. Tasks can run for many steps and minutes, so reliability, memory, and safety matter more than raw latency.",
+        ],
+        bullets: [
+          "What it must do: plan and execute multi-step tasks, call many tools, remember context, run code safely, resume after crashes.",
+          "How well: long-running tasks, bounded iterations, full auditability, strong isolation.",
+        ],
+      },
+      {
+        heading: "2. The agent loop",
+        body: ["The orchestrator is the heart of the system."],
+        code: "loop (until done or step cap):\n  action = LLM(state + available tools)   # decide next step\n  if action == FINISH: break\n  result = run(action)                     # call a tool / run code\n  state = state + observation(result)      # feed it back\nreturn final answer",
+        callouts: [
+          {
+            kind: "warning",
+            text: "Always cap iterations and cost. Without a limit, an agent can loop forever or rack up huge LLM bills chasing a task it can't finish.",
+          },
+        ],
+      },
+      {
+        heading: "3. Tools via MCP",
+        body: [
+          "Rather than hard-coding each integration, expose tools through MCP servers — a standard protocol so the agent talks to web search, databases, internal APIs, and file systems the same way. Each tool has a typed schema the model can call.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "MCP (Model Context Protocol) = an open standard for connecting LLMs to tools and data sources through a consistent interface, so you can add capabilities without changing the agent.",
+          },
+        ],
+      },
+      {
+        heading: "4. Memory: short-term and long-term",
+        bullets: [
+          "Working memory: the current task's context, kept in a fast cache.",
+          "Long-term memory: past results/knowledge stored as embeddings in a vector DB and retrieved when relevant.",
+          "Run state: every step/observation persisted durably so a crashed task can resume and be audited.",
+        ],
+      },
+      {
+        heading: "5. Safety and isolation",
+        bullets: [
+          "Execute model-generated code in a sandbox (container/VM) with no host access and scoped (or no) network.",
+          "Gate destructive or external actions behind a guardrail/approval step.",
+          "Treat tool outputs as untrusted — they can carry prompt-injection aimed at hijacking the agent.",
+        ],
+      },
+      {
+        heading: "6. Trade-offs",
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: an orchestrator runs a capped plan→act→observe loop, calls tools over MCP, uses cache + vector memory, runs code in a sandbox, persists run state, and guards risky actions.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "llm-chatbot": {
+    summary:
+      "A chatbot like ChatGPT or Claude.ai looks simple but the model is a slow, expensive, GPU-bound bottleneck served to millions. Three things shape the design: stream tokens so it feels fast, manage the conversation's growing context against a fixed window, and serve inference efficiently with batching, a KV cache, and autoscaling — all wrapped in moderation and per-user metering.",
+    componentNotes: {
+      client: "The chat UI; receives streamed tokens.",
+      "load-balancer": "Spreads connections across gateway/app servers.",
+      "api-gateway": "Auth, routing, and the streaming connection.",
+      "rate-limiter": "Per-user/tier limits — the LLM is the costly resource.",
+      guardrails: "Moderates input and output for safety.",
+      "app-server": "Conversation orchestrator: builds context, calls inference, persists turns.",
+      "model-server": "GPU inference with batching + KV cache; streams tokens back.",
+      cache: "Prompt/response cache for common queries.",
+      "nosql-db": "Conversation history per user.",
+      monitoring: "Tracks tokens, latency (TTFT), GPU utilization, and cost.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Serve multi-turn conversations to millions, where each response is generated token-by-token on a GPU. The model dominates latency and cost, so most of the design is about serving it well and keeping context manageable.",
+        ],
+        bullets: [
+          "What it must do: chat with memory of the conversation, stream responses, stay safe, meter usage.",
+          "How well: huge concurrency, fast time-to-first-token, bounded cost per user.",
+        ],
+      },
+      {
+        heading: "2. Stream, don't block",
+        body: [
+          "Generation takes seconds, but users only need the first tokens quickly. Use a streaming transport (SSE or WebSocket) so tokens render as they're produced.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "TTFT (time-to-first-token) is the key UX metric — a response that starts in 300ms feels fast even if it finishes in 8 seconds.",
+          },
+        ],
+      },
+      {
+        heading: "3. Managing the context window",
+        body: [
+          "A conversation grows without bound, but the model's context is fixed. Keep recent turns verbatim, summarize or drop older ones, and store the full transcript separately so it can be reloaded.",
+        ],
+        callouts: [
+          {
+            kind: "warning",
+            text: "Common mistake: stuffing the entire history into every request. You'll blow the context window and pay for thousands of tokens per turn. Truncate or summarize.",
+          },
+        ],
+      },
+      {
+        heading: "4. Serving inference efficiently",
+        table: {
+          headers: ["Technique", "Why"],
+          rows: [
+            ["Continuous batching", "Pack many requests onto a GPU to raise throughput"],
+            ["KV cache", "Reuse attention state so each new token is cheap"],
+            ["Autoscale by queue depth", "Add/remove GPU workers with demand"],
+            ["Model routing", "Send simple queries to a smaller, cheaper model"],
+          ],
+        },
+      },
+      {
+        heading: "5. Cost, safety, overload",
+        bullets: [
+          "Meter tokens per user/tier and rate limit; cache common prompts/answers.",
+          "Run moderation on both the input and the generated output.",
+          "Under overload, queue requests or fall back to a smaller model instead of failing.",
+        ],
+        callouts: [
+          {
+            kind: "tip",
+            text: "In one line: stream tokens, trim/summarize context, serve GPUs with batching + KV cache + autoscaling, and wrap it in moderation, caching, and per-user metering.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "ai-image-generation": {
+    summary:
+      "Generating an image on a GPU takes seconds to minutes, so the request can't be synchronous. The whole design follows from that: accept the prompt, enqueue a job, and let a pool of GPU workers generate asynchronously while the client polls for status. Add prompt/output moderation, store results durably, and serve them through a CDN.",
+    componentNotes: {
+      client: "Submits a prompt; polls for the result.",
+      "api-gateway": "Entry point — auth and routing.",
+      "rate-limiter": "Caps requests per user (GPU work is expensive).",
+      guardrails: "Moderates prompts (and generated images).",
+      "app-server": "Validates the prompt and enqueues a generation job.",
+      "message-queue": "Buffers jobs; lets GPU workers drain at their own pace.",
+      "model-server": "GPU workers that run the diffusion model.",
+      "object-storage": "Stores the generated images durably.",
+      cdn: "Serves images fast worldwide.",
+      "nosql-db": "Job status/progress the client can poll.",
+      monitoring: "Tracks queue depth, GPU utilization, and failures.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "A user submits a text prompt and gets images. Because generation is slow and GPU-bound, the request must be asynchronous, and the system must absorb bursts without dropping work.",
+        ],
+        bullets: [
+          "What it must do: accept prompts, generate images on GPUs, moderate content, store and deliver results, show progress.",
+          "How well: bursty load, slow per-job time, expensive GPUs to batch and autoscale.",
+        ],
+      },
+      {
+        heading: "2. Make it asynchronous",
+        body: [
+          "The API validates and moderates the prompt, enqueues a job, and immediately returns a job id. The client polls (or subscribes) for status; it never waits on the request.",
+        ],
+        code: "POST /generate {prompt} -> { jobId }     (returns instantly)\nGET  /jobs/{jobId} -> { status, imageUrls? } (poll)",
+      },
+      {
+        heading: "3. Queue + GPU worker pool",
+        body: [
+          "A message queue sits between the API and the GPU workers. It absorbs spikes and lets you autoscale workers by queue depth. Visibility timeouts ensure a crashed worker's job is retried.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "This is the classic 'producer → queue → worker pool' pattern — the same shape as any heavy async job system, with GPUs as the workers.",
+          },
+        ],
+      },
+      {
+        heading: "4. Store and deliver",
+        bullets: [
+          "Write generated images to object storage (durable, cheap, scalable).",
+          "Serve them via a CDN so they load fast for a global audience.",
+          "Keep job status in a fast store for polling/subscriptions.",
+        ],
+      },
+      {
+        heading: "5. Moderation, cost, trade-offs",
+        callouts: [
+          {
+            kind: "warning",
+            text: "Screen prompts before spending GPU time, and screen outputs before showing them. Generation is expensive and content risk is real.",
+          },
+          {
+            kind: "tip",
+            text: "In one line: enqueue jobs, generate on an autoscaled GPU worker pool, moderate in and out, store in object storage, and serve via CDN.",
+          },
+        ],
+      },
+    ],
+  },
+
+  "ai-coding-assistant": {
+    summary:
+      "A coding assistant like Copilot or Cursor lives or dies on latency — suggestions must appear in a few hundred milliseconds as you type. That single constraint drives everything: a fast, smaller code model, debouncing and cancellation of in-flight requests, aggressive caching, and just enough context (the current file plus snippets retrieved from a per-repo index) to make completions match your codebase.",
+    componentNotes: {
+      client: "The editor/IDE sending the cursor context.",
+      "api-gateway": "Entry point — auth and routing.",
+      "rate-limiter": "Per-user limits at very high request volume.",
+      "app-server": "Completion orchestrator: assembles context, calls the model.",
+      cache: "Completion cache keyed on the context hash.",
+      "embedding-model": "Embeds code context to query the repo index.",
+      "vector-db": "Per-repository code index for retrieval (RAG for code).",
+      "model-server": "Low-latency code model (fill-in-the-middle).",
+      guardrails: "Filters secrets / licensed code from suggestions.",
+      monitoring: "Tracks p95 latency, acceptance rate, and cost.",
+    },
+    sections: [
+      {
+        heading: "1. Understand the problem",
+        body: [
+          "Suggest code completions inside the editor, fast enough to feel instant, and good enough to match the project. It's read/compute-heavy with a brutal latency budget.",
+        ],
+        bullets: [
+          "What it must do: low-latency completions, codebase-aware suggestions, cancel stale requests, protect private code.",
+          "How well: a few hundred ms p95, huge request volume, controlled inference cost.",
+        ],
+      },
+      {
+        heading: "2. Latency drives the design",
+        bullets: [
+          "Use a fast, smaller code model and optimize time-to-first-token.",
+          "Debounce keystrokes and cancel superseded requests — only the latest cursor position matters.",
+          "Keep prompts tight; every extra token costs latency.",
+        ],
+        callouts: [
+          {
+            kind: "note",
+            text: "Fill-in-the-middle (FIM): the model is given the code before AND after the cursor and predicts what goes between — exactly the completion task.",
+          },
+        ],
+      },
+      {
+        heading: "3. Context = current file + repo retrieval",
+        body: [
+          "Send the surrounding code plus snippets retrieved from an embedded index of the repository, so suggestions use the project's real APIs and patterns. This is RAG applied to code.",
+        ],
+      },
+      {
+        heading: "4. Cache aggressively",
+        body: [
+          "Identical prefixes recur constantly as people type the same boilerplate. A completion cache keyed on the context hash cuts both latency and cost dramatically.",
+        ],
+      },
+      {
+        heading: "5. Privacy, freshness, trade-offs",
+        callouts: [
+          {
+            kind: "warning",
+            text: "Index each repository separately and scope retrieval to the user's access, so one user's private code never leaks into another's suggestions. Filter outputs for secrets.",
+          },
+          {
+            kind: "tip",
+            text: "In one line: a fast code model with FIM, current-file + repo-retrieval context, heavy caching, debounce/cancel, and per-repo private indexes.",
+          },
+        ],
+      },
+    ],
+  },
+
 };
 
 export function getEditorial(id: string): Editorial | undefined {
