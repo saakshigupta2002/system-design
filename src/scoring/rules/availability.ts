@@ -1,17 +1,20 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
-import type { CategoryScore } from "@/types/scoring";
+import type { CategoryScore, ScoreContext } from "@/types/scoring";
 import { getComponentById } from "@/data/components";
+import { roleOf, rolesPresent, DATABASE_ROLES } from "@/data/roles";
 
 export function scoreAvailability(
   nodes: Node<ComponentNodeData>[],
-  edges: Edge[]
+  edges: Edge[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _ctx?: ScoreContext
 ): CategoryScore {
   const feedback: string[] = [];
   const passed: string[] = [];
   let score = 0;
 
-  const componentIds = nodes.map((n) => n.data.componentId);
+  const roles = rolesPresent(nodes.map((n) => n.data.componentId));
 
   // Check no single point of failure (3 pts)
   const scalableNodes = nodes.filter((n) => n.data.scalable || (n.data.replicas || 1) > 1);
@@ -29,7 +32,7 @@ export function scoreAvailability(
   // replicas. Monitoring is exempt: it's observability, not the data path.
   const statefulNodes = nodes.filter(
     (n) =>
-      n.data.componentId !== "monitoring" &&
+      roleOf(n.data.componentId) !== "monitoring" &&
       getComponentById(n.data.componentId)?.stateful
   );
   if (statefulNodes.length === 0) {
@@ -54,8 +57,8 @@ export function scoreAvailability(
   }
 
   // Check multi-path (3 pts)
-  const entryComponents = ["load-balancer", "api-gateway", "cdn"];
-  const entryNodes = nodes.filter((n) => entryComponents.includes(n.data.componentId));
+  const entryRoles = new Set(["load-balancer", "api-gateway", "cdn"]);
+  const entryNodes = nodes.filter((n) => entryRoles.has(roleOf(n.data.componentId)));
   const entryWithMultipleDownstream = entryNodes.some((entry) => {
     const downstreamTargets = edges.filter((e) => e.source === entry.id);
     return downstreamTargets.length >= 2;
@@ -77,7 +80,7 @@ export function scoreAvailability(
   }
 
   // Check monitoring (3 pts)
-  if (componentIds.includes("monitoring")) {
+  if (roles.has("monitoring")) {
     score += 3;
     passed.push("Monitoring enables fast incident detection and reduces Mean Time To Recovery (MTTR)");
   } else {
@@ -87,8 +90,7 @@ export function scoreAvailability(
   }
 
   // Check rate limiter or API gateway for overload protection (3 pts)
-  const hasOverloadProtection =
-    componentIds.includes("rate-limiter") || componentIds.includes("api-gateway");
+  const hasOverloadProtection = roles.has("rate-limiter") || roles.has("api-gateway");
   if (hasOverloadProtection) {
     score += 3;
     passed.push("Rate limiting / API gateway protects backend from traffic surges and abuse");
@@ -99,8 +101,8 @@ export function scoreAvailability(
   }
 
   // Check cache for graceful degradation (3 pts)
-  const hasCache = componentIds.includes("cache");
-  const hasDB = componentIds.includes("sql-db") || componentIds.includes("nosql-db");
+  const hasCache = roles.has("cache");
+  const hasDB = [...DATABASE_ROLES].some((r) => roles.has(r));
   if (hasCache && hasDB) {
     score += 3;
     passed.push("Cache enables graceful degradation — serves stale data if database becomes unavailable");
@@ -111,7 +113,7 @@ export function scoreAvailability(
   }
 
   // Check queue for resilience (2 pts)
-  if (componentIds.includes("message-queue")) {
+  if (roles.has("message-queue") || roles.has("pub-sub")) {
     score += 2;
     passed.push("Message queue buffers requests during downstream outages, preventing data loss");
   } else {

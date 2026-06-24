@@ -1,29 +1,30 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
-import type { CategoryScore } from "@/types/scoring";
+import type { CategoryScore, ScoreContext } from "@/types/scoring";
+import { roleOf, rolesPresent, DATABASE_ROLES } from "@/data/roles";
+import { simHasTraffic, fmt } from "../ruleHelpers";
 
 export function scoreScalability(
   nodes: Node<ComponentNodeData>[],
-  edges: Edge[]
+  edges: Edge[],
+  ctx?: ScoreContext
 ): CategoryScore {
   const feedback: string[] = [];
   const passed: string[] = [];
   let score = 0;
 
   const componentIds = nodes.map((n) => n.data.componentId);
-  const hasLB = componentIds.includes("load-balancer");
-  const hasCache = componentIds.includes("cache");
-  const hasQueue = componentIds.includes("message-queue");
-  const hasCDN = componentIds.includes("cdn");
+  const roles = rolesPresent(componentIds);
+  const hasLB = roles.has("load-balancer");
+  const hasCache = roles.has("cache");
+  const hasQueue = roles.has("message-queue") || roles.has("pub-sub");
+  const hasCDN = roles.has("cdn");
   const hasScalableCompute = nodes.some(
     (n) => n.data.category === "compute" && n.data.scalable
   );
-  const hasDBScaling =
-    nodes.some(
-      (n) =>
-        (n.data.componentId === "nosql-db" || n.data.componentId === "sql-db") &&
-        (n.data.replicas || 1) > 1
-    );
+  const hasDBScaling = nodes.some(
+    (n) => DATABASE_ROLES.has(roleOf(n.data.componentId)) && (n.data.replicas || 1) > 1
+  );
 
   // Check load balancer (3 pts)
   if (hasLB) {
@@ -65,8 +66,29 @@ export function scoreScalability(
     );
   }
 
-  // Check DB read scaling (3 pts)
-  if (hasDBScaling) {
+  // Capacity (3 pts). When a problem is selected we simulate at its required
+  // load and check the design actually sustains it — otherwise fall back to the
+  // DB-read-scaling heuristic.
+  if (ctx?.sim && ctx.requiredLoad && simHasTraffic(ctx.sim)) {
+    const { throughput } = ctx.sim;
+    const required = ctx.requiredLoad;
+    if (throughput >= required * 0.999) {
+      score += 3;
+      passed.push(
+        `Sustains the required ~${fmt(required)} req/s (simulated throughput ${fmt(throughput)} req/s) with no critical bottleneck`
+      );
+    } else {
+      const worst = ctx.sim.bottleneckNodes
+        .map((id) => nodes.find((n) => n.id === id)?.data.label)
+        .filter(Boolean)
+        .slice(0, 2);
+      feedback.push(
+        `Simulated throughput is only ~${fmt(throughput)} req/s against a required ${fmt(required)} req/s${
+          worst.length ? ` — bottleneck at ${worst.join(", ")}` : ""
+        }. Add replicas to the bottleneck, shard the datastore, or put a cache in front to shed read load.`
+      );
+    }
+  } else if (hasDBScaling) {
     score += 3;
     passed.push("Database layer supports read scaling via NoSQL or read replicas");
   } else {
@@ -86,20 +108,17 @@ export function scoreScalability(
   }
 
   // Check LB→compute connectivity (2 pts)
-  const lbToCompute = hasLB && hasScalableCompute && edges.some(
-    (e) => {
-      const sourceNode = nodes.find((n) => n.id === e.source);
-      const targetNode = nodes.find((n) => n.id === e.target);
-      return (
-        sourceNode?.data.componentId === "load-balancer" &&
-        targetNode?.data.category === "compute"
-      ) || (
-        // LB → gateway → compute also counts
-        sourceNode?.data.componentId === "load-balancer" &&
-        (targetNode?.data.componentId === "api-gateway" || targetNode?.data.componentId === "rate-limiter")
-      );
-    }
-  );
+  const lbToCompute = hasLB && hasScalableCompute && edges.some((e) => {
+    const sourceNode = nodes.find((n) => n.id === e.source);
+    const targetNode = nodes.find((n) => n.id === e.target);
+    const sourceRole = sourceNode ? roleOf(sourceNode.data.componentId) : undefined;
+    const targetRole = targetNode ? roleOf(targetNode.data.componentId) : undefined;
+    return (
+      (sourceRole === "load-balancer" && targetNode?.data.category === "compute") ||
+      (sourceRole === "load-balancer" &&
+        (targetRole === "api-gateway" || targetRole === "rate-limiter"))
+    );
+  });
   if (lbToCompute) {
     score += 2;
     passed.push("Load balancer is properly connected to compute layer");

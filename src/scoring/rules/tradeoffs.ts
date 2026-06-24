@@ -1,21 +1,24 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
-import type { CategoryScore } from "@/types/scoring";
+import type { CategoryScore, ScoreContext } from "@/types/scoring";
+import { rolesPresent, STORAGE_ROLES, DATABASE_ROLES } from "@/data/roles";
 
 export function scoreTradeoffs(
   nodes: Node<ComponentNodeData>[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _edges: Edge[]
+  _edges: Edge[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _ctx?: ScoreContext
 ): CategoryScore {
   const feedback: string[] = [];
   const passed: string[] = [];
   let score = 0;
 
-  const componentIds = nodes.map((n) => n.data.componentId);
+  const roles = rolesPresent(nodes.map((n) => n.data.componentId));
 
   // Read/write separation (3 pts) — cache for reads + DB for writes
-  const hasCache = componentIds.includes("cache");
-  const hasDB = componentIds.includes("sql-db") || componentIds.includes("nosql-db");
+  const hasCache = roles.has("cache");
+  const hasDB = [...DATABASE_ROLES].some((r) => roles.has(r));
   if (hasCache && hasDB) {
     score += 3;
     passed.push("Read/write separation via cache + database — optimizes each path independently");
@@ -25,16 +28,16 @@ export function scoreTradeoffs(
     );
   }
 
-  // Polyglot persistence (3 pts) — using multiple storage types suited to different access patterns
-  const storageTypes = new Set<string>();
-  const polyglotTypes = ["sql-db", "nosql-db", "cache", "timeseries-db", "graph-db", "search", "object-storage"];
-  for (const id of componentIds) {
-    if (polyglotTypes.includes(id)) storageTypes.add(id);
-  }
-  if (storageTypes.size >= 2) {
+  // Polyglot persistence (3 pts) — multiple storage types suited to different
+  // access patterns. Counts distinct *storage roles* so Redis + Postgres + S3
+  // register even when the user drops brand-name components.
+  const storageRoles = new Set(
+    [...roles].filter((r) => STORAGE_ROLES.has(r))
+  );
+  if (storageRoles.size >= 2) {
     score += 3;
-    passed.push("Polyglot persistence — using " + storageTypes.size + " distinct storage types suited to different access patterns");
-  } else if (storageTypes.size === 1) {
+    passed.push("Polyglot persistence — using " + storageRoles.size + " distinct storage types suited to different access patterns");
+  } else if (storageRoles.size === 1) {
     score += 1;
     feedback.push(
       "Consider polyglot persistence — using multiple storage technologies suited to different access patterns. For example, SQL for transactional data, NoSQL for high-throughput key-value access, cache for hot reads, and object storage for blobs. One storage type rarely fits all workloads efficiently."
@@ -46,7 +49,7 @@ export function scoreTradeoffs(
   }
 
   // Async processing with queues (3 pts)
-  if (componentIds.includes("message-queue")) {
+  if (roles.has("message-queue") || roles.has("pub-sub")) {
     score += 3;
     passed.push("Message queue decouples services — trading immediate consistency for resilience and throughput");
   } else {
@@ -56,8 +59,7 @@ export function scoreTradeoffs(
   }
 
   // Defense in depth (3 pts) — rate limiter or API gateway
-  const hasDefense =
-    componentIds.includes("rate-limiter") || componentIds.includes("api-gateway");
+  const hasDefense = roles.has("rate-limiter") || roles.has("api-gateway");
   if (hasDefense) {
     score += 3;
     passed.push("Defense in depth with rate limiting / API gateway — protects against abuse and overload");
@@ -84,8 +86,8 @@ export function scoreTradeoffs(
   }
 
   // Auth / security considerations (3 pts)
-  const hasAuth = componentIds.includes("auth-service");
-  const hasAuthLayer = hasAuth || (componentIds.includes("api-gateway") && componentIds.includes("rate-limiter"));
+  const hasAuthLayer =
+    roles.has("auth-service") || (roles.has("api-gateway") && roles.has("rate-limiter"));
   if (hasAuthLayer) {
     score += 3;
     passed.push("Security layer (Auth Service / API Gateway + Rate Limiter) protects the system");
@@ -96,7 +98,7 @@ export function scoreTradeoffs(
   }
 
   // Monitoring / observability awareness (2 pts)
-  if (componentIds.includes("monitoring")) {
+  if (roles.has("monitoring")) {
     score += 2;
     passed.push("Monitoring shows awareness that you need observability to manage tradeoffs in production");
   } else {

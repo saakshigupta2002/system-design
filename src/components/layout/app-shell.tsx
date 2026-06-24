@@ -13,7 +13,7 @@ import { usePenStore } from "@/store/penStore";
 import { useSimulationStore } from "@/store/simulationStore";
 import { runSimulation } from "@/engine/simulator";
 import { scoreDesign } from "@/scoring/scorer";
-import { PROBLEMS } from "@/data/problems";
+import { PROBLEMS, getProblemById } from "@/data/problems";
 import { openReferenceSolution } from "@/lib/referenceSolution";
 import { markCompleted } from "@/lib/learningProgress";
 import { applySharedDesignFromHash } from "@/lib/shareDesign";
@@ -149,7 +149,12 @@ export function AppShell() {
       return;
     }
 
-    const result = scoreDesign(componentNodes, edges);
+    // Grade against the selected built-in problem so latency/throughput are
+    // checked at the problem's actual load and SLA. Custom problems (no
+    // reference / built-in entry) fall back to heuristic scoring.
+    const problemId = useAppStore.getState().selectedProblemId;
+    const problem = getProblemById(problemId);
+    const result = scoreDesign(componentNodes, edges, problem);
     useSimulationStore.getState().setScoreResult(result);
     useSimulationStore.getState().setShowScore(true);
     useAppStore.getState().setActiveRightTab("score");
@@ -159,7 +164,6 @@ export function AppShell() {
 
     // Record the attempt; a 71+ ("Excellent") score completes the problem
     // in the Learn path.
-    const problemId = useAppStore.getState().selectedProblemId;
     useScoreHistoryStore.getState().addEntry({
       problemId,
       total: result.total,

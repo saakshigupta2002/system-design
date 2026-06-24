@@ -15,7 +15,7 @@
 **The open-source system design interview simulator.**<br/>
 **Build architectures. Simulate traffic. Get scored. Pass interviews.**
 
-[Getting Started](#quick-start) &nbsp;&middot;&nbsp; [Features](#features) &nbsp;&middot;&nbsp; [35 Problems](#35-design-problems) &nbsp;&middot;&nbsp; [Contributing](#contributing)
+[Getting Started](#quick-start) &nbsp;&middot;&nbsp; [Features](#features) &nbsp;&middot;&nbsp; [49 Problems](#49-design-problems) &nbsp;&middot;&nbsp; [Contributing](#contributing)
 
 </div>
 
@@ -41,19 +41,26 @@ It's the flight simulator for system design interviews.
 <tr>
 <td width="50%">
 
-### 30 Infrastructure Components
+### 100+ Components, mapped to canonical roles
 
-Every building block you need for any system design:
+Every building block you need — generic boxes, cloud-branded, and real products:
 
 **Networking** — DNS, CDN, Load Balancer, API Gateway, Rate Limiter, Reverse Proxy, Origin Shield
 
-**Compute** — App Server, Auth Service, WebSocket Server, Task Scheduler, Stream Processor, Notification Service
+**Compute** — App Server, Auth Service, WebSocket Server, Worker, Task Scheduler, Stream Processor, Notification Service
 
-**Storage** — SQL DB, NoSQL DB, Cache/Redis, Object Storage, Search/ES, Graph DB, Time-Series DB, Data Warehouse, File Store
+**Storage** — SQL DB, NoSQL DB, Cache, Object Storage, Search, Graph DB, Time-Series DB, Data Warehouse, Vector DB, Geospatial Index, File Store
 
-**Infrastructure** — Message Queue, Service Mesh, Monitoring, Service Discovery, Distributed Lock, Circuit Breaker, Coordination Service
+**Infrastructure** — Message Queue, Pub/Sub, Service Mesh, Monitoring, Service Discovery, Distributed Lock, Circuit Breaker, Coordination Service, Config Service, ID Generator, Sharded Counter
+
+**Brands & clouds** — Redis, Kafka, Nginx, PostgreSQL, Cassandra, Elasticsearch, Prometheus, plus AWS / GCP / SaaS / AI building blocks
 
 **Special** — Custom Component (double-click to rename to anything)
+
+Every component resolves to a **canonical role** (Redis → cache, Kafka → queue,
+Nginx → load balancer), so the simulator and scorer reward what a component
+*does* — a realistic branded design scores like its generic equivalent, not
+worse. See [`src/data/roles.ts`](src/data/roles.ts).
 
 </td>
 <td width="50%">
@@ -110,11 +117,17 @@ Scored like a real interview — across the 5 dimensions interviewers evaluate:
 
 | Category | What it checks |
 |----------|---------------|
-| **Scalability** | Load balancing, horizontal scaling, caching, async processing |
+| **Scalability** | Load balancing, horizontal scaling, caching, async — plus **sustains the problem's required req/s** in simulation |
 | **Availability** | No SPOFs, replica redundancy, monitoring, overload protection |
-| **Latency** | CDN usage, cache-before-DB patterns, minimal hop count |
+| **Latency** | CDN, cache-before-DB patterns — plus **meets the problem's latency SLA** in simulation |
 | **Cost Efficiency** | Right-sized components, polyglot persistence, no waste |
 | **Trade-offs** | Read/write separation, defense in depth, architecture breadth |
+
+**Problem-aware:** when a built-in problem is selected, your design is simulated
+at the problem's actual load (reads + writes per second) and graded against its
+stated latency SLA and throughput target — not a generic checklist. The score
+report also diffs your design against the reference solution **by role**, so
+Redis counts as the cache the reference asked for.
 
 Verdicts: **Needs Work** < 31 | **Decent** < 51 | **Good** < 71 | **Excellent** < 86 | **Architect Level** 86+
 
@@ -195,10 +208,10 @@ Track completion with checkboxes. Concept prerequisites shown per problem.
 
 ---
 
-## 35 Design Problems
+## 49 Design Problems
 
 <details>
-<summary><strong>Click to see all 35 problems</strong></summary>
+<summary><strong>Click to see selected problems (49 total, including AI/LLM systems)</strong></summary>
 
 | # | Problem | Difficulty | Key Concepts |
 |---|---------|-----------|-------------|
@@ -296,14 +309,15 @@ src/
 │   ├── sidebar/            # Left sidebar (components, problems, learning path)
 │   └── ui/                 # shadcn/ui primitives
 ├── data/
-│   ├── components.ts       # 30 system components with verified specs
-│   ├── problems.ts         # 35 design problems with reference architectures
-│   ├── conceptLibrary.ts   # Educational content for all 30 components
-│   ├── interviewData.ts    # Requirements, APIs, data models for all 35 problems
-│   ├── tradeoffCards.ts    # 14 pre-built trade-off comparisons
-│   └── learningPath.ts     # 4-tier progression with prerequisites
+│   ├── components.ts       # 100+ components (generic + cloud + brand) with specs
+│   ├── roles.ts            # Component → canonical role map (sim/scorer key off this)
+│   ├── problems.ts         # 49 design problems with reference architectures
+│   ├── conceptLibrary.ts   # Educational content for the core components
+│   ├── interviewData.ts    # Requirements, APIs, data models for the problems
+│   ├── tradeoffCards.ts    # Pre-built trade-off comparisons
+│   └── learningPath.ts     # Tiered progression with prerequisites
 ├── engine/
-│   └── simulator.ts        # Traffic simulation (Kahn's topological sort)
+│   └── simulator.ts        # Traffic simulation (Kahn's topological sort, role-aware)
 ├── scoring/
 │   ├── scorer.ts           # Main scoring orchestrator
 │   └── rules/              # 5 scoring rule modules (20 pts each)

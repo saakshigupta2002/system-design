@@ -1,6 +1,7 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
 import type { NodeMetrics, NodeStatus, SimulationResult } from "@/types/simulation";
+import { roleOf, SPLITTER_ROLES, OFF_PATH_ROLES, STORAGE_ROLES } from "@/data/roles";
 import {
   UTILIZATION_WARNING,
   UTILIZATION_CRITICAL,
@@ -9,23 +10,18 @@ import {
   CACHE_HIT_RATE,
 } from "./constants";
 
-/** Component IDs that split (route) traffic across children instead of
- *  duplicating it — routers/balancers send each request down ONE branch. */
-export const LOAD_BALANCING_COMPONENTS = new Set([
-  "load-balancer",
-  "api-gateway",
-  "dns",
-  "reverse-proxy",
-  "origin-shield",
-  // AWS equivalents that also split traffic across backends.
-  "aws-elb",
-  "aws-api-gateway",
-  "aws-route53",
-]);
+/** A component splits (routes) traffic across children — sending each request
+ *  down ONE branch — when its canonical role is a balancer/router. Resolved via
+ *  the role layer so brand variants (Nginx, Envoy, ELB…) behave correctly too. */
+export function isSplitterComponent(componentId: string): boolean {
+  return SPLITTER_ROLES.has(roleOf(componentId));
+}
 
-/** Components that are out-of-band for user-facing request latency:
- *  monitoring is observability, a queue hands work off asynchronously. */
-const OFF_PATH_COMPONENTS = new Set(["monitoring", "message-queue"]);
+/** A component is out-of-band for user-facing request latency when its role is
+ *  observability (monitoring) or an async hand-off (queue / pub-sub). */
+function isOffPathComponent(componentId: string): boolean {
+  return OFF_PATH_ROLES.has(roleOf(componentId));
+}
 
 function getStatus(utilization: number): NodeStatus {
   if (utilization > UTILIZATION_CRITICAL) return "critical";
@@ -158,7 +154,7 @@ export function runSimulation(
 
     // Routers/balancers split traffic; everything else fans out.
     // Split shares honor per-edge weights when set (relative; default 1 each).
-    const isSplitter = LOAD_BALANCING_COMPONENTS.has(data.componentId);
+    const isSplitter = isSplitterComponent(data.componentId);
     // Failed children are excluded from a splitter's distribution, so a load
     // balancer / gateway reroutes their share onto the survivors — which is
     // exactly what surfaces a new bottleneck when a node dies.
@@ -172,12 +168,12 @@ export function runSimulation(
     //   chained:  app → cache → db   (traffic out of a cache = misses only)
     //   parallel: app → cache, app → db  (storage siblings of a cache get
     //             misses only — the app checks the cache first)
-    const isCache = data.componentId === "cache";
+    const isCache = roleOf(data.componentId) === "cache";
     const hitRateOf = (d: ComponentNodeData | undefined) =>
       Math.min(0.99, Math.max(0, d?.cacheHitRate ?? CACHE_HIT_RATE));
     const cacheChild = children
       .map((id) => nodeMap.get(id))
-      .find((n) => n?.data.componentId === "cache");
+      .find((n) => n && roleOf(n.data.componentId) === "cache");
 
     children.forEach((childId, i) => {
       let qpsToChild =
@@ -185,12 +181,14 @@ export function runSimulation(
           ? (outputQPS * childWeights[i]) / totalWeight
           : outputQPS; // fan-out: full traffic to each child
       const childData = nodeMap.get(childId)?.data;
+      const childRole = childData ? roleOf(childData.componentId) : undefined;
       if (isCache) {
         qpsToChild *= 1 - hitRateOf(data);
       } else if (
         cacheChild &&
-        childData?.category === "storage" &&
-        childData.componentId !== "cache"
+        childRole &&
+        STORAGE_ROLES.has(childRole) &&
+        childRole !== "cache"
       ) {
         qpsToChild *= 1 - hitRateOf(cacheChild.data);
       }
@@ -293,9 +291,10 @@ export function runSimulation(
   // Throughput is capped by bottlenecks on the request path. Monitoring is
   // observability — an overloaded monitoring stack doesn't reduce how many
   // user requests the system serves.
-  const pathBottlenecks = bottleneckNodes.filter(
-    (id) => nodeMap.get(id)?.data.componentId !== "monitoring"
-  );
+  const pathBottlenecks = bottleneckNodes.filter((id) => {
+    const cid = nodeMap.get(id)?.data.componentId;
+    return cid ? roleOf(cid) !== "monitoring" : true;
+  });
   const throughput = nodes.length === 0
     ? 0
     : pathBottlenecks.length > 0
@@ -327,7 +326,7 @@ function computeLongestPathLatency(
   const pathEdges = edges.filter((e) => {
     if ((e.data as { async?: boolean } | undefined)?.async === true) return false;
     const targetComponent = nodeMap.get(e.target)?.data.componentId ?? "";
-    return !OFF_PATH_COMPONENTS.has(targetComponent);
+    return !isOffPathComponent(targetComponent);
   });
 
   const adjacency = new Map<string, string[]>();

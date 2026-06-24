@@ -1,6 +1,8 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
-import type { ScoreResult } from "@/types/scoring";
+import type { ScoreResult, ScoreContext } from "@/types/scoring";
+import type { Problem } from "@/types/problem";
+import { runSimulation } from "@/engine/simulator";
 import { scoreScalability } from "./rules/scalability";
 import { scoreAvailability } from "./rules/availability";
 import { scoreLatency } from "./rules/latency";
@@ -15,9 +17,16 @@ function getVerdict(total: number): { verdict: string; verdictColor: string } {
   return { verdict: "Needs Work", verdictColor: "text-rose-400" };
 }
 
+/**
+ * Score a design. When `problem` is supplied, the design is simulated at the
+ * problem's required load (reads/sec + writes/sec) so the latency and
+ * scalability rules can grade against the stated SLA and throughput target
+ * instead of a generic checklist.
+ */
 export function scoreDesign(
   nodes: Node<ComponentNodeData>[],
-  edges: Edge[]
+  edges: Edge[],
+  problem?: Problem
 ): ScoreResult {
   if (nodes.length === 0) {
     return {
@@ -29,12 +38,25 @@ export function scoreDesign(
     };
   }
 
+  // Build problem context: simulate at the required load so rules can check
+  // "does this actually meet the SLA / sustain the traffic this problem asks
+  // for?" rather than just "is a cache present?".
+  let ctx: ScoreContext | undefined;
+  if (problem) {
+    const requiredLoad = Math.max(
+      1,
+      problem.requirements.readsPerSec + problem.requirements.writesPerSec
+    );
+    const sim = runSimulation(nodes, edges, requiredLoad);
+    ctx = { problem, sim, requiredLoad };
+  }
+
   const categories = [
-    scoreScalability(nodes, edges),
-    scoreAvailability(nodes, edges),
-    scoreLatency(nodes, edges),
-    scoreCost(nodes, edges),
-    scoreTradeoffs(nodes, edges),
+    scoreScalability(nodes, edges, ctx),
+    scoreAvailability(nodes, edges, ctx),
+    scoreLatency(nodes, edges, ctx),
+    scoreCost(nodes, edges, ctx),
+    scoreTradeoffs(nodes, edges, ctx),
   ];
 
   // Clamp each category score to [0, maxScore]

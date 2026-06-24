@@ -1,17 +1,20 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
-import type { CategoryScore } from "@/types/scoring";
+import type { CategoryScore, ScoreContext } from "@/types/scoring";
 import { getComponentById } from "@/data/components";
+import { roleOf, rolesPresent, STORAGE_ROLES, DATABASE_ROLES } from "@/data/roles";
 
 export function scoreCost(
   nodes: Node<ComponentNodeData>[],
-  edges: Edge[]
+  edges: Edge[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _ctx?: ScoreContext
 ): CategoryScore {
   const feedback: string[] = [];
   const passed: string[] = [];
   let score = 0;
 
-  const componentIds = nodes.map((n) => n.data.componentId);
+  const roles = rolesPresent(nodes.map((n) => n.data.componentId));
 
   // Informational: estimated monthly infrastructure cost (sum of per-instance
   // cost × replicas). Illustrative figures — surfaces the cost of the design.
@@ -46,7 +49,7 @@ export function scoreCost(
   }
 
   // Appropriate storage choice (3 pts)
-  const storageNodes = nodes.filter((n) => n.data.category === "storage");
+  const storageNodes = nodes.filter((n) => STORAGE_ROLES.has(roleOf(n.data.componentId)));
   if (storageNodes.length >= 1 && storageNodes.length <= 5) {
     score += 3;
     passed.push("Appropriate number of storage components — each serves a distinct purpose");
@@ -61,10 +64,8 @@ export function scoreCost(
   }
 
   // Caching reduces DB load = cost savings (3 pts)
-  const hasCache = nodes.some((n) => n.data.componentId === "cache");
-  const hasDB = nodes.some(
-    (n) => n.data.componentId === "sql-db" || n.data.componentId === "nosql-db"
-  );
+  const hasCache = roles.has("cache");
+  const hasDB = [...DATABASE_ROLES].some((r) => roles.has(r));
   if (hasCache && hasDB) {
     score += 3;
     passed.push("Cache reduces expensive database queries — a $50/mo Redis instance can save $500/mo in DB scaling costs");
@@ -92,8 +93,7 @@ export function scoreCost(
   }
 
   // CDN offloads origin traffic (3 pts)
-  const hasCDN = componentIds.includes("cdn");
-  if (hasCDN) {
+  if (roles.has("cdn")) {
     score += 3;
     passed.push("CDN offloads traffic from origin servers, reducing compute and bandwidth costs significantly");
   } else {
@@ -103,8 +103,7 @@ export function scoreCost(
   }
 
   // Async processing avoids over-provisioning compute (3 pts)
-  const hasQueue = componentIds.includes("message-queue");
-  if (hasQueue) {
+  if (roles.has("message-queue") || roles.has("pub-sub")) {
     score += 3;
     passed.push("Message queue enables right-sizing compute — process background tasks at lower priority instead of provisioning for peak");
   } else {
@@ -114,10 +113,8 @@ export function scoreCost(
   }
 
   // Efficient architecture — not duplicating functionality (2 pts)
-  const hasApiGw = componentIds.includes("api-gateway");
-  const hasRateLimiter = componentIds.includes("rate-limiter");
-  const hasServiceMesh = componentIds.includes("service-mesh");
-  const duplicateNetworking = hasApiGw && hasRateLimiter && hasServiceMesh;
+  const duplicateNetworking =
+    roles.has("api-gateway") && roles.has("rate-limiter") && roles.has("service-mesh");
   if (!duplicateNetworking) {
     score += 2;
     passed.push("No excessive duplication of networking functionality");

@@ -10,6 +10,7 @@ import { useSimulationStore } from "@/store/simulationStore";
 import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
 import { useAppStore } from "@/store/appStore";
 import { runSimulation } from "@/engine/simulator";
+import { getProblemById } from "@/data/problems";
 
 const PRESETS = [
   { label: "Light", value: 1000 },
@@ -34,6 +35,18 @@ export function SimulationControls({ onSimulate }: SimulationControlsProps) {
   const result = useSimulationStore((s) => s.result);
   const failedCount = useSimulationStore((s) => s.failedNodeIds.length);
   const clearFailed = useSimulationStore((s) => s.clearFailed);
+  const selectedProblemId = useAppStore((s) => s.selectedProblemId);
+
+  // Required load for the selected problem = reads/sec + writes/sec. Lets the
+  // simulator be driven by the problem's real traffic, not just a generic
+  // slider. Clamped to the slider's max.
+  const problem = getProblemById(selectedProblemId);
+  const problemLoad = problem
+    ? Math.min(
+        500000,
+        problem.requirements.readsPerSec + problem.requirements.writesPerSec
+      )
+    : null;
 
   const rampRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -113,7 +126,7 @@ export function SimulationControls({ onSimulate }: SimulationControlsProps) {
       </p>
 
       {/* Presets */}
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {PRESETS.map((preset) => (
           <button
             key={preset.label}
@@ -128,6 +141,20 @@ export function SimulationControls({ onSimulate }: SimulationControlsProps) {
             {preset.label}
           </button>
         ))}
+        {problemLoad != null && (
+          <button
+            onClick={() => setConfig({ requestsPerSec: problemLoad })}
+            disabled={isRamping}
+            title={`Set load to this problem's reads + writes per second (${new Intl.NumberFormat("en-US").format(problemLoad)} req/s) — the same load the score uses`}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+              config.requestsPerSec === problemLoad
+                ? "bg-emerald-500/15 text-emerald-400"
+                : "bg-zinc-800 text-emerald-400/80 hover:bg-zinc-700 hover:text-emerald-300"
+            }`}
+          >
+            Match problem
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">

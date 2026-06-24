@@ -12,7 +12,7 @@ import { useCanvasStore, type ComponentNodeData, type CustomEdgeData } from "@/s
 import { useAppStore } from "@/store/appStore";
 import { getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
-import { LOAD_BALANCING_COMPONENTS } from "@/engine/simulator";
+import { isSplitterComponent } from "@/engine/simulator";
 import { getConceptByComponentId } from "@/data/conceptLibrary";
 import { SimulationControls } from "./SimulationControls";
 import { MetricsDisplay } from "./MetricsDisplay";
@@ -149,7 +149,7 @@ function EdgePropertiesPanel() {
   const data = (selectedEdge.data ?? {}) as CustomEdgeData;
   const protocols: CustomEdgeData["protocol"][] = ["http", "grpc", "websocket", "pubsub", "tcp", "custom"];
   const sourceNode = nodes.find((n) => n.id === selectedEdge.source);
-  const sourceIsSplitter = LOAD_BALANCING_COMPONENTS.has(
+  const sourceIsSplitter = isSplitterComponent(
     (sourceNode?.data as ComponentNodeData | undefined)?.componentId ?? ""
   );
 

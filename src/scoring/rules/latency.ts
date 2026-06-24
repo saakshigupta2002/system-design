@@ -1,19 +1,23 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
-import type { CategoryScore } from "@/types/scoring";
+import type { CategoryScore, ScoreContext } from "@/types/scoring";
+import { roleOf, rolesPresent, DATABASE_ROLES } from "@/data/roles";
+import { simHasTraffic } from "../ruleHelpers";
 
 export function scoreLatency(
   nodes: Node<ComponentNodeData>[],
-  edges: Edge[]
+  edges: Edge[],
+  ctx?: ScoreContext
 ): CategoryScore {
   const feedback: string[] = [];
   const passed: string[] = [];
   let score = 0;
 
   const componentIds = nodes.map((n) => n.data.componentId);
+  const roles = rolesPresent(componentIds);
 
   // CDN for static content (3 pts)
-  if (componentIds.includes("cdn")) {
+  if (roles.has("cdn")) {
     score += 3;
     passed.push("CDN serves content from edge locations, cutting latency from 200ms+ to <20ms for static assets");
   } else {
@@ -23,10 +27,8 @@ export function scoreLatency(
   }
 
   // Cache before DB (3 pts)
-  const cacheNodes = nodes.filter((n) => n.data.componentId === "cache");
-  const dbNodes = nodes.filter(
-    (n) => n.data.componentId === "sql-db" || n.data.componentId === "nosql-db"
-  );
+  const cacheNodes = nodes.filter((n) => roleOf(n.data.componentId) === "cache");
+  const dbNodes = nodes.filter((n) => DATABASE_ROLES.has(roleOf(n.data.componentId)));
   // Build adjacency for reachability checks
   const adj = new Map<string, string[]>();
   for (const node of nodes) adj.set(node.id, []);
@@ -55,23 +57,39 @@ export function scoreLatency(
     );
   }
 
-  // Minimal hops — 4 or fewer layers for full points (3 pts)
-  const maxDepth = computeMaxDepth(nodes, edges);
-  if (maxDepth <= 4) {
-    score += 3;
-    passed.push("Request path has very few hops (" + maxDepth + " layers) — minimal serialized latency");
-  } else if (maxDepth <= 5) {
-    score += 2;
-    passed.push("Request path has acceptable hop count (" + maxDepth + " layers)");
+  // Meets the latency SLA (3 pts). With a problem selected we simulate the
+  // critical path at the required load and compare against the stated target;
+  // otherwise fall back to a hop-count heuristic.
+  if (ctx?.sim && ctx.problem && simHasTraffic(ctx.sim)) {
+    const measured = Math.round(ctx.sim.totalLatencyMs);
+    const target = ctx.problem.requirements.latencyMs;
+    if (measured <= target) {
+      score += 3;
+      passed.push(
+        `Critical-path latency simulates to ~${measured}ms, within the < ${target}ms SLA for this problem`
+      );
+    } else {
+      feedback.push(
+        `Simulated critical-path latency is ~${measured}ms, over the < ${target}ms SLA. Shorten the request path, add a cache/CDN to avoid slow hops, or move heavy work off the synchronous path with a queue.`
+      );
+    }
   } else {
-    feedback.push(
-      `Request path has ${maxDepth} sequential hops — each hop adds latency (network round-trip + processing time). Consider whether all layers are necessary, or if some can be combined. Every unnecessary hop adds 2-10ms to p99 latency.`
-    );
+    const maxDepth = computeMaxDepth(nodes, edges);
+    if (maxDepth <= 4) {
+      score += 3;
+      passed.push("Request path has very few hops (" + maxDepth + " layers) — minimal serialized latency");
+    } else if (maxDepth <= 5) {
+      score += 2;
+      passed.push("Request path has acceptable hop count (" + maxDepth + " layers)");
+    } else {
+      feedback.push(
+        `Request path has ${maxDepth} sequential hops — each hop adds latency (network round-trip + processing time). Consider whether all layers are necessary, or if some can be combined. Every unnecessary hop adds 2-10ms to p99 latency.`
+      );
+    }
   }
 
   // DNS entry point (1 pt)
-  const hasDNS = componentIds.includes("dns");
-  if (hasDNS) {
+  if (roles.has("dns")) {
     score += 1;
     passed.push("DNS-based geo-routing can direct users to the nearest region, reducing cross-region latency");
   } else {
@@ -81,7 +99,7 @@ export function scoreLatency(
   }
 
   // Async offloading heavy work (3 pts)
-  const hasQueue = componentIds.includes("message-queue");
+  const hasQueue = roles.has("message-queue") || roles.has("pub-sub");
   if (hasQueue) {
     score += 3;
     passed.push("Message queue offloads heavy processing from the request path, keeping responses fast");
@@ -92,8 +110,7 @@ export function scoreLatency(
   }
 
   // Load balancer for connection reuse (2 pts)
-  const hasLB = componentIds.includes("load-balancer");
-  if (hasLB) {
+  if (roles.has("load-balancer")) {
     score += 2;
     passed.push("Load balancer enables connection pooling and keep-alive, though it adds an extra network hop");
   } else {
@@ -103,8 +120,7 @@ export function scoreLatency(
   }
 
   // Low-latency data store choice (5 pts) — compensates for DNS/LB reductions
-  const hasLowLatencyStore =
-    componentIds.includes("cache") || componentIds.includes("nosql-db");
+  const hasLowLatencyStore = roles.has("cache") || roles.has("nosql-db");
   if (hasLowLatencyStore) {
     score += 5;
     passed.push("Using low-latency data stores (in-memory cache or NoSQL) for fast data access");

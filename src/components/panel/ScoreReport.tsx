@@ -12,34 +12,58 @@ import { useAppStore } from "@/store/appStore";
 import { useCanvasStore } from "@/store/canvasStore";
 import { getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
+import { roleOf, type ComponentRole } from "@/data/roles";
 import type { CategoryScore } from "@/types/scoring";
 
-/** Compares the current design's components against the problem's reference
- *  solution and lists what's missing, extra, and matched. */
+/** Compares the current design against the problem's reference solution *by
+ *  role*, so brand-name components (Redis, Kafka, Nginx…) match the reference's
+ *  generic roles (cache, message-queue, load-balancer) instead of showing up as
+ *  spurious "missing" / "extra". Lists what's missing, extra, and matched. */
 function ReferenceComparison() {
   const problemId = useAppStore((s) => s.selectedProblemId);
   const nodes = useCanvasStore((s) => s.nodes);
   const ref = getProblemById(problemId)?.referenceSolution;
   if (!ref || ref.nodes.length === 0) return null; // custom problems have none
 
-  const refIds = new Set(ref.nodes.map((n) => n.componentId));
-  const userIds = new Set(
-    nodes
-      .filter((n) => n.type !== "text")
-      .map((n) => (n.data as { componentId?: string }).componentId)
-      .filter((id): id is string => !!id)
-  );
-  const missing = [...refIds].filter((id) => !userIds.has(id));
-  const extra = [...userIds].filter((id) => !refIds.has(id));
-  const matched = [...refIds].filter((id) => userIds.has(id));
-  const label = (id: string) => getComponentById(id)?.label ?? id;
+  // Map each role to a representative component id, for a friendly label.
+  const refByRole = new Map<ComponentRole, string>();
+  for (const n of ref.nodes) {
+    const r = roleOf(n.componentId);
+    if (!refByRole.has(r)) refByRole.set(r, n.componentId);
+  }
+  const userByRole = new Map<ComponentRole, string>();
+  for (const n of nodes) {
+    if (n.type === "text") continue;
+    const id = (n.data as { componentId?: string }).componentId;
+    if (!id) continue;
+    const r = roleOf(id);
+    if (!userByRole.has(r)) userByRole.set(r, id);
+  }
 
-  function Chips({ ids, className }: { ids: string[]; className: string }) {
+  const refRoles = new Set(refByRole.keys());
+  const userRoles = new Set(userByRole.keys());
+  const missing = [...refRoles].filter((r) => !userRoles.has(r));
+  const extra = [...userRoles].filter((r) => !refRoles.has(r));
+  const matched = [...refRoles].filter((r) => userRoles.has(r));
+  const label = (r: ComponentRole, from: Map<ComponentRole, string>) => {
+    const id = from.get(r);
+    return (id && getComponentById(id)?.label) || r;
+  };
+
+  function Chips({
+    roles,
+    from,
+    className,
+  }: {
+    roles: ComponentRole[];
+    from: Map<ComponentRole, string>;
+    className: string;
+  }) {
     return (
       <div className="flex flex-wrap gap-1">
-        {ids.map((id) => (
-          <span key={id} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
-            {label(id)}
+        {roles.map((r) => (
+          <span key={r} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
+            {label(r, from)}
           </span>
         ))}
       </div>
@@ -58,7 +82,7 @@ function ReferenceComparison() {
             <p className="text-[11px] text-zinc-400">
               Missing — the reference uses these:
             </p>
-            <Chips ids={missing} className="border border-amber-500/30 bg-amber-500/10 text-amber-400" />
+            <Chips roles={missing} from={refByRole} className="border border-amber-500/30 bg-amber-500/10 text-amber-400" />
           </div>
         )}
         {extra.length > 0 && (
@@ -66,13 +90,13 @@ function ReferenceComparison() {
             <p className="text-[11px] text-zinc-400">
               Extra — not in the reference (make sure they&apos;re justified):
             </p>
-            <Chips ids={extra} className="border border-zinc-700 bg-zinc-800 text-zinc-300" />
+            <Chips roles={extra} from={userByRole} className="border border-zinc-700 bg-zinc-800 text-zinc-300" />
           </div>
         )}
         {matched.length > 0 && (
           <div className="space-y-1">
             <p className="text-[11px] text-zinc-400">In both:</p>
-            <Chips ids={matched} className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-400" />
+            <Chips roles={matched} from={refByRole} className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-400" />
           </div>
         )}
         <p className="text-[11px] leading-relaxed text-zinc-600">
