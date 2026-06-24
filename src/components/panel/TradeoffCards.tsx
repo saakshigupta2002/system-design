@@ -1,11 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TRADEOFF_CARDS } from "@/data/tradeoffCards";
+import { useAppStore } from "@/store/appStore";
 
 export function TradeoffCards() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const focusedTradeoffId = useAppStore((s) => s.focusedTradeoffId);
+  const setFocusedTradeoffId = useAppStore((s) => s.setFocusedTradeoffId);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // When the score report asks us to focus a card, expand it, scroll it into
+  // view, then clear the request so re-opening the same card works again.
+  // Deferred to the next frame so the expand has painted before we scroll.
+  useEffect(() => {
+    if (!focusedTradeoffId) return;
+    const id = focusedTradeoffId;
+    const raf = requestAnimationFrame(() => {
+      setExpandedId(id);
+      cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFocusedTradeoffId(null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusedTradeoffId, setFocusedTradeoffId]);
 
   const toggle = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -27,6 +45,7 @@ export function TradeoffCards() {
           return (
             <div
               key={card.id}
+              ref={(el) => { cardRefs.current[card.id] = el; }}
               className="rounded-md border border-zinc-700 bg-zinc-800 overflow-hidden"
             >
               <button

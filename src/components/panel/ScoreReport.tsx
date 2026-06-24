@@ -13,7 +13,35 @@ import { useCanvasStore } from "@/store/canvasStore";
 import { getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
 import { roleOf, type ComponentRole } from "@/data/roles";
+import { tradeoffCardForFeedback, tradeoffCardTitle } from "@/data/feedbackLinks";
 import type { CategoryScore } from "@/types/scoring";
+
+/** A score feedback line, with an optional "Learn more →" link to the relevant
+ *  trade-off card when one matches the feedback. */
+function FeedbackLine({ text }: { text: string }) {
+  const openTradeoffCard = useAppStore((s) => s.openTradeoffCard);
+  const cardId = tradeoffCardForFeedback(text);
+  return (
+    <div className="flex items-start gap-1.5">
+      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+      <span className="text-[13px] leading-relaxed text-zinc-300">
+        {text}
+        {cardId && (
+          <>
+            {" "}
+            <button
+              onClick={() => openTradeoffCard(cardId)}
+              className="whitespace-nowrap font-medium text-cyan-400 hover:text-cyan-300 hover:underline"
+              title={`Open the "${tradeoffCardTitle(cardId)}" reference card`}
+            >
+              Learn more →
+            </button>
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
 
 /** Compares the current design against the problem's reference solution *by
  *  role*, so brand-name components (Redis, Kafka, Nginx…) match the reference's
@@ -157,6 +185,35 @@ function ScoreHistory() {
   );
 }
 
+/** A numbered "Top Improvement" row, with a "Learn more →" link when a
+ *  trade-off card matches. */
+function TopImprovement({ index, text }: { index: number; text: string }) {
+  const openTradeoffCard = useAppStore((s) => s.openTradeoffCard);
+  const cardId = tradeoffCardForFeedback(text);
+  return (
+    <div className="flex items-start gap-2 rounded-md bg-zinc-800 border border-zinc-700 px-2.5 py-2">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-300">
+        {index + 1}
+      </span>
+      <span className="text-[13px] leading-relaxed text-zinc-300">
+        {text}
+        {cardId && (
+          <>
+            {" "}
+            <button
+              onClick={() => openTradeoffCard(cardId)}
+              className="whitespace-nowrap font-medium text-cyan-400 hover:text-cyan-300 hover:underline"
+              title={`Open the "${tradeoffCardTitle(cardId)}" reference card`}
+            >
+              Learn more →
+            </button>
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
+
 function CategorySection({ category }: { category: CategoryScore }) {
   const [expanded, setExpanded] = useState(false);
   const pct = (category.score / category.maxScore) * 100;
@@ -204,10 +261,7 @@ function CategorySection({ category }: { category: CategoryScore }) {
             </div>
           ))}
           {category.feedback.map((item, i) => (
-            <div key={i} className="flex items-start gap-1.5">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
-              <span className="text-[13px] leading-relaxed text-zinc-300">{item}</span>
-            </div>
+            <FeedbackLine key={i} text={item} />
           ))}
         </div>
       )}
@@ -357,15 +411,7 @@ export function ScoreReport({ onScore }: { onScore?: () => void }) {
                 Top Improvements
               </p>
               {topImprovements.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-2 rounded-md bg-zinc-800 border border-zinc-700 px-2.5 py-2"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-300">
-                    {i + 1}
-                  </span>
-                  <span className="text-[13px] leading-relaxed text-zinc-300">{item}</span>
-                </div>
+                <TopImprovement key={i} index={i} text={item} />
               ))}
             </div>
           </>

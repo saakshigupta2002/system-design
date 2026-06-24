@@ -30,6 +30,7 @@ import { SpotTheFlawDialog } from "@/components/dialogs/SpotTheFlawDialog";
 import { ShortcutsDialog } from "@/components/dialogs/ShortcutsDialog";
 import { AIAssistantPanel } from "@/components/ai/AIAssistantPanel";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
+import { ModeSelectDialog } from "@/components/dialogs/ModeSelectDialog";
 import { useInterviewStore } from "@/store/interviewStore";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 
@@ -499,6 +500,7 @@ export function AppShell() {
         <SpotTheFlawDialog open={spotFlawDialogOpen} onClose={() => setSpotFlawDialogOpen(false)} />
         <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
         <AIAssistantPanel open={aiOpen} onClose={() => setAiOpen(false)} />
+        <ModeSelectDialog />
         <ConfirmDialog
           open={clearConfirmOpen}
           title="Clear canvas?"

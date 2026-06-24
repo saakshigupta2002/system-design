@@ -23,6 +23,9 @@ interface AppState {
   activeRightTab: "properties" | "simulation" | "score" | "capacity" | "tradeoffs";
   theme: "dark" | "light";
   toast: ToastData | null;
+  /** When set, the Trade-off Cards panel expands + scrolls to this card id
+   *  (used by the score report's "Learn more" links). Cleared after focusing. */
+  focusedTradeoffId: string | null;
 
   setSelectedProblem: (id: string) => void;
   toggleLeftSidebar: () => void;
@@ -32,6 +35,9 @@ interface AppState {
   setRightPanelWidth: (width: number) => void;
   setActiveLeftTab: (tab: AppState["activeLeftTab"]) => void;
   setActiveRightTab: (tab: AppState["activeRightTab"]) => void;
+  /** Jump to the Trade-offs tab and focus a specific card. */
+  openTradeoffCard: (cardId: string) => void;
+  setFocusedTradeoffId: (id: string | null) => void;
   toggleTheme: () => void;
   showToast: (message: string, type: ToastType) => void;
   clearToast: () => void;
@@ -51,6 +57,7 @@ export const useAppStore = create<AppState>()(
       activeRightTab: "properties",
       theme: "dark",
       toast: null,
+      focusedTradeoffId: null,
 
       setSelectedProblem: (id) => set({ selectedProblemId: id }),
       toggleLeftSidebar: () =>
@@ -64,6 +71,9 @@ export const useAppStore = create<AppState>()(
         set({ rightPanelWidth: Math.min(RIGHT_PANEL_MAX, Math.max(RIGHT_PANEL_MIN, width)) }),
       setActiveLeftTab: (tab) => set({ activeLeftTab: tab }),
       setActiveRightTab: (tab) => set({ activeRightTab: tab }),
+      openTradeoffCard: (cardId) =>
+        set({ activeRightTab: "tradeoffs", rightPanelOpen: true, focusedTradeoffId: cardId }),
+      setFocusedTradeoffId: (id) => set({ focusedTradeoffId: id }),
       toggleTheme: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
       showToast: (message, type) => {
         if (toastTimeoutId !== null) {

@@ -26,6 +26,7 @@ import {
   Share2,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
+import { useModeStore } from "@/store/modeStore";
 import { useCanvasStore } from "@/store/canvasStore";
 import { usePenStore } from "@/store/penStore";
 import { PROBLEMS } from "@/data/problems";
@@ -77,6 +78,8 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const theme = useAppStore((s) => s.theme);
   const toggleTheme = useAppStore((s) => s.toggleTheme);
+  const skillMode = useModeStore((s) => s.skillMode);
+  const chooseMode = useModeStore((s) => s.chooseMode);
 
   const customProblems = useCustomProblemsStore((s) => s.problems);
   const currentProblem =
@@ -165,6 +168,25 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
             SystemDesign
           </span>
           <span className="hidden rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-medium text-zinc-500 md:inline">beta</span>
+        </div>
+
+        <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
+
+        {/* Beginner / Advanced mode switch */}
+        <div className="hidden shrink-0 items-center rounded-md bg-zinc-800 p-0.5 md:flex" title="Switch practice mode">
+          {(["beginner", "advanced"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => chooseMode(m)}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors ${
+                skillMode === m
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {m}
+            </button>
+          ))}
         </div>
 
         <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
