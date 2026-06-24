@@ -19,7 +19,7 @@ interface AppState {
   rightPanelOpen: boolean;
   leftPanelWidth: number;
   rightPanelWidth: number;
-  activeLeftTab: "components" | "problems" | "learn";
+  activeLeftTab: "components" | "problems" | "learn" | "drills";
   activeRightTab: "properties" | "simulation" | "score" | "capacity" | "tradeoffs" | "deepdive";
   theme: "dark" | "light";
   toast: ToastData | null;

@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ComponentPalette } from "./ComponentPalette";
 import { ProblemSelector } from "./ProblemSelector";
 import { LearningPath } from "./LearningPath";
+import { DrillLibrary } from "./DrillLibrary";
 import { PanelResizeHandle } from "@/components/layout/PanelResizeHandle";
 import { useAppStore } from "@/store/appStore";
 
@@ -52,6 +53,12 @@ function SidebarTabs({
         >
           Learn
         </TabsTrigger>
+        <TabsTrigger
+          value="drills"
+          className="h-7 px-3 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100"
+        >
+          Drills
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="components" className="mt-0 flex-1 min-h-0 overflow-hidden">
@@ -67,6 +74,10 @@ function SidebarTabs({
 
       <TabsContent value="learn" className="mt-0 flex-1 min-h-0 overflow-hidden">
         <LearningPath onOpenEditorial={onOpenEditorial} onOpenSpotFlaw={onOpenSpotFlaw} />
+      </TabsContent>
+
+      <TabsContent value="drills" className="mt-0 flex-1 min-h-0 overflow-hidden">
+        <DrillLibrary />
       </TabsContent>
     </Tabs>
   );
