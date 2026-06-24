@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useInterviewStore } from "@/store/interviewStore";
 import { useAppStore } from "@/store/appStore";
 import { getProblemById } from "@/data/problems";
+import { getInterviewData } from "@/data/interviewData";
+import type { ProblemInterviewData } from "@/data/interviewData";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ClipboardList,
@@ -12,6 +15,7 @@ import {
   Database,
   Search,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 /** Panel content shown during every interview phase except High-Level Design,
@@ -22,6 +26,7 @@ export function InterviewPhasePanel() {
   const nextPhase = useInterviewStore((s) => s.nextPhase);
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const problem = getProblemById(selectedProblemId);
+  const data = getInterviewData(selectedProblemId);
 
   const phase = phases[currentPhase];
 
@@ -40,12 +45,12 @@ export function InterviewPhasePanel() {
 
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-4">
-          {currentPhase === 0 && <RequirementsGuide problem={problem} />}
-          {currentPhase === 1 && <EstimationGuide problem={problem} />}
-          {currentPhase === 2 && <CoreEntitiesGuide problem={problem} />}
-          {currentPhase === 3 && <APIDesignGuide problem={problem} />}
-          {currentPhase === 4 && <DataModelGuide problem={problem} />}
-          {currentPhase === 6 && <DeepDiveGuide problem={problem} />}
+          {currentPhase === 0 && <RequirementsGuide problem={problem} data={data} />}
+          {currentPhase === 1 && <EstimationGuide problem={problem} data={data} />}
+          {currentPhase === 2 && <CoreEntitiesGuide problem={problem} data={data} />}
+          {currentPhase === 3 && <APIDesignGuide problem={problem} data={data} />}
+          {currentPhase === 4 && <DataModelGuide problem={problem} data={data} />}
+          {currentPhase === 6 && <DeepDiveGuide problem={problem} data={data} />}
         </div>
       </ScrollArea>
 
@@ -109,9 +114,42 @@ function GuideItem({ title, items }: { title: string; items: string[] }) {
 
 interface GuideProps {
   problem: ReturnType<typeof getProblemById>;
+  data?: ProblemInterviewData;
 }
 
-function RequirementsGuide({ problem }: GuideProps) {
+const IMPORTANCE_DOT: Record<string, string> = {
+  critical: "bg-rose-500",
+  important: "bg-amber-500",
+  "nice-to-have": "bg-zinc-500",
+};
+
+const METHOD_COLOR: Record<string, string> = {
+  GET: "text-emerald-400",
+  POST: "text-cyan-400",
+  PUT: "text-amber-400",
+  PATCH: "text-amber-400",
+  DELETE: "text-rose-400",
+};
+
+const ENTITY_TYPE_COLOR: Record<string, string> = {
+  sql: "border-blue-500/30 bg-blue-500/10 text-blue-300",
+  nosql: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  cache: "border-rose-500/30 bg-rose-500/10 text-rose-300",
+  search: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+};
+
+/** Section header used by the data-backed reference blocks. */
+function RefHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-500/80">
+      {children}
+    </p>
+  );
+}
+
+function RequirementsGuide({ problem, data }: GuideProps) {
+  const functional = data?.requirements.filter((r) => r.category === "functional") ?? [];
+  const nonFunctional = data?.requirements.filter((r) => r.category === "non-functional") ?? [];
   return (
     <>
       {problem && (
@@ -125,6 +163,33 @@ function RequirementsGuide({ problem }: GuideProps) {
               {problem.description}
             </p>
           </div>
+        </div>
+      )}
+      {data && (
+        <div className="space-y-3 rounded-md border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5">
+          <div className="space-y-1.5">
+            <RefHeader>Functional — reference</RefHeader>
+            {functional.map((r) => (
+              <div key={r.id} className="flex items-start gap-2">
+                <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${IMPORTANCE_DOT[r.importance]}`} title={r.importance} />
+                <span className="text-xs leading-relaxed text-zinc-300">{r.text}</span>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            <RefHeader>Non-functional — reference</RefHeader>
+            {nonFunctional.map((r) => (
+              <div key={r.id} className="flex items-start gap-2">
+                <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${IMPORTANCE_DOT[r.importance]}`} title={r.importance} />
+                <span className="text-xs leading-relaxed text-zinc-300">{r.text}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] leading-relaxed text-zinc-600">
+            Dot color = priority: <span className="text-rose-400">critical</span>,{" "}
+            <span className="text-amber-400">important</span>,{" "}
+            <span className="text-zinc-400">nice-to-have</span>. Try listing these yourself first.
+          </p>
         </div>
       )}
       <GuideItem
@@ -151,9 +216,21 @@ function RequirementsGuide({ problem }: GuideProps) {
   );
 }
 
-function CoreEntitiesGuide({ problem: _problem }: GuideProps) {
+function CoreEntitiesGuide({ data }: GuideProps) {
   return (
     <>
+      {data && data.dataModel.length > 0 && (
+        <div className="space-y-1.5 rounded-md border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5">
+          <RefHeader>Reference entities</RefHeader>
+          <div className="flex flex-wrap gap-1">
+            {data.dataModel.map((e) => (
+              <span key={e.name} className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">
+                {e.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       <GuideItem
         title="List the core entities"
         items={[
@@ -174,7 +251,7 @@ function CoreEntitiesGuide({ problem: _problem }: GuideProps) {
   );
 }
 
-function EstimationGuide({ problem }: GuideProps) {
+function EstimationGuide({ problem, data }: GuideProps) {
   return (
     <>
       {problem && (
@@ -198,6 +275,22 @@ function EstimationGuide({ problem }: GuideProps) {
           </div>
         </div>
       )}
+      {data && (
+        <div className="space-y-1.5 rounded-md border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5">
+          <RefHeader>Estimation hints</RefHeader>
+          {[
+            { label: "DAU", value: data.estimationHints.dailyActiveUsers },
+            { label: "Read/Write", value: data.estimationHints.readWriteRatio },
+            { label: "Per item", value: data.estimationHints.storagePerItem },
+            { label: "Peak", value: data.estimationHints.peakMultiplier },
+          ].map((h) => (
+            <div key={h.label}>
+              <span className="text-[10px] font-semibold uppercase text-zinc-500">{h.label}: </span>
+              <span className="text-[11px] leading-relaxed text-zinc-400">{h.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
       <GuideItem
         title="Estimate"
         items={[
@@ -209,13 +302,36 @@ function EstimationGuide({ problem }: GuideProps) {
           "Number of servers: QPS / single-server capacity",
         ]}
       />
+      <div className="rounded-md border border-cyan-500/30 bg-cyan-500/[0.06] px-2.5 py-2">
+        <p className="text-[10px] font-semibold text-cyan-400">CHECK YOUR MATH</p>
+        <p className="mt-0.5 text-xs text-zinc-300">
+          Open the <span className="font-medium">Capacity</span> tab (right panel) to compute these
+          and have them graded against this problem&apos;s numbers.
+        </p>
+      </div>
     </>
   );
 }
 
-function APIDesignGuide({ problem: _problem }: GuideProps) {
+function APIDesignGuide({ data }: GuideProps) {
   return (
     <>
+      {data && data.referenceAPIs.length > 0 && (
+        <div className="space-y-1.5 rounded-md border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5">
+          <RefHeader>Reference APIs — design yours first, then compare</RefHeader>
+          {data.referenceAPIs.map((api, i) => (
+            <div key={i} className="rounded bg-zinc-800/70 px-2 py-1.5">
+              <div className="flex items-baseline gap-1.5">
+                <span className={`font-mono text-[10px] font-bold ${METHOD_COLOR[api.method] ?? "text-zinc-400"}`}>
+                  {api.method}
+                </span>
+                <span className="font-mono text-[11px] text-zinc-200">{api.path}</span>
+              </div>
+              <p className="mt-0.5 text-[11px] leading-snug text-zinc-500">{api.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <GuideItem
         title="Define your APIs"
         items={[
@@ -243,9 +359,36 @@ function APIDesignGuide({ problem: _problem }: GuideProps) {
   );
 }
 
-function DataModelGuide({ problem: _problem }: GuideProps) {
+function DataModelGuide({ data }: GuideProps) {
   return (
     <>
+      {data && data.dataModel.length > 0 && (
+        <div className="space-y-2 rounded-md border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5">
+          <RefHeader>Reference data model</RefHeader>
+          {data.dataModel.map((entity) => (
+            <div key={entity.name} className="rounded bg-zinc-800/70 px-2 py-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-[11px] font-medium text-zinc-200">{entity.name}</span>
+                <span className={`rounded border px-1 py-0.5 text-[9px] font-medium uppercase ${ENTITY_TYPE_COLOR[entity.type] ?? "border-zinc-600 text-zinc-400"}`}>
+                  {entity.type}
+                </span>
+                {entity.partitionKey && (
+                  <span className="ml-auto font-mono text-[9px] text-zinc-500" title="Partition / shard key">
+                    PK: {entity.partitionKey}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                {entity.fields.map((f) => (
+                  <span key={f.name} className="font-mono text-[10px] text-zinc-500" title={f.note}>
+                    {f.name}:<span className="text-zinc-600">{f.type}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <GuideItem
         title="Design your data model"
         items={[
@@ -267,9 +410,39 @@ function DataModelGuide({ problem: _problem }: GuideProps) {
   );
 }
 
-function DeepDiveGuide({ problem }: GuideProps) {
+function FollowUpItem({ question, hint, answer }: { question: string; hint: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-md bg-zinc-800 px-2.5 py-2">
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start gap-1.5 text-left">
+        {open ? (
+          <ChevronDown className="mt-0.5 h-3 w-3 shrink-0 text-zinc-500" />
+        ) : (
+          <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-zinc-500" />
+        )}
+        <span className="text-xs font-medium text-zinc-300">{question}</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1.5 pl-4.5">
+          <p className="text-[11px] italic leading-relaxed text-zinc-500">Hint: {hint}</p>
+          <p className="text-xs leading-relaxed text-zinc-400">{answer}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeepDiveGuide({ problem, data }: GuideProps) {
   return (
     <>
+      {data && data.followUpQuestions.length > 0 && (
+        <div className="space-y-1.5">
+          <RefHeader>Likely follow-up questions</RefHeader>
+          {data.followUpQuestions.map((q) => (
+            <FollowUpItem key={q.id} question={q.question} hint={q.hint} answer={q.answer} />
+          ))}
+        </div>
+      )}
       <GuideItem
         title="Topics to explore"
         items={[

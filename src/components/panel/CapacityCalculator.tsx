@@ -2,9 +2,30 @@
 
 import { useState, useMemo } from "react";
 import { Separator } from "@/components/ui/separator";
-import { Calculator, Play } from "lucide-react";
+import { Calculator, Play, Wand2 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useAppStore } from "@/store/appStore";
+import { getProblemById } from "@/data/problems";
+import { getInterviewData } from "@/data/interviewData";
+import { useDeepDiveStore } from "@/store/deepDiveStore";
+import { gradeEstimation, parseBytes, type EstimationVerdict } from "@/scoring/estimation";
+
+/** Parse "100M", "1B DAU", "500 M" → a count. */
+function parseCount(s?: string): number | undefined {
+  if (!s) return undefined;
+  const m = s.match(/(\d+(?:\.\d+)?)\s*([kmb])/i);
+  if (!m) return undefined;
+  const n = parseFloat(m[1]);
+  const mult = { k: 1e3, m: 1e6, b: 1e9 }[m[2].toLowerCase()] ?? 1;
+  return n * mult;
+}
+
+const VERDICT_STYLE: Record<EstimationVerdict, { label: string; cls: string }> = {
+  "spot-on": { label: "spot on", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" },
+  close: { label: "right ballpark", cls: "border-amber-500/30 bg-amber-500/10 text-amber-400" },
+  off: { label: "way off", cls: "border-rose-500/30 bg-rose-500/10 text-rose-400" },
+  missing: { label: "—", cls: "border-zinc-700 bg-zinc-800 text-zinc-500" },
+};
 
 function formatNumber(n: number): string {
   if (n >= 1e12) return `${(n / 1e12).toFixed(2)} T`;
@@ -28,6 +49,11 @@ export function CapacityCalculator() {
   const [writeRatio, setWriteRatio] = useState(0.2);
   const [dataSizeKB, setDataSizeKB] = useState(5);
 
+  const selectedProblemId = useAppStore((s) => s.selectedProblemId);
+  const problem = getProblemById(selectedProblemId);
+  const idata = getInterviewData(selectedProblemId);
+  const setEstimation = useDeepDiveStore((s) => s.setEstimation);
+
   const estimates = useMemo(() => {
     const totalRequests = dau * reqPerUser;
     const qps = totalRequests / 86400;
@@ -50,6 +76,42 @@ export function CapacityCalculator() {
     };
   }, [dau, reqPerUser, writeRatio, dataSizeKB]);
 
+  // Grade the current model against the selected problem's reference ballpark.
+  const grade = useMemo(
+    () =>
+      problem
+        ? gradeEstimation(
+            {
+              peakQps: estimates.peakQps,
+              storagePerYearBytes: estimates.storagePerYear,
+              peakBandwidthBps: estimates.bandwidthBps,
+            },
+            problem,
+            idata?.estimationHints
+          )
+        : null,
+    [problem, estimates, idata]
+  );
+
+  function loadAssumptions() {
+    if (!problem) return;
+    const { readsPerSec, writesPerSec, users } = problem.requirements;
+    const avg = Math.max(1, readsPerSec + writesPerSec);
+    const wr = Math.min(0.95, Math.max(0.01, writesPerSec / avg));
+    const sizeKB = Math.max(1, Math.round(parseBytes(idata?.estimationHints.storagePerItem) / 1024));
+    const dauV =
+      parseCount(idata?.estimationHints.dailyActiveUsers) ?? parseCount(users) ?? 100_000_000;
+    setDau(dauV);
+    setReqPerUser(Math.max(1, Math.round((avg * 86400) / dauV)));
+    setWriteRatio(wr);
+    setDataSizeKB(sizeKB);
+  }
+
+  function saveEstimate() {
+    setEstimation(selectedProblemId, { dau, reqPerUser, writeRatio, dataSizeKB });
+    useAppStore.getState().showToast("Estimate saved for this problem", "success");
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -58,6 +120,24 @@ export function CapacityCalculator() {
           Capacity Estimation
         </p>
       </div>
+
+      {problem && (
+        <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-2">
+          <p className="text-[11px] text-zinc-400">
+            Estimating for{" "}
+            <span className="font-medium text-zinc-200">{problem.title}</span>
+            {!idata && <span className="text-zinc-600"> (no reference hints — graded on the math)</span>}
+          </p>
+          <button
+            onClick={loadAssumptions}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+            title="Seed the inputs with assumptions that match this problem's numbers"
+          >
+            <Wand2 className="h-3 w-3" />
+            Load this problem&apos;s assumptions
+          </button>
+        </div>
+      )}
 
       {/* Inputs */}
       <div className="space-y-3">
@@ -170,6 +250,50 @@ export function CapacityCalculator() {
           highlight
         />
       </div>
+
+      {/* Graded against the selected problem */}
+      {grade && problem && (
+        <>
+          <Separator className="bg-zinc-800" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                Check vs {problem.title}
+              </p>
+              <span className="text-[11px] text-zinc-400">{grade.passed}/{grade.total} in range</span>
+            </div>
+            {grade.items.map((item) => {
+              const style = VERDICT_STYLE[item.verdict];
+              const refStr =
+                item.key === "peakQps"
+                  ? `${formatNumber(item.reference)} req/s`
+                  : item.key === "storagePerYearBytes"
+                    ? formatBytes(item.reference)
+                    : formatBandwidth(item.reference);
+              return (
+                <div key={item.key} className="flex items-center justify-between gap-2 rounded-md bg-zinc-800 px-2.5 py-1.5">
+                  <div className="min-w-0">
+                    <p className="text-xs text-zinc-300">{item.label}</p>
+                    <p className="text-[10px] text-zinc-500">reference ≈ {refStr}</p>
+                  </div>
+                  <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${style.cls}`}>
+                    {style.label}
+                  </span>
+                </div>
+              );
+            })}
+            <button
+              onClick={saveEstimate}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+            >
+              Save my estimate
+            </button>
+            <p className="text-[10px] leading-relaxed text-zinc-600">
+              Estimation is about order of magnitude — landing within ~5× of the reference counts.
+            </p>
+          </div>
+        </>
+      )}
 
       {/* Formula reference */}
       <div className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-2">
