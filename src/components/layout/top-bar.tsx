@@ -42,13 +42,14 @@ interface TopBarProps {
   onSave: () => void;
   onLoad: () => void;
   onStartInterview: () => void;
+  onOpenMockInterview: () => void;
   onOpenShortcuts: () => void;
   onToggleAI: () => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
 }
 
-export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onLoad, onStartInterview, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
+export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onLoad, onStartInterview, onOpenMockInterview, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const { getViewport, fitView } = useReactFlow();
@@ -274,6 +275,13 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
                   <GraduationCap className="h-3.5 w-3.5 text-zinc-500" />
                   Practice interview
                 </button>
+                <button
+                  onClick={() => { setMobileMoreOpen(false); onOpenMockInterview(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
+                >
+                  <GraduationCap className="h-3.5 w-3.5 text-zinc-500" />
+                  Mock interview
+                </button>
 
                 <div className="my-1 h-px bg-zinc-800" />
 
@@ -430,6 +438,15 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
 
         {/* Divider before the primary actions */}
         <div className="hidden h-4 w-px bg-zinc-800 md:block" />
+
+        <button
+          onClick={onOpenMockInterview}
+          className="hidden h-7 items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100 md:flex"
+          title="Mock interview — get probed on your design (works offline; smarter with an API key)"
+        >
+          <GraduationCap className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Interview</span>
+        </button>
 
         <button
           onClick={onToggleAI}

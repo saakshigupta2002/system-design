@@ -23,6 +23,7 @@ import { SaveDialog } from "@/components/dialogs/SaveDialog";
 import { LoadDialog } from "@/components/dialogs/LoadDialog";
 import { InterviewBar } from "@/components/interview/InterviewBar";
 import { InterviewStartDialog } from "@/components/interview/InterviewStartDialog";
+import { MockInterviewPanel } from "@/components/interview/MockInterviewPanel";
 import { CreateProblemDialog } from "@/components/dialogs/CreateProblemDialog";
 import { CreateComponentDialog } from "@/components/dialogs/CreateComponentDialog";
 import { EditorialDialog } from "@/components/dialogs/EditorialDialog";
@@ -56,6 +57,7 @@ export function AppShell() {
   const [spotFlawDialogOpen, setSpotFlawDialogOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [mockInterviewOpen, setMockInterviewOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [editProblemId, setEditProblemId] = useState<string | null>(null);
   const [editComponentId, setEditComponentId] = useState<string | null>(null);
@@ -352,6 +354,7 @@ export function AppShell() {
           onSave={handleSave}
           onLoad={handleLoad}
           onStartInterview={() => setInterviewDialogOpen(true)}
+          onOpenMockInterview={() => setMockInterviewOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
           onToggleAI={() => setAiOpen((v) => !v)}
           onToggleLeft={handleToggleLeft}
@@ -508,6 +511,7 @@ export function AppShell() {
         <SpotTheFlawDialog open={spotFlawDialogOpen} onClose={() => setSpotFlawDialogOpen(false)} />
         <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
         <AIAssistantPanel open={aiOpen} onClose={() => setAiOpen(false)} />
+        <MockInterviewPanel open={mockInterviewOpen} onClose={() => setMockInterviewOpen(false)} />
         <ModeSelectDialog />
         <ConfirmDialog
           open={clearConfirmOpen}
