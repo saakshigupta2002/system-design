@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Trophy, RotateCcw } from "lucide-react";
+import { CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Trophy, RotateCcw, Share2 } from "lucide-react";
 import { useState } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useScoreHistoryStore } from "@/store/scoreHistoryStore";
@@ -50,8 +50,10 @@ function FeedbackLine({ text }: { text: string }) {
 function ReferenceComparison() {
   const problemId = useAppStore((s) => s.selectedProblemId);
   const nodes = useCanvasStore((s) => s.nodes);
-  const ref = getProblemById(problemId)?.referenceSolution;
+  const problem = getProblemById(problemId);
+  const ref = problem?.referenceSolution;
   if (!ref || ref.nodes.length === 0) return null; // custom problems have none
+  const alternatives = problem?.alternatives ?? [];
 
   // Map each role to a representative component id, for a friendly label.
   const refByRole = new Map<ComponentRole, string>();
@@ -131,6 +133,17 @@ function ReferenceComparison() {
           One valid reference design — not the only correct answer. Open it with the
           &ldquo;Reference&rdquo; button to compare layouts.
         </p>
+        {alternatives.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-zinc-400">Other valid approaches:</p>
+            {alternatives.map((alt) => (
+              <div key={alt.name} className="rounded-md border border-zinc-800 bg-zinc-800/40 px-2.5 py-1.5">
+                <p className="text-[11px] font-semibold text-zinc-300">{alt.name}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">{alt.note}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
@@ -333,6 +346,22 @@ export function ScoreReport({ onScore }: { onScore?: () => void }) {
     );
   }
 
+  const copyScorecard = async () => {
+    const problem = getProblemById(useAppStore.getState().selectedProblemId);
+    const lines = [
+      `SystemDesign — ${problem?.title ?? "Design"}`,
+      `${scoreResult.total}/100 · ${scoreResult.verdict}`,
+      ...scoreResult.categories.map((c) => `${c.category}: ${c.score}/${c.maxScore}`),
+    ];
+    const text = lines.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      useAppStore.getState().showToast("Scorecard copied to clipboard", "success");
+    } catch {
+      window.prompt("Copy your scorecard:", text);
+    }
+  };
+
   const topImprovements = scoreResult.categories
     .flatMap((c) => c.feedback)
     .slice(0, 3);
@@ -419,15 +448,25 @@ export function ScoreReport({ onScore }: { onScore?: () => void }) {
 
         <ScoreHistory />
 
-        {onScore && (
+        <div className="flex gap-2">
+          {onScore && (
+            <button
+              onClick={onScore}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Re-score
+            </button>
+          )}
           <button
-            onClick={onScore}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+            onClick={copyScorecard}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+            title="Copy a shareable text summary of this score"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Re-score design
+            <Share2 className="h-3.5 w-3.5" />
+            Scorecard
           </button>
-        )}
+        </div>
       </div>
     </ScrollArea>
   );

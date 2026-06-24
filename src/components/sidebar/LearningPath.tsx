@@ -3,10 +3,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ChevronDown, ChevronRight, Star, Search } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Star, Search, Target, RotateCcw, Dumbbell } from "lucide-react";
 import { LEARNING_PATH, PROBLEM_CONCEPTS } from "@/data/learningPath";
 import { PROBLEMS } from "@/data/problems";
 import { useAppStore } from "@/store/appStore";
+import { useScoreHistoryStore } from "@/store/scoreHistoryStore";
+import { computeFocusArea, recommendRetry } from "@/lib/recommend";
 import {
   COMPLETED_CHANGED_EVENT,
   readCompleted,
@@ -50,6 +52,11 @@ export function LearningPath({
 }: { onOpenEditorial?: () => void; onOpenSpotFlaw?: () => void } = {}) {
   const selectedProblemId = useAppStore((s) => s.selectedProblemId);
   const setSelectedProblem = useAppStore((s) => s.setSelectedProblem);
+  const setActiveLeftTab = useAppStore((s) => s.setActiveLeftTab);
+  const historyEntries = useScoreHistoryStore((s) => s.entries);
+  const focus = computeFocusArea(historyEntries);
+  const retry = recommendRetry(historyEntries);
+  const retryProblem = retry ? PROBLEMS.find((p) => p.id === retry.problemId) : undefined;
   const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(["Foundations"]));
   const [completed, setCompleted] = useState<Set<string>>(() => readCompleted());
 
@@ -104,6 +111,43 @@ export function LearningPath({
         <p className="px-0.5 pb-1 text-[11px] leading-tight text-zinc-500">
           A guided path — follow the recommended order and track your progress.
         </p>
+
+        {/* Adaptive focus area, from your scoring history */}
+        {(focus || retryProblem) && (
+          <div className="mb-1.5 space-y-2 rounded-lg border border-purple-500/20 bg-purple-500/[0.06] px-3 py-2.5">
+            <div className="flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 text-purple-400" />
+              <span className="text-xs font-semibold text-zinc-200">Your focus area</span>
+            </div>
+            {focus && (
+              <div className="space-y-1.5">
+                <p className="text-[11px] leading-relaxed text-zinc-400">
+                  Weakest dimension:{" "}
+                  <span className="font-medium text-zinc-200">{focus.category}</span>{" "}
+                  <span className="text-zinc-500">({Math.round(focus.avgPct * 100)}% avg)</span>. {focus.tip}
+                </p>
+                {focus.drillCategory && (
+                  <button
+                    onClick={() => setActiveLeftTab("drills")}
+                    className="flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:bg-zinc-700"
+                  >
+                    <Dumbbell className="h-3 w-3" /> Practice {focus.category} drills
+                  </button>
+                )}
+              </div>
+            )}
+            {retryProblem && (
+              <button
+                onClick={() => setSelectedProblem(retryProblem.id)}
+                className="flex w-full items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-left text-[11px] text-zinc-300 hover:bg-zinc-700"
+              >
+                <RotateCcw className="h-3 w-3 shrink-0 text-zinc-500" />
+                Retry <span className="font-medium text-zinc-200">{retryProblem.title}</span>
+                <span className="ml-auto text-zinc-500">best {retry!.total}</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Concept practice */}
         {onOpenSpotFlaw && (

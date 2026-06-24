@@ -68,6 +68,11 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["Storage", "Caching", "Hashing"],
+    alternatives: [
+      { name: "Counter + base62", note: "Encode a distributed counter (or range-allocated IDs) in base62 — no collision checks, but IDs become sequential/guessable and need a coordination service." },
+      { name: "Hash + collision check", note: "Hash the URL and take a prefix, retrying on collision. Simple and stateless, but each write pays a read to check for collisions at scale." },
+      { name: "Key Generation Service", note: "Pre-generate unique keys offline into an 'unused' table and hand them out. Zero write-time collisions, at the cost of an extra service to operate." },
+    ],
   },
   {
     id: "twitter-feed",
@@ -145,6 +150,11 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["Fan-out", "Cache", "Timeline"],
+    alternatives: [
+      { name: "Fan-out on write", note: "Push each tweet into followers' precomputed timelines. Reads are instant, but celebrities with millions of followers cause write storms." },
+      { name: "Fan-out on read", note: "Build the timeline at read time by pulling from followees. Cheap writes, but reads are heavy and slow for users following many accounts." },
+      { name: "Hybrid", note: "Fan-out on write for normal users, fan-out on read for celebrities, merged at read time. Best of both — the common production answer — but the most complex." },
+    ],
   },
   {
     id: "chat-system",
@@ -219,6 +229,11 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["WebSocket", "Messaging", "Real-time"],
+    alternatives: [
+      { name: "Persistent WebSockets", note: "Clients hold a long-lived WebSocket to a gateway. Lowest latency for active chats, but you must track connection→server mapping and handle reconnects." },
+      { name: "Long polling", note: "Clients repeatedly poll for new messages. Simple and firewall-friendly, but higher latency and wasted requests when idle." },
+      { name: "Hybrid push + pull", note: "WebSocket/push for online users, store-and-pull on reconnect for offline delivery. Robust, but needs both an online path and a durable message store." },
+    ],
   },
   {
     id: "ride-sharing",
@@ -374,6 +389,11 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["Streaming", "CDN", "Transcoding"],
+    alternatives: [
+      { name: "Pre-transcode all renditions", note: "Transcode every quality level on upload. Fast, consistent playback start, but high storage cost for rarely-watched videos." },
+      { name: "Just-in-time transcoding", note: "Transcode renditions on first request and cache them. Saves storage on the long tail, but adds latency and compute on cold views." },
+      { name: "Tiered (popular vs long-tail)", note: "Pre-transcode popular uploads, JIT the rest. Balances cost and latency, at the price of a popularity-tracking pipeline." },
+    ],
   },
   {
     id: "rate-limiter",

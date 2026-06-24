@@ -179,6 +179,7 @@ export function AppShell() {
       problemId,
       total: result.total,
       verdict: result.verdict,
+      categories: result.categories.map((c) => ({ c: c.category, s: c.score, m: c.maxScore })),
     });
     if (result.total >= 71 && !problemId.startsWith("custom-")) {
       if (markCompleted(problemId)) {
