@@ -31,6 +31,8 @@ import { ShortcutsDialog } from "@/components/dialogs/ShortcutsDialog";
 import { AIAssistantPanel } from "@/components/ai/AIAssistantPanel";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { ModeSelectDialog } from "@/components/dialogs/ModeSelectDialog";
+import { useModeStore } from "@/store/modeStore";
+import { useDeepDiveStore } from "@/store/deepDiveStore";
 import { useInterviewStore } from "@/store/interviewStore";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 
@@ -152,10 +154,16 @@ export function AppShell() {
 
     // Grade against the selected built-in problem so latency/throughput are
     // checked at the problem's actual load and SLA. Custom problems (no
-    // reference / built-in entry) fall back to heuristic scoring.
+    // reference / built-in entry) fall back to heuristic scoring. In Advanced
+    // mode, the deep-dive work (estimation, API, schema, consistency) is folded
+    // in as a sixth dimension.
     const problemId = useAppStore.getState().selectedProblemId;
     const problem = getProblemById(problemId);
-    const result = scoreDesign(componentNodes, edges, problem);
+    const advanced = useModeStore.getState().skillMode === "advanced";
+    const deepDive = advanced && problem
+      ? useDeepDiveStore.getState().getEntry(problemId) ?? {}
+      : null;
+    const result = scoreDesign(componentNodes, edges, problem, deepDive);
     useSimulationStore.getState().setScoreResult(result);
     useSimulationStore.getState().setShowScore(true);
     useAppStore.getState().setActiveRightTab("score");

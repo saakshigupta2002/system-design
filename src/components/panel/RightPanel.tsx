@@ -20,7 +20,9 @@ import { ScoreReport } from "./ScoreReport";
 import { CapacityCalculator } from "./CapacityCalculator";
 import { TradeoffLog } from "./TradeoffLog";
 import { TradeoffCards } from "./TradeoffCards";
+import { DeepDivePanel } from "./DeepDivePanel";
 import { useInterviewStore } from "@/store/interviewStore";
+import { useModeStore } from "@/store/modeStore";
 import { InterviewPhasePanel } from "@/components/interview/InterviewPhasePanel";
 
 interface RightPanelProps {
@@ -33,6 +35,7 @@ interface RightPanelProps {
 function RightTabs({ onSimulate, onScore }: { onSimulate: () => void; onScore: () => void }) {
   const activeRightTab = useAppStore((s) => s.activeRightTab);
   const setActiveRightTab = useAppStore((s) => s.setActiveRightTab);
+  const advanced = useModeStore((s) => s.skillMode === "advanced");
 
   return (
     <Tabs value={activeRightTab} onValueChange={(v) => setActiveRightTab(v as typeof activeRightTab)} className="flex flex-1 flex-col min-h-0">
@@ -42,6 +45,9 @@ function RightTabs({ onSimulate, onScore }: { onSimulate: () => void; onScore: (
           <TabsTrigger value="simulation" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Simulate</TabsTrigger>
           <TabsTrigger value="score" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Score</TabsTrigger>
           <TabsTrigger value="capacity" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Capacity</TabsTrigger>
+          {advanced && (
+            <TabsTrigger value="deepdive" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Deep Dive</TabsTrigger>
+          )}
           <TabsTrigger value="tradeoffs" className="h-7 px-2 text-xs data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100">Trade-offs</TabsTrigger>
         </TabsList>
       </div>
@@ -74,6 +80,14 @@ function RightTabs({ onSimulate, onScore }: { onSimulate: () => void; onScore: (
         <ScrollArea className="h-full">
           <div className="p-3">
             <CapacityCalculator />
+          </div>
+        </ScrollArea>
+      </TabsContent>
+
+      <TabsContent value="deepdive" className="mt-0 flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="p-3">
+            <DeepDivePanel />
           </div>
         </ScrollArea>
       </TabsContent>

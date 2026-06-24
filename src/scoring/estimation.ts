@@ -1,4 +1,5 @@
 import type { Problem } from "@/types/problem";
+import type { EstimationInputs } from "@/types/deepDive";
 
 /**
  * Back-of-the-envelope estimation grading.
@@ -50,6 +51,20 @@ export interface EstimationGrade {
   items: EstimationItemResult[];
   passed: number;
   total: number;
+}
+
+/** The three graded outputs derived from a set of estimation assumptions.
+ *  Single source of truth for the calculator's formula and the scorer. */
+export function estimateOutputs(i: EstimationInputs): {
+  peakQps: number;
+  storagePerYearBytes: number;
+  peakBandwidthBps: number;
+} {
+  const qps = (i.dau * i.reqPerUser) / 86400;
+  const peakQps = qps * 3;
+  const storagePerYearBytes = i.dau * i.reqPerUser * i.writeRatio * i.dataSizeKB * 1024 * 365;
+  const peakBandwidthBps = peakQps * i.dataSizeKB * 1024 * 8;
+  return { peakQps, storagePerYearBytes, peakBandwidthBps };
 }
 
 /** Parse a leading "<n>x" multiplier from a hint, e.g. "5x during events" → 5. */

@@ -20,7 +20,7 @@ interface AppState {
   leftPanelWidth: number;
   rightPanelWidth: number;
   activeLeftTab: "components" | "problems" | "learn";
-  activeRightTab: "properties" | "simulation" | "score" | "capacity" | "tradeoffs";
+  activeRightTab: "properties" | "simulation" | "score" | "capacity" | "tradeoffs" | "deepdive";
   theme: "dark" | "light";
   toast: ToastData | null;
   /** When set, the Trade-off Cards panel expands + scrolls to this card id
