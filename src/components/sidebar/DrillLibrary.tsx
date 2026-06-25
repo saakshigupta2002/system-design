@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, ChevronDown, ChevronRight, Check, Dumbbell } from "lucide-react";
 import {
   DRILLS,
@@ -101,7 +100,7 @@ export function DrillLibrary() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <div className="space-y-1.5 p-2.5">
           {drills.length === 0 ? (
             <p className="py-6 text-center text-xs text-zinc-600">
@@ -111,7 +110,7 @@ export function DrillLibrary() {
             drills.map((drill) => <DrillCard key={drill.id} drill={drill} />)
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
