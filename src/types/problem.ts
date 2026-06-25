@@ -21,6 +21,8 @@ export interface ReferenceSolution {
 export interface AlternativeApproach {
   name: string;
   note: string;
+  /** Optional loadable diagram for this approach (same shape as the reference). */
+  solution?: ReferenceSolution;
 }
 
 export interface Problem {

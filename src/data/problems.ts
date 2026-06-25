@@ -69,7 +69,30 @@ export const PROBLEMS: Problem[] = [
     },
     tags: ["Storage", "Caching", "Hashing"],
     alternatives: [
-      { name: "Counter + base62", note: "Encode a distributed counter (or range-allocated IDs) in base62 — no collision checks, but IDs become sequential/guessable and need a coordination service." },
+      {
+        name: "Counter + base62",
+        note: "Encode a distributed counter (or range-allocated IDs) in base62 — no collision checks, but IDs become sequential/guessable and need a coordination service.",
+        solution: {
+          nodes: [
+            { componentId: "client", x: 0, y: 120 },
+            { componentId: "dns", x: 180, y: 120 },
+            { componentId: "load-balancer", x: 360, y: 120 },
+            { componentId: "app-server", x: 540, y: 120 },
+            { componentId: "id-generator", x: 540, y: 0 },
+            { componentId: "cache", x: 740, y: 50 },
+            { componentId: "nosql-db", x: 740, y: 190 },
+          ],
+          edges: [
+            { source: "client", target: "dns" },
+            { source: "dns", target: "load-balancer" },
+            { source: "load-balancer", target: "app-server" },
+            { source: "app-server", target: "id-generator" },
+            { source: "app-server", target: "cache" },
+            { source: "app-server", target: "nosql-db" },
+            { source: "cache", target: "nosql-db" },
+          ],
+        },
+      },
       { name: "Hash + collision check", note: "Hash the URL and take a prefix, retrying on collision. Simple and stateless, but each write pays a read to check for collisions at scale." },
       { name: "Key Generation Service", note: "Pre-generate unique keys offline into an 'unused' table and hand them out. Zero write-time collisions, at the cost of an extra service to operate." },
     ],
@@ -152,7 +175,28 @@ export const PROBLEMS: Problem[] = [
     tags: ["Fan-out", "Cache", "Timeline"],
     alternatives: [
       { name: "Fan-out on write", note: "Push each tweet into followers' precomputed timelines. Reads are instant, but celebrities with millions of followers cause write storms." },
-      { name: "Fan-out on read", note: "Build the timeline at read time by pulling from followees. Cheap writes, but reads are heavy and slow for users following many accounts." },
+      {
+        name: "Fan-out on read",
+        note: "Build the timeline at read time by pulling from followees. Cheap writes, but reads are heavy and slow for users following many accounts.",
+        solution: {
+          nodes: [
+            { componentId: "client", x: 0, y: 120 },
+            { componentId: "dns", x: 180, y: 120 },
+            { componentId: "load-balancer", x: 360, y: 120 },
+            { componentId: "app-server", x: 540, y: 120 },
+            { componentId: "cache", x: 740, y: 50 },
+            { componentId: "nosql-db", x: 740, y: 190 },
+          ],
+          edges: [
+            { source: "client", target: "dns" },
+            { source: "dns", target: "load-balancer" },
+            { source: "load-balancer", target: "app-server" },
+            { source: "app-server", target: "cache" },
+            { source: "app-server", target: "nosql-db" },
+            { source: "cache", target: "nosql-db" },
+          ],
+        },
+      },
       { name: "Hybrid", note: "Fan-out on write for normal users, fan-out on read for celebrities, merged at read time. Best of both — the common production answer — but the most complex." },
     ],
   },
@@ -459,6 +503,11 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["Distributed", "Algorithm", "Redis"],
+    alternatives: [
+      { name: "Token bucket", note: "Refill tokens at a fixed rate; allow a request if a token is available. Smooth, allows bursts up to the bucket size — the common default." },
+      { name: "Sliding window log", note: "Keep timestamps of recent requests and count those in the window. Exact, but memory grows with request rate." },
+      { name: "Sliding window counter", note: "Approximate the sliding window with two fixed buckets — cheap and good enough; slight edge inaccuracy at window boundaries." },
+    ],
   },
   {
     id: "notification-system",
@@ -2702,6 +2751,10 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["Caching", "Ranking", "Real-Time", "Write-Heavy"],
+    alternatives: [
+      { name: "Redis sorted set", note: "ZADD/ZREVRANK give top-N and a player's rank in O(log n) from memory. Simplest and fastest; shard by game when it outgrows one node." },
+      { name: "Bucketed approximate ranks", note: "Group scores into buckets and track per-bucket counts for percentile-style ranks at huge scale — approximate, but cheap and horizontally scalable." },
+    ],
   },
   {
     id: "job-scheduler",
@@ -2904,6 +2957,10 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["Consistent Hashing", "Replication", "Quorum", "Distributed"],
+    alternatives: [
+      { name: "Leaderless + quorums (Dynamo)", note: "Any replica takes reads/writes; tune R+W vs N for consistency. Highly available, but you handle conflicts (vector clocks / read-repair)." },
+      { name: "Leader-based per shard (Raft)", note: "Each shard has a leader that orders writes via consensus. Strong consistency and simpler reasoning, at some availability/latency cost on leader loss." },
+    ],
   },
   {
     id: "pastebin",
@@ -3380,6 +3437,10 @@ export const PROBLEMS: Problem[] = [
       ],
     },
     tags: ["AI", "LLM", "Streaming", "Inference"],
+    alternatives: [
+      { name: "Self-hosted GPU inference", note: "Run your own model servers with batching + KV cache. Full control and lower marginal cost at scale, but you own capacity planning and ops." },
+      { name: "Hosted LLM API", note: "Call a provider API. Zero inference ops and instant scale, but higher per-token cost, rate limits, and a hard external dependency." },
+    ],
   },
   {
     id: "ai-image-generation",

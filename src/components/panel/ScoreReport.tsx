@@ -14,6 +14,7 @@ import { getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
 import { roleOf, type ComponentRole } from "@/data/roles";
 import { tradeoffCardForFeedback, tradeoffCardTitle, conceptForFeedback } from "@/data/feedbackLinks";
+import { openAlternativeSolution } from "@/lib/referenceSolution";
 import type { CategoryScore } from "@/types/scoring";
 
 /** The "Learn more" / "Concept" links shared by feedback rows. */
@@ -166,7 +167,21 @@ function ReferenceComparison() {
             <p className="text-[11px] text-zinc-400">Other valid approaches:</p>
             {alternatives.map((alt) => (
               <div key={alt.name} className="rounded-md border border-zinc-800 bg-zinc-800/40 px-2.5 py-1.5">
-                <p className="text-[11px] font-semibold text-zinc-300">{alt.name}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-semibold text-zinc-300">{alt.name}</p>
+                  {alt.solution && (
+                    <button
+                      onClick={() => {
+                        if (openAlternativeSolution(problemId, alt.name)) {
+                          useAppStore.getState().showToast("Approach opened in a new tab", "success");
+                        }
+                      }}
+                      className="shrink-0 whitespace-nowrap text-[10px] font-medium text-cyan-400 hover:text-cyan-300 hover:underline"
+                    >
+                      Open diagram →
+                    </button>
+                  )}
+                </div>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">{alt.note}</p>
               </div>
             ))}

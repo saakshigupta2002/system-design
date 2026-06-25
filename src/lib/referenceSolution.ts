@@ -1,7 +1,8 @@
 import type { Node, Edge } from "@xyflow/react";
-import { PROBLEMS } from "@/data/problems";
+import { PROBLEMS, getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
 import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
+import type { ReferenceSolution } from "@/types/problem";
 
 /**
  * Opens the reference solution for a problem in a new read-only canvas tab.
@@ -38,15 +39,20 @@ function pickHandles(
     : { sourceHandle: "top", targetHandle: "bottom" };
 }
 
-export function openReferenceSolution(problemId: string): boolean {
-  const problem = PROBLEMS.find((p) => p.id === problemId);
-  if (!problem) return false;
+/** Build canvas nodes/edges from a {componentId,x,y} + {source,target} solution
+ *  and open them in a read-only tab. Shared by the reference and alternatives. */
+export function openSolutionOnCanvas(
+  solution: ReferenceSolution,
+  tabId: string,
+  label: string
+): boolean {
+  if (!solution || solution.nodes.length === 0) return false;
 
   const nodeIdMap = new Map<string, string>(); // componentId -> first node id
   const posMap = new Map<string, { x: number; y: number }>(); // componentId -> center
   const refNodes: Node<ComponentNodeData>[] = [];
 
-  problem.referenceSolution.nodes.forEach((ref, index) => {
+  solution.nodes.forEach((ref, index) => {
     const comp = getComponentById(ref.componentId);
     if (!comp) return;
     const nodeId = `${comp.id}-ref-${index}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -72,7 +78,7 @@ export function openReferenceSolution(problemId: string): boolean {
   });
 
   const refEdges: Edge[] = [];
-  for (const ref of problem.referenceSolution.edges) {
+  for (const ref of solution.edges) {
     const sourceId = nodeIdMap.get(ref.source);
     const targetId = nodeIdMap.get(ref.target);
     const sPos = posMap.get(ref.source);
@@ -91,11 +97,26 @@ export function openReferenceSolution(problemId: string): boolean {
   }
 
   useCanvasStore.getState().addTab({
-    id: `ref-${problem.id}`,
-    label: `${problem.title} (Reference)`,
+    id: tabId,
+    label,
     nodes: refNodes,
     edges: refEdges,
     readOnly: true,
   });
   return true;
+}
+
+export function openReferenceSolution(problemId: string): boolean {
+  const problem = PROBLEMS.find((p) => p.id === problemId);
+  if (!problem) return false;
+  return openSolutionOnCanvas(problem.referenceSolution, `ref-${problem.id}`, `${problem.title} (Reference)`);
+}
+
+/** Open a problem's alternative approach (by name) as a diagram, if it ships one. */
+export function openAlternativeSolution(problemId: string, altName: string): boolean {
+  const problem = getProblemById(problemId);
+  const alt = problem?.alternatives?.find((a) => a.name === altName);
+  if (!problem || !alt?.solution) return false;
+  const slug = altName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return openSolutionOnCanvas(alt.solution, `alt-${problem.id}-${slug}`, `${problem.title} — ${alt.name}`);
 }
