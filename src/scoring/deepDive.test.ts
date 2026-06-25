@@ -3,6 +3,7 @@ import { scoreDeepDive } from "./deepDive";
 import { getProblemById } from "@/data/problems";
 import { getInterviewData } from "@/data/interviewData";
 import type { DeepDiveEntry, EntityStoreType } from "@/types/deepDive";
+import type { Problem } from "@/types/problem";
 
 const problem = getProblemById("url-shortener")!;
 const idata = getInterviewData("url-shortener")!;
@@ -43,8 +44,13 @@ describe("scoreDeepDive", () => {
   });
 
   it("falls back to heuristics for a problem without an answer key", () => {
-    const p = getProblemById("pastebin")!;
-    expect(getInterviewData("pastebin")).toBeUndefined();
+    // A synthetic problem id not present in INTERVIEW_DATA exercises the fallback.
+    const p: Problem = {
+      id: "synthetic-no-key", title: "Synthetic", difficulty: "Easy", description: "",
+      requirements: { readsPerSec: 1000, writesPerSec: 1000, storageGB: 100, latencyMs: 200, users: "" },
+      constraints: [], hints: [], referenceSolution: { nodes: [], edges: [] }, tags: [],
+    };
+    expect(getInterviewData(p.id)).toBeUndefined();
     const entry: DeepDiveEntry = {
       apis: [
         { method: "POST", path: "/pastes" },

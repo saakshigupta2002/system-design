@@ -1,3 +1,5 @@
+import { INTERVIEW_DATA_EXTRA } from "./interviewDataExtra";
+
 export interface RequirementItem {
   id: string;
   text: string;
@@ -14,7 +16,7 @@ export interface FollowUpQuestion {
 }
 
 export interface ReferenceAPI {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'WS';
   path: string;
   description: string;
   requestBody?: string;
@@ -27,6 +29,8 @@ export interface DataModelEntity {
   fields: { name: string; type: string; note?: string }[];
   indexes?: string[];
   partitionKey?: string;
+  /** Optional clarifying note about the entity (e.g. "append-only segments"). */
+  note?: string;
 }
 
 export interface ProblemInterviewData {
@@ -1753,6 +1757,10 @@ export const INTERVIEW_DATA: ProblemInterviewData[] = [
     },
   },
 ];
+
+// Merge in the answer keys for the remaining problems (kept in a separate file
+// so this one stays manageable). Done at module load before any consumer reads.
+INTERVIEW_DATA.push(...INTERVIEW_DATA_EXTRA);
 
 export function getInterviewData(problemId: string): ProblemInterviewData | undefined {
   return INTERVIEW_DATA.find((d) => d.problemId === problemId);
