@@ -13,7 +13,7 @@ import {
   COMPONENT_CATEGORIES,
   getComponentById,
 } from "@/data/components";
-import { CONCEPT_LIBRARY } from "@/data/conceptLibrary";
+import { getConceptByComponentId } from "@/data/conceptLibrary";
 import { Server, Plus, Pencil, Search as SearchIcon, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ICON_MAP } from "@/lib/icons";
@@ -171,7 +171,7 @@ export function ComponentPalette({ onCreateCustomComponent, onEditCustomComponen
                 {items.map((item) => {
                   const Icon = ICON_MAP[item.icon] ?? Server;
                   const accent = CATEGORY_ACCENT[item.category] ?? "text-cyan-400";
-                  const concept = CONCEPT_LIBRARY[item.id];
+                  const concept = getConceptByComponentId(item.id);
                   const tipText = (concept?.whenToUse[0] ?? item.description ?? "").trim();
                   const isCustom = customIds.has(item.id);
                   const card = (

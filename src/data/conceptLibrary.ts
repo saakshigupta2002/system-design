@@ -1,3 +1,5 @@
+import { roleOf } from "./roles";
+
 export interface ComponentConcept {
   componentId: string;
   whenToUse: string[];
@@ -1087,5 +1089,13 @@ export const CONCEPT_LIBRARY: Record<string, ComponentConcept> = {
 };
 
 export function getConceptByComponentId(componentId: string): ComponentConcept | undefined {
-  return CONCEPT_LIBRARY[componentId];
+  // Brand/cloud components (Redis, Kafka, Nginx, DynamoDB…) don't each need their
+  // own entry — fall back to the concept for their canonical role, so every
+  // component in the palette has relevant "when to use / trade-offs" content.
+  return CONCEPT_LIBRARY[componentId] ?? CONCEPT_LIBRARY[roleOf(componentId)];
+}
+
+/** A concept for a canonical role (used to teach a "missing role" in scoring). */
+export function getConceptByRole(role: string): ComponentConcept | undefined {
+  return CONCEPT_LIBRARY[role];
 }

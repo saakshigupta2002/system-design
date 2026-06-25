@@ -13,31 +13,53 @@ import { useCanvasStore } from "@/store/canvasStore";
 import { getProblemById } from "@/data/problems";
 import { getComponentById } from "@/data/components";
 import { roleOf, type ComponentRole } from "@/data/roles";
-import { tradeoffCardForFeedback, tradeoffCardTitle } from "@/data/feedbackLinks";
+import { tradeoffCardForFeedback, tradeoffCardTitle, conceptForFeedback } from "@/data/feedbackLinks";
 import type { CategoryScore } from "@/types/scoring";
 
-/** A score feedback line, with an optional "Learn more →" link to the relevant
- *  trade-off card when one matches the feedback. */
-function FeedbackLine({ text }: { text: string }) {
+/** The "Learn more" / "Concept" links shared by feedback rows. */
+function FeedbackLinks({ text }: { text: string }) {
   const openTradeoffCard = useAppStore((s) => s.openTradeoffCard);
+  const openConcept = useAppStore((s) => s.openConcept);
   const cardId = tradeoffCardForFeedback(text);
+  const conceptRole = conceptForFeedback(text);
+  return (
+    <>
+      {cardId && (
+        <>
+          {" "}
+          <button
+            onClick={() => openTradeoffCard(cardId)}
+            className="whitespace-nowrap font-medium text-cyan-400 hover:text-cyan-300 hover:underline"
+            title={`Open the "${tradeoffCardTitle(cardId)}" reference card`}
+          >
+            Learn more →
+          </button>
+        </>
+      )}
+      {conceptRole && (
+        <>
+          {" "}
+          <button
+            onClick={() => openConcept(conceptRole)}
+            className="whitespace-nowrap font-medium text-purple-300 hover:text-purple-200 hover:underline"
+            title="When & why to use this component"
+          >
+            Concept →
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+/** A score feedback line, with optional just-in-time learning links. */
+function FeedbackLine({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-1.5">
       <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
       <span className="text-[13px] leading-relaxed text-zinc-300">
         {text}
-        {cardId && (
-          <>
-            {" "}
-            <button
-              onClick={() => openTradeoffCard(cardId)}
-              className="whitespace-nowrap font-medium text-cyan-400 hover:text-cyan-300 hover:underline"
-              title={`Open the "${tradeoffCardTitle(cardId)}" reference card`}
-            >
-              Learn more →
-            </button>
-          </>
-        )}
+        <FeedbackLinks text={text} />
       </span>
     </div>
   );
@@ -75,6 +97,7 @@ function ReferenceComparison() {
   const missing = [...refRoles].filter((r) => !userRoles.has(r));
   const extra = [...userRoles].filter((r) => !refRoles.has(r));
   const matched = [...refRoles].filter((r) => userRoles.has(r));
+  const openConcept = useAppStore.getState().openConcept;
   const label = (r: ComponentRole, from: Map<ComponentRole, string>) => {
     const id = from.get(r);
     return (id && getComponentById(id)?.label) || r;
@@ -92,9 +115,14 @@ function ReferenceComparison() {
     return (
       <div className="flex flex-wrap gap-1">
         {roles.map((r) => (
-          <span key={r} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
+          <button
+            key={r}
+            onClick={() => openConcept(from.get(r) ?? r)}
+            title="When & why to use this — open concept"
+            className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-opacity hover:opacity-80 ${className}`}
+          >
             {label(r, from)}
-          </span>
+          </button>
         ))}
       </div>
     );
@@ -201,8 +229,6 @@ function ScoreHistory() {
 /** A numbered "Top Improvement" row, with a "Learn more →" link when a
  *  trade-off card matches. */
 function TopImprovement({ index, text }: { index: number; text: string }) {
-  const openTradeoffCard = useAppStore((s) => s.openTradeoffCard);
-  const cardId = tradeoffCardForFeedback(text);
   return (
     <div className="flex items-start gap-2 rounded-md bg-zinc-800 border border-zinc-700 px-2.5 py-2">
       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-300">
@@ -210,18 +236,7 @@ function TopImprovement({ index, text }: { index: number; text: string }) {
       </span>
       <span className="text-[13px] leading-relaxed text-zinc-300">
         {text}
-        {cardId && (
-          <>
-            {" "}
-            <button
-              onClick={() => openTradeoffCard(cardId)}
-              className="whitespace-nowrap font-medium text-cyan-400 hover:text-cyan-300 hover:underline"
-              title={`Open the "${tradeoffCardTitle(cardId)}" reference card`}
-            >
-              Learn more →
-            </button>
-          </>
-        )}
+        <FeedbackLinks text={text} />
       </span>
     </div>
   );

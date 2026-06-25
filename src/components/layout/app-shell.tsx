@@ -32,6 +32,7 @@ import { ShortcutsDialog } from "@/components/dialogs/ShortcutsDialog";
 import { AIAssistantPanel } from "@/components/ai/AIAssistantPanel";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { ModeSelectDialog } from "@/components/dialogs/ModeSelectDialog";
+import { ConceptDialog } from "@/components/dialogs/ConceptDialog";
 import { useModeStore } from "@/store/modeStore";
 import { useDeepDiveStore } from "@/store/deepDiveStore";
 import { useInterviewStore } from "@/store/interviewStore";
@@ -516,6 +517,7 @@ export function AppShell() {
         <AIAssistantPanel open={aiOpen} onClose={() => setAiOpen(false)} />
         <MockInterviewPanel open={mockInterviewOpen} onClose={() => setMockInterviewOpen(false)} />
         <ModeSelectDialog />
+        <ConceptDialog />
         <ConfirmDialog
           open={clearConfirmOpen}
           title="Clear canvas?"

@@ -26,6 +26,8 @@ interface AppState {
   /** When set, the Trade-off Cards panel expands + scrolls to this card id
    *  (used by the score report's "Learn more" links). Cleared after focusing. */
   focusedTradeoffId: string | null;
+  /** When set, the concept dialog opens for this component/role id. */
+  focusedConceptId: string | null;
 
   setSelectedProblem: (id: string) => void;
   toggleLeftSidebar: () => void;
@@ -38,6 +40,9 @@ interface AppState {
   /** Jump to the Trade-offs tab and focus a specific card. */
   openTradeoffCard: (cardId: string) => void;
   setFocusedTradeoffId: (id: string | null) => void;
+  /** Open the concept dialog for a component/role id. */
+  openConcept: (id: string) => void;
+  closeConcept: () => void;
   toggleTheme: () => void;
   showToast: (message: string, type: ToastType) => void;
   clearToast: () => void;
@@ -58,6 +63,7 @@ export const useAppStore = create<AppState>()(
       theme: "dark",
       toast: null,
       focusedTradeoffId: null,
+      focusedConceptId: null,
 
       setSelectedProblem: (id) => set({ selectedProblemId: id }),
       toggleLeftSidebar: () =>
@@ -74,6 +80,8 @@ export const useAppStore = create<AppState>()(
       openTradeoffCard: (cardId) =>
         set({ activeRightTab: "tradeoffs", rightPanelOpen: true, focusedTradeoffId: cardId }),
       setFocusedTradeoffId: (id) => set({ focusedTradeoffId: id }),
+      openConcept: (id) => set({ focusedConceptId: id }),
+      closeConcept: () => set({ focusedConceptId: null }),
       toggleTheme: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
       showToast: (message, type) => {
         if (toastTimeoutId !== null) {

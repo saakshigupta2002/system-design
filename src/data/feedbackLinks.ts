@@ -1,4 +1,5 @@
 import { TRADEOFF_CARDS } from "./tradeoffCards";
+import { getConceptByRole } from "./conceptLibrary";
 
 /**
  * Just-in-time learning: map a piece of score feedback to the most relevant
@@ -47,4 +48,34 @@ export function tradeoffCardForFeedback(feedback: string): string | null {
 /** Human title for a card id (for the link label / tooltip). */
 export function tradeoffCardTitle(cardId: string): string | undefined {
   return TRADEOFF_CARDS.find((c) => c.id === cardId)?.title;
+}
+
+// Feedback keyword → canonical role with a concept entry, so the score can offer
+// a "Concept" link explaining when/why to use the component it's nudging toward.
+const CONCEPT_RULES: { keywords: string[]; role: string }[] = [
+  { keywords: ["cache", "redis", "memcached"], role: "cache" },
+  { keywords: ["load balancer", "load-balancer"], role: "load-balancer" },
+  { keywords: ["message queue", "queue", "kafka", "async"], role: "message-queue" },
+  { keywords: ["cdn"], role: "cdn" },
+  { keywords: ["monitoring", "observability"], role: "monitoring" },
+  { keywords: ["rate limiter", "rate limit"], role: "rate-limiter" },
+  { keywords: ["api gateway", "api-gateway"], role: "api-gateway" },
+  { keywords: ["websocket"], role: "websocket-server" },
+  { keywords: ["nosql"], role: "nosql-db" },
+  { keywords: ["read replica", "sql", "relational", "database"], role: "sql-db" },
+  { keywords: ["object storage", "blob"], role: "object-storage" },
+  { keywords: ["auth", "authentication"], role: "auth-service" },
+  { keywords: ["dns", "geo-routing"], role: "dns" },
+  { keywords: ["search", "elasticsearch"], role: "search" },
+];
+
+/** The canonical role (with a concept entry) most relevant to a feedback string. */
+export function conceptForFeedback(feedback: string): string | null {
+  const text = feedback.toLowerCase();
+  for (const rule of CONCEPT_RULES) {
+    if (rule.keywords.some((k) => text.includes(k)) && getConceptByRole(rule.role)) {
+      return rule.role;
+    }
+  }
+  return null;
 }
