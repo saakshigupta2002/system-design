@@ -104,8 +104,10 @@ export function AppShell() {
     useSimulationStore.getState().setRunning(true);
     const failed = new Set(useSimulationStore.getState().failedNodeIds);
 
+    const requiredStorageGB = getProblemById(useAppStore.getState().selectedProblemId)?.requirements.storageGB ?? 0;
+
     setTimeout(() => {
-      const result = runSimulation(componentNodes, edges, config.requestsPerSec, failed);
+      const result = runSimulation(componentNodes, edges, config.requestsPerSec, failed, requiredStorageGB);
 
       const updates = new Map<string, Record<string, unknown>>();
       for (const [nodeId, metrics] of result.nodeMetrics) {

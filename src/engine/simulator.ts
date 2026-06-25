@@ -1,7 +1,7 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ComponentNodeData } from "@/store/canvasStore";
 import type { NodeMetrics, NodeStatus, SimulationResult } from "@/types/simulation";
-import { roleOf, SPLITTER_ROLES, OFF_PATH_ROLES, STORAGE_ROLES } from "@/data/roles";
+import { roleOf, SPLITTER_ROLES, OFF_PATH_ROLES, STORAGE_ROLES, type ComponentRole } from "@/data/roles";
 import {
   UTILIZATION_WARNING,
   UTILIZATION_CRITICAL,
@@ -36,11 +36,36 @@ function computeLatency(baseLatency: number, utilization: number): number {
   return baseLatency;
 }
 
+/** Tail (p99) latency for one component. Even at low load the tail sits well
+ *  above the median; as utilization climbs, queueing makes it blow up. */
+function computeP99(baseLatency: number, utilization: number): number {
+  const factor = Math.min(25, 3 + Math.max(0, utilization - 0.5) * 12);
+  return baseLatency * factor;
+}
+
+/** Illustrative storage capacity per instance (GB) by role, used to check
+ *  whether the datastore tier can plausibly hold the problem's data volume. */
+const STORAGE_CAPACITY_GB: Partial<Record<ComponentRole, number>> = {
+  "object-storage": 5_000_000,
+  "data-warehouse": 1_000_000,
+  "file-store": 500_000,
+  "nosql-db": 50_000,
+  search: 20_000,
+  "timeseries-db": 50_000,
+  "graph-db": 10_000,
+  "vector-db": 5_000,
+  "geospatial-index": 10_000,
+  "sql-db": 5_000,
+  cache: 100,
+};
+
 export function runSimulation(
   nodes: Node<ComponentNodeData>[],
   edges: Edge[],
   requestsPerSec: number,
-  failedNodeIds: Set<string> = new Set()
+  failedNodeIds: Set<string> = new Set(),
+  /** When set, the storage tier's capacity is checked against this volume. */
+  requiredStorageGB = 0
 ): SimulationResult {
   const warnings: string[] = [];
   const nodeMetrics = new Map<string, NodeMetrics>();
@@ -286,7 +311,13 @@ export function runSimulation(
     );
   }
 
-  const totalLatencyMs = computeLongestPathLatency(nodes, uniqueEdges, nodeMap, nodeMetrics);
+  const { p50, p99 } = computePathLatencies(nodes, uniqueEdges, nodeMap, nodeMetrics);
+  // A tail blowing far past the median means the system is queueing under load.
+  if (p50 > 0 && p99 > p50 * 6) {
+    warnings.push(
+      `Tail latency is exploding: p99 ≈ ${Math.round(p99)}ms vs p50 ≈ ${Math.round(p50)}ms. A saturated component on the path is queueing requests — add capacity or shed load.`
+    );
+  }
 
   // Throughput is capped by bottlenecks on the request path. Monitoring is
   // observability — an overloaded monitoring stack doesn't reduce how many
@@ -301,27 +332,55 @@ export function runSimulation(
       ? Math.min(...pathBottlenecks.map((id) => nodeMetrics.get(id)!.effectiveQPS))
       : requestsPerSec;
 
+  // Storage capacity: can the datastore tier hold the required volume?
+  let storageCapacityGB: number | undefined;
+  let storageOk: boolean | undefined;
+  if (requiredStorageGB > 0) {
+    storageCapacityGB = nodes.reduce((sum, n) => {
+      const cap = STORAGE_CAPACITY_GB[roleOf(n.data.componentId)];
+      return cap ? sum + cap * (n.data.replicas ?? 1) : sum;
+    }, 0);
+    storageOk = storageCapacityGB >= requiredStorageGB;
+    if (!storageOk) {
+      warnings.push(
+        `Storage shortfall: the datastore tier holds ~${formatGB(storageCapacityGB)} but the workload needs ~${formatGB(requiredStorageGB)}. Add object storage, shard the database, or add replicas.`
+      );
+    }
+  }
+
   return {
     nodeMetrics,
     edgeFlows,
-    totalLatencyMs,
+    totalLatencyMs: p50,
+    p50LatencyMs: p50,
+    p99LatencyMs: p99,
     bottleneckNodes,
     throughput,
+    storageRequiredGB: requiredStorageGB > 0 ? requiredStorageGB : undefined,
+    storageCapacityGB,
+    storageOk,
     timestamp: Date.now(),
     warnings,
   };
 }
 
-// Longest path over the user-facing request path only. Edges marked async and
-// edges into off-path components (monitoring, message queue) hand work off
-// out-of-band — they carry traffic, but don't add to response latency.
-function computeLongestPathLatency(
+function formatGB(gb: number): string {
+  if (gb >= 1_000_000) return `${(gb / 1_000_000).toFixed(1)} PB`;
+  if (gb >= 1_000) return `${(gb / 1_000).toFixed(1)} TB`;
+  return `${Math.round(gb)} GB`;
+}
+
+// Longest path over the user-facing request path only, computed for both the
+// median (p50) and tail (p99) latency. Edges marked async and edges into
+// off-path components (monitoring, message queue) hand work off out-of-band —
+// they carry traffic, but don't add to response latency.
+function computePathLatencies(
   nodes: Node<ComponentNodeData>[],
   edges: Edge[],
   nodeMap: Map<string, Node<ComponentNodeData>>,
   metrics: Map<string, NodeMetrics>
-): number {
-  if (nodes.length === 0) return 0;
+): { p50: number; p99: number } {
+  if (nodes.length === 0) return { p50: 0, p99: 0 };
 
   const pathEdges = edges.filter((e) => {
     if ((e.data as { async?: boolean } | undefined)?.async === true) return false;
@@ -340,20 +399,27 @@ function computeLongestPathLatency(
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
 
+  // Per-node p50 (already spiked under load) and p99 (tail) latencies.
+  const p50Of = (id: string) => metrics.get(id)?.latencyMs ?? 0;
+  const p99Of = (id: string) =>
+    computeP99(nodeMap.get(id)?.data.latencyMs ?? 0, metrics.get(id)?.utilization ?? 0);
+
   // Clone inDegree so we can decrement
   const remaining = new Map(inDegree);
 
-  const dist = new Map<string, number>();
+  const distP50 = new Map<string, number>();
+  const distP99 = new Map<string, number>();
   // Mirror runSimulation's entry definition: isolated nodes don't start a path.
   const entryNodes = nodes.filter(
     (n) => (inDegree.get(n.id) ?? 0) === 0 && (adjacency.get(n.id)?.length ?? 0) > 0
   );
 
   for (const entry of entryNodes) {
-    dist.set(entry.id, metrics.get(entry.id)?.latencyMs ?? 0);
+    distP50.set(entry.id, p50Of(entry.id));
+    distP99.set(entry.id, p99Of(entry.id));
   }
 
-  // Kahn's algorithm for longest-path
+  // Kahn's algorithm for longest-path (each metric maximized independently)
   const queue = [...entryNodes.map((n) => n.id)];
   const processed = new Set<string>();
 
@@ -362,15 +428,15 @@ function computeLongestPathLatency(
     if (processed.has(nodeId)) continue;
     processed.add(nodeId);
 
-    const currentDist = dist.get(nodeId) ?? 0;
+    const curP50 = distP50.get(nodeId) ?? 0;
+    const curP99 = distP99.get(nodeId) ?? 0;
     const children = adjacency.get(nodeId) ?? [];
 
     for (const childId of children) {
-      const childLatency = metrics.get(childId)?.latencyMs ?? 0;
-      const newDist = currentDist + childLatency;
-      if (newDist > (dist.get(childId) ?? 0)) {
-        dist.set(childId, newDist);
-      }
+      const newP50 = curP50 + p50Of(childId);
+      if (newP50 > (distP50.get(childId) ?? 0)) distP50.set(childId, newP50);
+      const newP99 = curP99 + p99Of(childId);
+      if (newP99 > (distP99.get(childId) ?? 0)) distP99.set(childId, newP99);
 
       // Decrement in-degree; enqueue only when all predecessors are processed
       const newDeg = (remaining.get(childId) ?? 1) - 1;
@@ -381,5 +447,8 @@ function computeLongestPathLatency(
     }
   }
 
-  return Math.max(0, ...dist.values());
+  return {
+    p50: Math.max(0, ...distP50.values()),
+    p99: Math.max(0, ...distP99.values()),
+  };
 }

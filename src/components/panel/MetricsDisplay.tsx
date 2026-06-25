@@ -15,6 +15,12 @@ const STATUS_COLOR: Record<string, string> = {
   down: "bg-rose-600",
 };
 
+function formatGB(gb: number): string {
+  if (gb >= 1_000_000) return `${(gb / 1_000_000).toFixed(1)} PB`;
+  if (gb >= 1_000) return `${(gb / 1_000).toFixed(1)} TB`;
+  return `${Math.round(gb)} GB`;
+}
+
 export function MetricsDisplay() {
   const result = useSimulationStore((s) => s.result);
   const nodes = useCanvasStore((s) => s.nodes);
@@ -64,13 +70,27 @@ export function MetricsDisplay() {
           <p className="text-xs text-zinc-500">req/s</p>
         </div>
         <div className="rounded-md bg-zinc-800 px-2.5 py-2">
-          <p className="text-xs text-zinc-500">Total Latency</p>
+          <p className="text-xs text-zinc-500">Latency (p50 / p99)</p>
           <p className="font-mono text-sm font-semibold text-zinc-100">
-            {result.totalLatencyMs.toFixed(0)}
+            {result.p50LatencyMs.toFixed(0)}
+            <span className="text-zinc-500"> / </span>
+            <span className="text-amber-300">{result.p99LatencyMs.toFixed(0)}</span>
           </p>
-          <p className="text-xs text-zinc-500">ms (longest path)</p>
+          <p className="text-xs text-zinc-500">ms (critical path)</p>
         </div>
       </div>
+
+      {/* Storage capacity vs. the problem's required volume */}
+      {result.storageRequiredGB != null && (
+        <div className={`rounded-md border px-2.5 py-2 ${result.storageOk ? "border-zinc-800 bg-zinc-900/60" : "border-rose-500/20 bg-rose-950/30"}`}>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-zinc-400">Storage capacity</p>
+            <p className={`font-mono text-xs ${result.storageOk ? "text-zinc-300" : "text-rose-400"}`}>
+              {formatGB(result.storageCapacityGB ?? 0)} / {formatGB(result.storageRequiredGB)} needed
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Surface the cache model so reduced storage QPS isn't a mystery */}
       {(() => {

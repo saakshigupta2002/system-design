@@ -54,6 +54,37 @@ describe("runSimulation — role awareness", () => {
     expect(res.bottleneckNodes).toContain("db");
   });
 
+  it("reports a p99 tail above p50, and a worse tail under load", () => {
+    const mk = (rps: number) =>
+      runSimulation(
+        [makeNode("c", "client"), makeNode("app", "app-server"), makeNode("db", "sql-db")],
+        [makeEdge("c", "app"), makeEdge("app", "db")],
+        rps
+      );
+    const light = mk(1000);
+    expect(light.p99LatencyMs).toBeGreaterThan(light.p50LatencyMs);
+    const heavy = mk(40_000); // saturates the 10K sql-db
+    expect(heavy.p99LatencyMs).toBeGreaterThan(light.p99LatencyMs);
+  });
+
+  it("flags a storage shortfall when the tier can't hold the required volume", () => {
+    const nodes = [makeNode("c", "client"), makeNode("app", "app-server"), makeNode("db", "sql-db")];
+    const edges = [makeEdge("c", "app"), makeEdge("app", "db")];
+    // sql-db illustrative capacity is 5,000 GB; ask for 1,000,000 GB.
+    const short = runSimulation(nodes, edges, 1000, new Set(), 1_000_000);
+    expect(short.storageOk).toBe(false);
+    expect(short.warnings.join(" ")).toMatch(/storage shortfall/i);
+    // Object storage easily covers it.
+    const ok = runSimulation(
+      [...nodes, makeNode("s3", "object-storage")],
+      edges,
+      1000,
+      new Set(),
+      1_000_000
+    );
+    expect(ok.storageOk).toBe(true);
+  });
+
   it("keeps an off-path queue out of the user-facing latency total", () => {
     // app → message-queue is async work; it shouldn't add to critical-path
     // latency even though the queue has a base latency.

@@ -53,7 +53,7 @@ export function scoreDesign(
       1,
       problem.requirements.readsPerSec + problem.requirements.writesPerSec
     );
-    const sim = runSimulation(nodes, edges, requiredLoad);
+    const sim = runSimulation(nodes, edges, requiredLoad, new Set(), problem.requirements.storageGB);
     ctx = { problem, sim, requiredLoad };
   }
 
