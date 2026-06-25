@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useModeStore } from "@/store/modeStore";
 import { useDeepDiveStore } from "@/store/deepDiveStore";
 import { getProblemById } from "@/data/problems";
 import { getInterviewData } from "@/data/interviewData";
 import { scoreDeepDive } from "@/scoring/deepDive";
+import { hasAiKey } from "@/lib/interviewer";
+import { reviewDeepDive } from "@/lib/deepDiveReview";
 import type { Consistency, EntityStoreType, UserApi, UserEntity } from "@/types/deepDive";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -31,6 +33,9 @@ export function DeepDivePanel() {
   const idata = getInterviewData(problemId);
   const [showRefApis, setShowRefApis] = useState(false);
   const [showRefEntities, setShowRefEntities] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReview, setAiReview] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   if (skillMode !== "advanced") {
     return (
@@ -49,6 +54,21 @@ export function DeepDivePanel() {
   const setApis = (next: UserApi[]) => updateEntry(problemId, { apis: next });
   const setEntities = (next: UserEntity[]) => updateEntry(problemId, { entities: next });
   const grade = scoreDeepDive(entry, problem);
+  const keyPresent = hasAiKey();
+
+  async function runAiReview() {
+    if (!problem) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiReview(null);
+    try {
+      setAiReview(await reviewDeepDive(problem, entry));
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -177,6 +197,32 @@ export function DeepDivePanel() {
           rows={2}
           className="w-full resize-none rounded-md bg-zinc-800 px-2 py-1.5 text-[11px] leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-600"
         />
+      </div>
+
+      {/* AI review of the open-ended reasoning (needs a BYO key) */}
+      <div className="space-y-2">
+        <SectionHeader>AI Review</SectionHeader>
+        {keyPresent ? (
+          <button
+            onClick={runAiReview}
+            disabled={aiLoading}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-medium text-cyan-400 transition-colors hover:bg-cyan-500/15 disabled:opacity-50"
+          >
+            {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {aiLoading ? "Reviewing…" : "Review my decisions"}
+          </button>
+        ) : (
+          <p className="text-[11px] leading-relaxed text-zinc-600">
+            Add an API key in the AI assistant (top bar) to get an AI critique of your reasoning —
+            especially the consistency justification, which auto-grading can&apos;t judge.
+          </p>
+        )}
+        {aiError && <p className="text-[11px] text-rose-400">{aiError}</p>}
+        {aiReview && (
+          <div className="whitespace-pre-wrap rounded-md border border-zinc-800 bg-zinc-800/50 px-2.5 py-2 text-[11px] leading-relaxed text-zinc-300">
+            {aiReview}
+          </div>
+        )}
       </div>
 
       <p className="text-[10px] leading-relaxed text-zinc-600">
