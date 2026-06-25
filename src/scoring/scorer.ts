@@ -10,10 +10,7 @@ import { scoreLatency } from "./rules/latency";
 import { scoreCost } from "./rules/cost";
 import { scoreTradeoffs } from "./rules/tradeoffs";
 import { scoreDeepDive } from "./deepDive";
-
-/** Advanced mode keeps the total at 100 by scaling the five design categories
- *  to 80 and giving the Deep-Dive dimension the remaining 20. */
-const DESIGN_WEIGHT_ADVANCED = 0.8;
+import { scoreProblemFit } from "./problemFit";
 
 function getVerdict(total: number): { verdict: string; verdictColor: string } {
   if (total >= 86) return { verdict: "Architect Level", verdictColor: "text-emerald-400" };
@@ -73,13 +70,24 @@ export function scoreDesign(
     c.score = Math.max(0, Math.min(c.score, c.maxScore));
   }
 
-  // Advanced mode: scale the design categories to 80 and append Deep-Dive (20).
+  // Problem-aware dimensions. Problem Fit applies whenever a built-in problem is
+  // selected; Deep-Dive is added in Advanced mode. The five design categories
+  // plus any extra dimensions are then renormalized so the total stays out of
+  // 100 regardless of how many dimensions are in play.
+  if (problem) {
+    categories.push(scoreProblemFit(nodes, edges, problem));
+  }
   if (deepDive && problem) {
-    for (const c of categories) {
-      c.score = Math.round(c.score * DESIGN_WEIGHT_ADVANCED);
-      c.maxScore = Math.round(c.maxScore * DESIGN_WEIGHT_ADVANCED);
-    }
     categories.push(scoreDeepDive(deepDive, problem));
+  }
+
+  const rawMax = categories.reduce((sum, c) => sum + c.maxScore, 0);
+  if (rawMax > 0 && rawMax !== 100) {
+    const scale = 100 / rawMax;
+    for (const c of categories) {
+      c.score = Math.round(c.score * scale);
+      c.maxScore = Math.round(c.maxScore * scale);
+    }
   }
 
   const rawTotal = categories.reduce((sum, c) => sum + c.score, 0);
