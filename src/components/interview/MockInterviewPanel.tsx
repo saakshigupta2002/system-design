@@ -7,6 +7,7 @@ import { useAppStore } from "@/store/appStore";
 import { useCanvasStore, type ComponentNodeData } from "@/store/canvasStore";
 import { useDeepDiveStore } from "@/store/deepDiveStore";
 import { useDrillProgressStore } from "@/store/drillProgressStore";
+import { isLearned as recIsLearned } from "@/lib/srs";
 import { getProblemById } from "@/data/problems";
 import type { AiMessage } from "@/store/aiAssistantStore";
 import {
@@ -77,12 +78,13 @@ function ScriptedInterview({ problemId }: { problemId: string }) {
   const [index, setIndex] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const known = useDrillProgressStore((s) => s.known);
-  const toggleKnown = useDrillProgressStore((s) => s.toggleKnown);
+  const records = useDrillProgressStore((s) => s.records);
+  const review = useDrillProgressStore((s) => s.review);
 
   const q = questions[index];
   const goto = (i: number) => { setIndex(i); setShowHint(false); setRevealed(false); };
-  const reviewed = questions.filter((x) => known.includes(x.id)).length;
+  const reviewed = questions.filter((x) => recIsLearned(records[x.id])).length;
+  const learned = recIsLearned(records[q.id]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -107,12 +109,31 @@ function ScriptedInterview({ problemId }: { problemId: string }) {
             Reveal model answer
           </button>
         )}
-        <button
-          onClick={() => toggleKnown(q.id)}
-          className={`flex w-full items-center justify-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${known.includes(q.id) ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}
-        >
-          {known.includes(q.id) ? <><Check className="h-3.5 w-3.5" /> Got it</> : "I answered this well"}
-        </button>
+        <div>
+          <p className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-600">
+            How did you do?{learned && <Check className="h-3 w-3 text-emerald-500" />}
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => { review(q.id, "again"); goto(index); }}
+              className="flex-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/15"
+            >
+              Again
+            </button>
+            <button
+              onClick={() => { review(q.id, "good"); goto(Math.min(questions.length - 1, index + 1)); }}
+              className="flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-700"
+            >
+              Got it
+            </button>
+            <button
+              onClick={() => { review(q.id, "easy"); goto(Math.min(questions.length - 1, index + 1)); }}
+              className="flex-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/15"
+            >
+              Easy
+            </button>
+          </div>
+        </div>
       </div>
       <div className="flex items-center justify-between border-t border-zinc-800 p-2">
         <button onClick={() => goto(Math.max(0, index - 1))} disabled={index === 0} className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-800 disabled:opacity-40">

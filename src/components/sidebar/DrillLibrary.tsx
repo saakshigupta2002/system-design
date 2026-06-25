@@ -12,6 +12,7 @@ import {
   type DrillDifficulty,
 } from "@/data/drills";
 import { useDrillProgressStore } from "@/store/drillProgressStore";
+import { isDue as recIsDue, isLearned as recIsLearned, type ReviewGrade } from "@/lib/srs";
 
 const DIFFICULTIES = ["all", "Easy", "Medium", "Hard"] as const;
 
@@ -24,14 +25,29 @@ function difficultyColor(d: string) {
   }
 }
 
+const GRADE_STYLE: Record<ReviewGrade, string> = {
+  again: "border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/15",
+  good: "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700",
+  easy: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15",
+};
+
 export function DrillLibrary() {
   const [difficulty, setDifficulty] = useState<DrillDifficulty | "all">("all");
   const [category, setCategory] = useState<DrillCategory | "all">("all");
   const [search, setSearch] = useState("");
-  const known = useDrillProgressStore((s) => s.known);
+  const [dueOnly, setDueOnly] = useState(false);
+  const records = useDrillProgressStore((s) => s.records);
+  // Captured once per mount so render stays pure; reviews re-render via records.
+  const [now] = useState(() => Date.now());
 
-  const drills = filterDrills({ difficulty, category, search });
-  const knownInView = drills.filter((d) => known.includes(d.id)).length;
+  const needsReview = (id: string) => {
+    const r = records[id];
+    return !r || recIsDue(r, now); // due, or never studied
+  };
+
+  let drills = filterDrills({ difficulty, category, search });
+  const dueCount = DRILLS.filter((d) => records[d.id] && recIsDue(records[d.id], now)).length;
+  if (dueOnly) drills = drills.filter((d) => needsReview(d.id));
 
   return (
     <div className="flex h-full flex-col">
@@ -40,11 +56,10 @@ export function DrillLibrary() {
           <Dumbbell className="h-3.5 w-3.5 text-cyan-500" />
           <p className="text-xs font-semibold text-zinc-200">Deep-Dive Drills</p>
           <span className="ml-auto text-[10px] text-zinc-500">
-            {knownInView}/{drills.length} reviewed
+            {dueCount > 0 ? `${dueCount} due` : "spaced repetition"}
           </span>
         </div>
 
-        {/* Search */}
         <div className="relative">
           <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-600" />
           <input
@@ -55,7 +70,6 @@ export function DrillLibrary() {
           />
         </div>
 
-        {/* Difficulty filter */}
         <div className="flex gap-1">
           {DIFFICULTIES.map((d) => (
             <button
@@ -70,24 +84,31 @@ export function DrillLibrary() {
           ))}
         </div>
 
-        {/* Category filter */}
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <CategoryChip label="All" active={category === "all"} onClick={() => setCategory("all")} />
           {DRILL_CATEGORIES.map((c) => (
             <CategoryChip key={c.value} label={c.label} active={category === c.value} onClick={() => setCategory(c.value)} />
           ))}
+          <button
+            onClick={() => setDueOnly((v) => !v)}
+            className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${
+              dueOnly ? "bg-cyan-500/15 text-cyan-400" : "bg-zinc-800 text-zinc-500 hover:text-zinc-300"
+            }`}
+            title="Show only cards due for review (plus new ones)"
+          >
+            Due / new
+          </button>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="space-y-1.5 p-2.5">
           {drills.length === 0 ? (
-            <p className="py-6 text-center text-xs text-zinc-600">No drills match these filters.</p>
+            <p className="py-6 text-center text-xs text-zinc-600">
+              {dueOnly ? "Nothing due — come back later." : "No drills match these filters."}
+            </p>
           ) : (
             drills.map((drill) => <DrillCard key={drill.id} drill={drill} />)
-          )}
-          {DRILLS.length === 0 && (
-            <p className="text-[11px] text-zinc-600">No drills available.</p>
           )}
         </div>
       </ScrollArea>
@@ -111,11 +132,16 @@ function CategoryChip({ label, active, onClick }: { label: string; active: boole
 function DrillCard({ drill }: { drill: Drill }) {
   const [open, setOpen] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const known = useDrillProgressStore((s) => s.known.includes(drill.id));
-  const toggleKnown = useDrillProgressStore((s) => s.toggleKnown);
+  const record = useDrillProgressStore((s) => s.records[drill.id]);
+  const review = useDrillProgressStore((s) => s.review);
+  const learned = recIsLearned(record);
+
+  const nextLabel = record && record.reps > 0
+    ? `next in ${record.intervalDays}d`
+    : null;
 
   return (
-    <div className={`rounded-md border bg-zinc-800/60 ${known ? "border-emerald-500/20" : "border-zinc-700"}`}>
+    <div className={`rounded-md border bg-zinc-800/60 ${learned ? "border-emerald-500/20" : "border-zinc-700"}`}>
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start gap-1.5 px-2.5 py-2 text-left">
         {open ? <ChevronDown className="mt-0.5 h-3 w-3 shrink-0 text-zinc-500" /> : <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-zinc-500" />}
         <div className="min-w-0 flex-1">
@@ -126,9 +152,10 @@ function DrillCard({ drill }: { drill: Drill }) {
             </span>
             <span className="rounded bg-zinc-700/60 px-1 py-0.5 text-[9px] capitalize text-zinc-400">{drill.category}</span>
             <span className="text-[9px] text-zinc-600">{drill.problemTitle}</span>
+            {nextLabel && <span className="text-[9px] text-cyan-500/70">· {nextLabel}</span>}
           </div>
         </div>
-        {known && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />}
+        {learned && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />}
       </button>
 
       {open && (
@@ -144,16 +171,22 @@ function DrillCard({ drill }: { drill: Drill }) {
               Reveal answer
             </button>
           )}
-          <button
-            onClick={() => toggleKnown(drill.id)}
-            className={`flex w-full items-center justify-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-              known
-                ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                : "border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-            }`}
-          >
-            {known ? "Reviewed — undo" : "Mark as reviewed"}
-          </button>
+          {revealed && (
+            <div>
+              <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-600">How well did you know it?</p>
+              <div className="flex gap-1.5">
+                {(["again", "good", "easy"] as ReviewGrade[]).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => { review(drill.id, g); setRevealed(false); setOpen(false); }}
+                    className={`flex-1 rounded-md border px-2 py-1 text-[11px] font-medium capitalize transition-colors ${GRADE_STYLE[g]}`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

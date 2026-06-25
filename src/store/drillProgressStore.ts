@@ -1,25 +1,31 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { schedule, isDue, isLearned, type ReviewGrade, type SrsRecord } from "@/lib/srs";
 
-/** Self-rated drill progress: ids the user has marked as "got it". Persisted so
- *  the library shows what's left to review across sessions. */
+/** Spaced-repetition progress per drill. Each review reschedules the card via
+ *  SM-2, so the library can surface what's due today and space reviews out. */
 interface DrillProgressState {
-  known: string[];
-  isKnown: (id: string) => boolean;
-  toggleKnown: (id: string) => void;
-  reset: () => void;
+  records: Record<string, SrsRecord>;
+  review: (id: string, grade: ReviewGrade) => void;
+  reset: (id: string) => void;
+  isLearned: (id: string) => boolean;
+  isDue: (id: string) => boolean;
 }
 
 export const useDrillProgressStore = create<DrillProgressState>()(
   persist(
     (set, get) => ({
-      known: [],
-      isKnown: (id) => get().known.includes(id),
-      toggleKnown: (id) =>
-        set((s) => ({
-          known: s.known.includes(id) ? s.known.filter((x) => x !== id) : [...s.known, id],
-        })),
-      reset: () => set({ known: [] }),
+      records: {},
+      review: (id, grade) =>
+        set((s) => ({ records: { ...s.records, [id]: schedule(s.records[id], grade) } })),
+      reset: (id) =>
+        set((s) => {
+          const next = { ...s.records };
+          delete next[id];
+          return { records: next };
+        }),
+      isLearned: (id) => isLearned(get().records[id]),
+      isDue: (id) => isDue(get().records[id]),
     }),
     { name: "systemdesign-drills" }
   )
