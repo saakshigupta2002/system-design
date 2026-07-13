@@ -7,7 +7,8 @@ import { useEffect } from "react";
 // Both are overridable via env vars; the fallbacks point at the live deploy.
 const ENDPOINT =
   process.env.NEXT_PUBLIC_SNAG_ENDPOINT ?? "https://snag-deploy-ingest.vercel.app";
-const PROJECT_KEY = process.env.NEXT_PUBLIC_SNAG_PROJECT_KEY ?? "";
+const PROJECT_KEY =
+  process.env.NEXT_PUBLIC_SNAG_PROJECT_KEY ?? "pk_live_q97o2k6f5d71dtutcrxzxz0w";
 
 declare global {
   interface Window {
