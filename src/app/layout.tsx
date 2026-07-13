@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ClarityAnalytics } from "@/components/Clarity";
+import { SnagRecorder } from "@/components/Snag";
 import "./globals.css";
 
 // One grotesque handles body + display (differentiated by weight + tracking).
@@ -53,6 +54,7 @@ export default function RootLayout({
           {children}
         </TooltipProvider>
         <ClarityAnalytics />
+        <SnagRecorder />
       </body>
     </html>
   );
