@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Play,
@@ -17,7 +17,6 @@ import {
   FolderOpen,
   StickyNote,
   GraduationCap,
-  MoreHorizontal,
   Keyboard,
   LayoutGrid,
   Sparkles,
@@ -34,6 +33,7 @@ import { useCustomProblemsStore } from "@/store/customProblemsStore";
 import { type Node, useReactFlow } from "@xyflow/react";
 import { exportAsPng, exportAsSvg, exportAsJSON } from "@/lib/exportCanvas";
 import { createShareLink } from "@/lib/shareDesign";
+import { ToolbarMenu, MenuItem, MenuSeparator } from "./ToolbarMenu";
 
 interface TopBarProps {
   onSimulate: () => void;
@@ -50,8 +50,6 @@ interface TopBarProps {
 }
 
 export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onLoad, onStartInterview, onOpenMockInterview, onOpenShortcuts, onToggleAI, onToggleLeft, onToggleRight }: TopBarProps) {
-  const [exportOpen, setExportOpen] = useState(false);
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const { getViewport, fitView } = useReactFlow();
   const addNode = useCanvasStore((s) => s.addNode);
 
@@ -103,7 +101,6 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
   }, [getViewport, addNode]);
 
   const handleExportPng = useCallback(async () => {
-    setExportOpen(false);
     const name = currentProblem?.title ?? "design";
     try {
       await exportAsPng(name);
@@ -114,7 +111,6 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
   }, [currentProblem]);
 
   const handleExportSvg = useCallback(async () => {
-    setExportOpen(false);
     const name = currentProblem?.title ?? "design";
     try {
       await exportAsSvg(name);
@@ -125,7 +121,6 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
   }, [currentProblem]);
 
   const handleExportJson = useCallback(() => {
-    setExportOpen(false);
     const name = currentProblem?.title ?? "design";
     const { nodes, edges } = useCanvasStore.getState();
     const { strokes } = usePenStore.getState();
@@ -153,8 +148,8 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-900 px-2 md:gap-3 md:px-3">
-      {/* Left section */}
-      <div className="flex min-w-0 items-center gap-2 md:gap-3">
+      {/* ── Left: identity, mode, grouped menus ─────────────────────────── */}
+      <div className="flex min-w-0 items-center gap-1.5 md:gap-2">
         <button
           onClick={onToggleLeft}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
@@ -168,13 +163,12 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
           <span className="hidden text-sm font-semibold tracking-tight text-zinc-100 sm:inline">
             SystemDesign
           </span>
-          <span className="hidden rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-medium text-zinc-500 md:inline">beta</span>
+          <span className="hidden rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-medium text-zinc-500 lg:inline">beta</span>
         </div>
 
-        <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
-
         {/* Beginner / Advanced mode switch */}
-        <div className="hidden shrink-0 items-center rounded-md bg-zinc-800 p-0.5 md:flex" title="Switch practice mode">
+        <div className="mx-1 hidden h-4 w-px bg-zinc-800 sm:block" />
+        <div className="hidden shrink-0 items-center rounded-md bg-zinc-800 p-0.5 sm:flex" title="Switch practice mode">
           {(["beginner", "advanced"] as const).map((m) => (
             <button
               key={m}
@@ -190,267 +184,92 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
           ))}
         </div>
 
-        <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
+        <div className="mx-1 hidden h-4 w-px bg-zinc-800 sm:block" />
 
-        <button
-          onClick={onLoadReference}
-          className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300 md:flex"
-          title="Open the reference solution (picks a problem if none is selected)"
-        >
-          <Download className="h-3 w-3" />
-          Reference
-        </button>
-
-        <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
-
-        <button
-          onClick={addTextNote}
-          className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
-          title="Add text note to canvas"
-        >
-          <StickyNote className="h-3 w-3" />
-          Add Note
-        </button>
-
-        <button
-          onClick={tidyUp}
-          className="hidden shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
-          title="Auto-arrange the canvas into clean layers"
-        >
-          <LayoutGrid className="h-3 w-3" />
-          Tidy Up
-        </button>
-
-        <div className="mx-1 hidden h-4 w-px bg-zinc-800 md:block" />
-
-        <button
-          onClick={onStartInterview}
-          className="hidden shrink-0 items-center gap-1 rounded-md bg-zinc-800 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100 md:flex"
-          title="Start a guided interview practice"
-        >
-          <GraduationCap className="h-3.5 w-3.5" />
-          Practice Interview
-        </button>
-
-        {/* Mobile-only overflow menu */}
-        <div className="relative md:hidden">
-          <button
-            onClick={() => setMobileMoreOpen((v) => !v)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-            title="More actions"
-            aria-label="More actions"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-          {mobileMoreOpen && (
+        {/* File menu — persistence, sharing, export */}
+        <ToolbarMenu
+          title="Save, load, share and export"
+          trigger={
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setMobileMoreOpen(false)} />
-              <div className="absolute left-0 top-full z-50 mt-1 w-60 rounded-md border border-zinc-700 bg-zinc-900 py-1 shadow-lg">
-                {/* Design actions */}
-                <button
-                  onClick={() => { setMobileMoreOpen(false); onLoadReference(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <Download className="h-3.5 w-3.5 text-zinc-500" />
-                  Load reference solution
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); addTextNote(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <StickyNote className="h-3.5 w-3.5 text-zinc-500" />
-                  Add text note
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); tidyUp(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <LayoutGrid className="h-3.5 w-3.5 text-zinc-500" />
-                  Tidy up layout
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); onStartInterview(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <GraduationCap className="h-3.5 w-3.5 text-zinc-500" />
-                  Practice interview
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); onOpenMockInterview(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <GraduationCap className="h-3.5 w-3.5 text-zinc-500" />
-                  Mock interview
-                </button>
-
-                <div className="my-1 h-px bg-zinc-800" />
-
-                {/* File */}
-                <button
-                  onClick={() => { setMobileMoreOpen(false); shareDesign(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <Share2 className="h-3.5 w-3.5 text-zinc-500" />
-                  Share link
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); onSave(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <Save className="h-3.5 w-3.5 text-zinc-500" />
-                  Save design
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); onLoad(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <FolderOpen className="h-3.5 w-3.5 text-zinc-500" />
-                  Load design
-                </button>
-
-                <div className="my-1 h-px bg-zinc-800" />
-
-                {/* Export */}
-                <button
-                  onClick={() => { setMobileMoreOpen(false); handleExportPng(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <ImageIcon className="h-3.5 w-3.5 text-zinc-500" />
-                  Export as PNG
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); handleExportSvg(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <FileCode2 className="h-3.5 w-3.5 text-zinc-500" />
-                  Export as SVG
-                </button>
-                <button
-                  onClick={() => { setMobileMoreOpen(false); handleExportJson(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  <FileJson className="h-3.5 w-3.5 text-zinc-500" />
-                  Export as JSON
-                </button>
-
-                <div className="my-1 h-px bg-zinc-800" />
-
-                {/* Danger */}
-                <button
-                  onClick={() => { setMobileMoreOpen(false); onClearCanvas(); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-rose-400 transition-colors hover:bg-zinc-800"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Clear canvas
-                </button>
-              </div>
+              <Save className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">File</span>
+              <ChevronDown className="h-2.5 w-2.5 text-zinc-500" />
             </>
-          )}
-        </div>
+          }
+        >
+          <MenuItem icon={<Save className="h-3.5 w-3.5" />} onClick={onSave} shortcut="⌘S">
+            Save design
+          </MenuItem>
+          <MenuItem icon={<FolderOpen className="h-3.5 w-3.5" />} onClick={onLoad} shortcut="⌘O">
+            Load design
+          </MenuItem>
+          <MenuItem icon={<Share2 className="h-3.5 w-3.5" />} onClick={shareDesign}>
+            Share link
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem icon={<ImageIcon className="h-3.5 w-3.5" />} onClick={handleExportPng} shortcut="⌘E">
+            Export as PNG
+          </MenuItem>
+          <MenuItem icon={<FileCode2 className="h-3.5 w-3.5" />} onClick={handleExportSvg}>
+            Export as SVG
+          </MenuItem>
+          <MenuItem icon={<FileJson className="h-3.5 w-3.5" />} onClick={handleExportJson}>
+            Export as JSON
+          </MenuItem>
+        </ToolbarMenu>
+
+        {/* Canvas menu — building and arranging the diagram */}
+        <ToolbarMenu
+          title="Reference, notes, layout and clearing"
+          trigger={
+            <>
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Canvas</span>
+              <ChevronDown className="h-2.5 w-2.5 text-zinc-500" />
+            </>
+          }
+        >
+          <MenuItem icon={<Download className="h-3.5 w-3.5" />} onClick={onLoadReference}>
+            Load reference solution
+          </MenuItem>
+          <MenuItem icon={<StickyNote className="h-3.5 w-3.5" />} onClick={addTextNote}>
+            Add text note
+          </MenuItem>
+          <MenuItem icon={<LayoutGrid className="h-3.5 w-3.5" />} onClick={tidyUp}>
+            Tidy up layout
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem icon={<Trash2 className="h-3.5 w-3.5" />} onClick={onClearCanvas} danger>
+            Clear canvas
+          </MenuItem>
+        </ToolbarMenu>
       </div>
 
-      {/* Right section */}
-      <div className="flex items-center gap-1 md:gap-2">
-        <button
-          onClick={onSave}
-          className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
-          title="Save design (Ctrl+S)"
-        >
-          <Save className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Save</span>
-        </button>
-        <button
-          onClick={onLoad}
-          className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
-          title="Load design (Ctrl+O)"
-        >
-          <FolderOpen className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Load</span>
-        </button>
-        <button
-          onClick={shareDesign}
-          className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
-          title="Copy a shareable link to this design"
-        >
-          <Share2 className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Share</span>
-        </button>
-
-        <div className="hidden h-4 w-px bg-zinc-800 md:block" />
-
-        {/* Export dropdown — desktop only; mobile goes through overflow menu */}
-        <div className="relative hidden md:block">
-          <button
-            onClick={() => setExportOpen(!exportOpen)}
-            className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-            title="Export design (Ctrl+E)"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export</span>
-            <ChevronDown className="h-2.5 w-2.5 text-zinc-500" />
-          </button>
-
-          {exportOpen && (
+      {/* ── Right: primary actions + utilities ──────────────────────────── */}
+      <div className="flex shrink-0 items-center gap-1 md:gap-2">
+        {/* Interview menu — practice and mock */}
+        <ToolbarMenu
+          align="right"
+          title="Interview practice"
+          trigger={
             <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setExportOpen(false)}
-              />
-              <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-md border border-zinc-700 bg-zinc-900 py-1 shadow-lg">
-                <button
-                  onClick={handleExportPng}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-                >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  Export as PNG
-                  <kbd className="ml-auto rounded border border-zinc-700 bg-zinc-800 px-1 py-0.5 font-mono text-[9px] text-zinc-500">
-                    {"\u2318"}E
-                  </kbd>
-                </button>
-                <button
-                  onClick={handleExportSvg}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-                >
-                  <FileCode2 className="h-3.5 w-3.5" />
-                  Export as SVG
-                </button>
-                <button
-                  onClick={handleExportJson}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-                >
-                  <FileJson className="h-3.5 w-3.5" />
-                  Export as JSON
-                </button>
-              </div>
+              <GraduationCap className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Interview</span>
+              <ChevronDown className="h-2.5 w-2.5 text-zinc-500" />
             </>
-          )}
-        </div>
-
-        <div className="hidden h-4 w-px bg-zinc-800 md:block" />
-
-        <button
-          onClick={onClearCanvas}
-          className="hidden h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-rose-400 md:flex"
-          title="Clear canvas"
+          }
         >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-
-        {/* Divider before the primary actions */}
-        <div className="hidden h-4 w-px bg-zinc-800 md:block" />
-
-        <button
-          onClick={onOpenMockInterview}
-          className="hidden h-7 items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100 md:flex"
-          title="Mock interview — get probed on your design (works offline; smarter with an API key)"
-        >
-          <GraduationCap className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Interview</span>
-        </button>
+          <MenuItem icon={<GraduationCap className="h-3.5 w-3.5" />} onClick={onStartInterview}>
+            Practice interview
+          </MenuItem>
+          <MenuItem icon={<GraduationCap className="h-3.5 w-3.5" />} onClick={onOpenMockInterview}>
+            Mock interview
+          </MenuItem>
+        </ToolbarMenu>
 
         <button
           onClick={onToggleAI}
-          className="flex h-7 items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 text-xs font-medium text-cyan-400 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/15 hover:text-cyan-300"
+          className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 text-xs font-medium text-cyan-400 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/15 hover:text-cyan-300"
           title="AI assistant — bring your own API key"
         >
           <Sparkles className="h-3.5 w-3.5" />
@@ -460,18 +279,17 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
         <Button
           size="sm"
           onClick={onSimulate}
-          className="h-7 gap-1.5 bg-cyan-500 px-3 text-xs font-medium text-white hover:bg-cyan-400"
+          className="h-7 shrink-0 gap-1.5 bg-cyan-500 px-3 text-xs font-medium text-white hover:bg-cyan-400"
         >
           <Play className="h-3 w-3" />
-          Simulate
+          <span className="hidden sm:inline">Simulate</span>
         </Button>
 
-        {/* Divider before utility controls */}
-        <div className="hidden h-4 w-px bg-zinc-800 md:block" />
+        <div className="hidden h-4 w-px bg-zinc-800 sm:block" />
 
         <button
           onClick={toggleTheme}
-          className="hidden h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
+          className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 sm:flex"
           title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
           aria-label="Toggle color theme"
         >
@@ -480,7 +298,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
 
         <button
           onClick={onOpenShortcuts}
-          className="hidden h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 md:flex"
+          className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 lg:flex"
           title="Keyboard shortcuts (?)"
           aria-label="Keyboard shortcuts"
         >
@@ -489,7 +307,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
 
         <button
           onClick={onToggleRight}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           title="Toggle panel"
         >
           <PanelRight className="h-4 w-4" />
@@ -498,5 +316,3 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
     </header>
   );
 }
-
-/** Find the first node ID in the map whose key starts with the given componentId. */
