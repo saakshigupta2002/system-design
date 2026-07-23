@@ -12,11 +12,16 @@ const PAD = 6; // spotlight padding around the target
 const GAP = 14; // gap between target and card
 
 /** Make sure the UI region a step points at is actually visible before we
- *  try to measure it (open the sidebar / right panel on desktop). */
-function prepareForTarget(target: string | null) {
+ *  try to measure it (open the sidebar on the right tab, or the right panel). */
+function prepareForStep(step: TourStep) {
   const app = useAppStore.getState();
-  if (target === "sidebar") app.setLeftSidebarOpen(true);
-  if (target === "right-panel" && !app.rightPanelOpen) app.toggleRightPanel();
+  if (step.sidebarTab) {
+    app.setLeftSidebarOpen(true);
+    app.setActiveLeftTab(step.sidebarTab);
+  } else if (step.target === "sidebar") {
+    app.setLeftSidebarOpen(true);
+  }
+  if (step.target === "right-panel" && !app.rightPanelOpen) app.toggleRightPanel();
 }
 
 function measure(target: string | null): DOMRect | null {
@@ -90,7 +95,7 @@ export function ProductTour() {
   // retries so panels that animate open settle before we read their box).
   useLayoutEffect(() => {
     if (!active || !current) return;
-    prepareForTarget(current.target);
+    prepareForStep(current);
     // Measure off the render (rAF, then a couple of retries) so panels that
     // animate open have settled before we read their box.
     const raf = requestAnimationFrame(remeasure);
