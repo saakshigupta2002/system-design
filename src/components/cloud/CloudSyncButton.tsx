@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Cloud, CloudCheck, CloudAlert, RefreshCw, LogOut, Loader2, LogIn } from "lucide-react";
 import { useCloudSyncStore } from "@/store/cloudSyncStore";
+import { useAppStore } from "@/store/appStore";
 import { connect, disconnect, syncNow, isCloudConfigured } from "@/lib/cloudSync";
 
 function relativeTime(ts: number | null): string {
@@ -31,21 +32,36 @@ export function CloudSyncButton() {
     return () => clearInterval(id);
   }, [open]);
 
-  const busy = status === "connecting" || status === "syncing";
-  const connected = status === "synced" || status === "syncing" || status === "error";
+  // "Signed in" means we actually established a session (have an identity).
+  // An error BEFORE that (misconfig / dismissed popup) is NOT a connected state.
+  const signedIn = email !== null;
+  const connecting = status === "connecting";
 
-  // Signed out → a single call-to-action button.
-  if (!connected) {
+  async function handleSignIn() {
+    if (!isCloudConfigured()) {
+      useAppStore.getState().showToast(
+        "Cloud sync isn't set up yet — add a Google client ID (NEXT_PUBLIC_GOOGLE_CLIENT_ID) and restart.",
+        "info"
+      );
+      return;
+    }
+    await connect(true);
+    const s = useCloudSyncStore.getState();
+    if (!s.email && s.error) useAppStore.getState().showToast(s.error, "error");
+  }
+
+  // Signed out (or connecting, or a pre-session error) → a single call-to-action.
+  if (!signedIn) {
     return (
       <button
         data-tour="cloud"
-        onClick={() => connect(true)}
-        disabled={busy}
+        onClick={handleSignIn}
+        disabled={connecting}
         className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-60"
         title={isCloudConfigured() ? "Sign in to save your work to Google Drive" : "Cloud sync isn't set up yet"}
       >
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
-        <span className="hidden sm:inline">{busy ? "Connecting…" : "Sign in"}</span>
+        {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
+        <span className="hidden sm:inline">{connecting ? "Connecting…" : "Sign in"}</span>
       </button>
     );
   }
@@ -75,7 +91,7 @@ export function CloudSyncButton() {
             <div className="flex items-center gap-2 px-3 py-2">
               <Cloud className="h-4 w-4 shrink-0 text-cyan-400" />
               <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-zinc-200">{email ?? "Google Drive"}</p>
+                <p className="truncate text-xs font-medium text-zinc-200">{email}</p>
                 <p className="text-[10px] text-zinc-500">
                   {status === "error"
                     ? "Not synced"
