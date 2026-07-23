@@ -23,7 +23,9 @@ import {
   Sun,
   Moon,
   Share2,
+  Compass,
 } from "lucide-react";
+import { useTourStore } from "@/store/tourStore";
 import { useAppStore } from "@/store/appStore";
 import { useModeStore } from "@/store/modeStore";
 import { useCanvasStore } from "@/store/canvasStore";
@@ -79,6 +81,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
   const toggleTheme = useAppStore((s) => s.toggleTheme);
   const skillMode = useModeStore((s) => s.skillMode);
   const chooseMode = useModeStore((s) => s.chooseMode);
+  const startTour = useTourStore((s) => s.start);
 
   const customProblems = useCustomProblemsStore((s) => s.problems);
   const currentProblem =
@@ -166,6 +169,17 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
           <span className="hidden rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-medium text-zinc-500 lg:inline">beta</span>
         </div>
 
+        {/* Tour — always available, replays the product walkthrough */}
+        <button
+          data-tour="tour-button"
+          onClick={startTour}
+          className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-zinc-700/70 px-2 text-xs text-zinc-400 transition-colors hover:border-cyan-500/40 hover:bg-cyan-500/10 hover:text-cyan-300"
+          title="Take the product tour"
+        >
+          <Compass className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Tour</span>
+        </button>
+
         {/* Beginner / Advanced mode switch */}
         <div className="mx-1 hidden h-4 w-px bg-zinc-800 sm:block" />
         <div className="hidden shrink-0 items-center rounded-md bg-zinc-800 p-0.5 sm:flex" title="Switch practice mode">
@@ -188,6 +202,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
 
         {/* File menu — persistence, sharing, export */}
         <ToolbarMenu
+          dataTour="topbar-file"
           title="Save, load, share and export"
           trigger={
             <>
@@ -220,6 +235,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
 
         {/* Canvas menu — building and arranging the diagram */}
         <ToolbarMenu
+          dataTour="topbar-canvas"
           title="Reference, notes, layout and clearing"
           trigger={
             <>
@@ -249,6 +265,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
       <div className="flex shrink-0 items-center gap-1 md:gap-2">
         {/* Interview menu — practice and mock */}
         <ToolbarMenu
+          dataTour="interview"
           align="right"
           title="Interview practice"
           trigger={
@@ -268,6 +285,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
         </ToolbarMenu>
 
         <button
+          data-tour="ai"
           onClick={onToggleAI}
           className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 text-xs font-medium text-cyan-400 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/15 hover:text-cyan-300"
           title="AI assistant — bring your own API key"
@@ -278,6 +296,7 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
 
         <Button
           size="sm"
+          data-tour="simulate"
           onClick={onSimulate}
           className="h-7 shrink-0 gap-1.5 bg-cyan-500 px-3 text-xs font-medium text-white hover:bg-cyan-400"
         >
