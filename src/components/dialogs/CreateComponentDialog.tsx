@@ -36,19 +36,23 @@ export function CreateComponentDialog({ open, onClose, editId = null }: CreateCo
 
   useEffect(() => {
     if (!open) return;
-    const existing = editId
-      ? useCustomComponentsStore.getState().getComponent(editId)
-      : undefined;
-    setLabel(existing?.label ?? "");
-    setCategory(existing?.category ?? "compute");
-    setIcon(existing?.icon ?? "Box");
-    setMaxQPS(existing?.maxQPS ?? 5000);
-    setLatencyMs(existing?.latencyMs ?? 20);
-    setMonthlyCost(existing?.monthlyCost ?? 100);
-    setScalable(existing?.scalable ?? true);
-    setStateful(existing?.stateful ?? false);
-    setDescription(existing?.description ?? "");
-    setTimeout(() => labelRef.current?.focus(), 50);
+    // Deferred a frame so the prefill isn't a synchronous setState in the effect.
+    const raf = requestAnimationFrame(() => {
+      const existing = editId
+        ? useCustomComponentsStore.getState().getComponent(editId)
+        : undefined;
+      setLabel(existing?.label ?? "");
+      setCategory(existing?.category ?? "compute");
+      setIcon(existing?.icon ?? "Box");
+      setMaxQPS(existing?.maxQPS ?? 5000);
+      setLatencyMs(existing?.latencyMs ?? 20);
+      setMonthlyCost(existing?.monthlyCost ?? 100);
+      setScalable(existing?.scalable ?? true);
+      setStateful(existing?.stateful ?? false);
+      setDescription(existing?.description ?? "");
+      labelRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
   }, [open, editId]);
 
   if (!open) return null;

@@ -34,23 +34,27 @@ export function CreateProblemDialog({ open, onClose, editId = null }: CreateProb
   const [constraintsText, setConstraintsText] = useState("");
   const [tagsText, setTagsText] = useState("");
 
-  // Reset (or prefill, when editing) and focus when dialog opens
+  // Reset (or prefill, when editing) and focus when dialog opens. Deferred a
+  // frame so the prefill isn't a synchronous setState in the effect body.
   useEffect(() => {
     if (!open) return;
-    const existing = editId
-      ? useCustomProblemsStore.getState().problems.find((p) => p.id === editId)
-      : undefined;
-    setTitle(existing?.title ?? "");
-    setDifficulty(existing?.difficulty ?? "Medium");
-    setDescription(existing?.description ?? "");
-    setReadsPerSec(existing?.requirements.readsPerSec ?? 10000);
-    setWritesPerSec(existing?.requirements.writesPerSec ?? 1000);
-    setStorageGB(existing?.requirements.storageGB ?? 1000);
-    setLatencyMs(existing?.requirements.latencyMs ?? 200);
-    setUsers(existing?.requirements.users ?? "10M DAU");
-    setConstraintsText(existing?.constraints.join("\n") ?? "");
-    setTagsText(existing?.tags.join(", ") ?? "");
-    setTimeout(() => titleRef.current?.focus(), 50);
+    const raf = requestAnimationFrame(() => {
+      const existing = editId
+        ? useCustomProblemsStore.getState().problems.find((p) => p.id === editId)
+        : undefined;
+      setTitle(existing?.title ?? "");
+      setDifficulty(existing?.difficulty ?? "Medium");
+      setDescription(existing?.description ?? "");
+      setReadsPerSec(existing?.requirements.readsPerSec ?? 10000);
+      setWritesPerSec(existing?.requirements.writesPerSec ?? 1000);
+      setStorageGB(existing?.requirements.storageGB ?? 1000);
+      setLatencyMs(existing?.requirements.latencyMs ?? 200);
+      setUsers(existing?.requirements.users ?? "10M DAU");
+      setConstraintsText(existing?.constraints.join("\n") ?? "");
+      setTagsText(existing?.tags.join(", ") ?? "");
+      titleRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
   }, [open, editId]);
 
   if (!open) return null;

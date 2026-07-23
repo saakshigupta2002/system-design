@@ -38,6 +38,7 @@ import { useDeepDiveStore } from "@/store/deepDiveStore";
 import { useInterviewStore } from "@/store/interviewStore";
 import { useTourStore } from "@/store/tourStore";
 import { ProductTour } from "@/components/tour/ProductTour";
+import { initCloudSync } from "@/lib/cloudSync";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 
 export function AppShell() {
@@ -79,12 +80,15 @@ export function AppShell() {
     else toggleRightPanel();
   }, [isMobile, toggleRightPanel]);
 
-  // Close any open mobile drawers when we transition to desktop
+  // Close any open mobile drawers when we transition to desktop. Deferred a
+  // frame so it isn't a synchronous setState inside the effect body.
   useEffect(() => {
-    if (!isMobile) {
+    if (isMobile) return;
+    const id = requestAnimationFrame(() => {
       setMobileSidebarOpen(false);
       setMobileRightOpen(false);
-    }
+    });
+    return () => cancelAnimationFrame(id);
   }, [isMobile]);
 
   const handleSave = useCallback(() => setSaveDialogOpen(true), []);
@@ -332,6 +336,11 @@ export function AppShell() {
     if (applySharedDesignFromHash()) {
       useAppStore.getState().showToast("Loaded shared design", "success");
     }
+  }, []);
+
+  // Wire up Google Drive sync (subscriptions + silent reconnect if signed in).
+  useEffect(() => {
+    initCloudSync();
   }, []);
 
   // First-run product tour: kick it off once the user has picked a skill mode

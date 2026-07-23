@@ -36,6 +36,7 @@ import { type Node, useReactFlow } from "@xyflow/react";
 import { exportAsPng, exportAsSvg, exportAsJSON } from "@/lib/exportCanvas";
 import { createShareLink } from "@/lib/shareDesign";
 import { ToolbarMenu, MenuItem, MenuSeparator } from "./ToolbarMenu";
+import { CloudSyncButton } from "@/components/cloud/CloudSyncButton";
 
 interface TopBarProps {
   onSimulate: () => void;
@@ -305,6 +306,8 @@ export function TopBar({ onSimulate, onLoadReference, onClearCanvas, onSave, onL
         </Button>
 
         <div className="hidden h-4 w-px bg-zinc-800 sm:block" />
+
+        <CloudSyncButton />
 
         <button
           onClick={toggleTheme}
