@@ -99,6 +99,12 @@ export const TOUR_STEPS: TourStep[] = [
     body: "Bring your own API key to unlock an AI copilot that can review your design, suggest components, and answer questions as you work. Everything else runs fully offline without a key.",
     placement: "bottom",
   },
+  {
+    target: "cloud",
+    title: "Save to your account",
+    body: "Sign in with Google to back your designs, notes and progress up to your own Google Drive — so your work follows you to any device. Without signing in, everything is still saved locally in this browser.",
+    placement: "bottom",
+  },
 
   {
     target: "tour-button",

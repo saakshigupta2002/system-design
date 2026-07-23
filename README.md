@@ -268,6 +268,27 @@ npm run dev
 
 Open **http://localhost:3000**
 
+### Optional: Google Drive sync
+
+Your work is always saved **locally in the browser**. To let users sign in and
+have their designs, notes and progress follow them across devices, add a Google
+OAuth client id — the app then offers **Sign in** in the top bar and syncs a
+single backup file to each user's own Google Drive.
+
+```bash
+cp .env.local.example .env.local   # then paste your client id
+```
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → create/select a project.
+2. **APIs & Services → Enable APIs** → enable **Google Drive API**.
+3. **Credentials → Create credentials → OAuth client ID** → *Web application*.
+   Add your origin(s) (e.g. `http://localhost:3000`) under *Authorized JavaScript origins*.
+4. Put the client id in `.env.local` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+
+It's fully client-side (no backend, no secret) and uses the non-sensitive
+`drive.file` scope, so **no Google app verification is required**. API keys are
+never synced — they stay on the device.
+
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
