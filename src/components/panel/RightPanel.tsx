@@ -129,6 +129,7 @@ export function RightPanel({ open = true, onSimulate, onScore, variant = "deskto
 
   return (
     <aside
+      data-tour="right-panel"
       className={`relative hidden shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 overflow-hidden md:flex ${
         resizing ? "" : "transition-all duration-200"
       } ${open ? "opacity-100" : "opacity-0 border-l-0"}`}

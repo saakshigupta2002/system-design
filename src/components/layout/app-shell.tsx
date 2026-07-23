@@ -36,6 +36,8 @@ import { ConceptDialog } from "@/components/dialogs/ConceptDialog";
 import { useModeStore } from "@/store/modeStore";
 import { useDeepDiveStore } from "@/store/deepDiveStore";
 import { useInterviewStore } from "@/store/interviewStore";
+import { useTourStore } from "@/store/tourStore";
+import { ProductTour } from "@/components/tour/ProductTour";
 import { useIsMobile } from "@/hooks/useBreakpoint";
 
 export function AppShell() {
@@ -332,6 +334,19 @@ export function AppShell() {
     }
   }, []);
 
+  // First-run product tour: kick it off once the user has picked a skill mode
+  // (so it doesn't stack on top of the mode-select dialog), and only on desktop
+  // where the tour anchors are actually visible.
+  const hasChosenMode = useModeStore((s) => s.hasChosenMode);
+  useEffect(() => {
+    if (isMobile || !hasChosenMode) return;
+    const { hasSeenTour, active, start } = useTourStore.getState();
+    if (!hasSeenTour && !active) {
+      const id = setTimeout(start, 400);
+      return () => clearTimeout(id);
+    }
+  }, [isMobile, hasChosenMode]);
+
   // One-time hint once the user starts building: the empty-state shortcut
   // tips disappear forever after the first node, so point at the cheatsheet.
   useEffect(() => {
@@ -491,6 +506,7 @@ export function AppShell() {
         </div>
 
         <Toast />
+        <ProductTour />
 
         <SaveDialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} />
         <LoadDialog open={loadDialogOpen} onClose={() => setLoadDialogOpen(false)} />

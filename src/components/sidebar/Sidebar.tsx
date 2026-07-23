@@ -116,6 +116,7 @@ export function Sidebar({
 
   return (
     <aside
+      data-tour="sidebar"
       className={`relative hidden shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 overflow-hidden md:flex ${
         resizing ? "" : "transition-all duration-200"
       } ${open ? "opacity-100" : "opacity-0 border-r-0"}`}

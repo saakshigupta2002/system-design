@@ -17,6 +17,8 @@ interface ToolbarMenuProps {
   /** Which edge the dropdown aligns to. */
   align?: "left" | "right";
   title?: string;
+  /** Optional data-tour anchor placed on the wrapper for the product tour. */
+  dataTour?: string;
   children: ReactNode;
 }
 
@@ -25,7 +27,7 @@ interface ToolbarMenuProps {
  * Kept dependency-free (no Radix) to stay consistent with the existing
  * Export dropdown pattern. Closes on outside click and Escape.
  */
-export function ToolbarMenu({ trigger, align = "left", title, children }: ToolbarMenuProps) {
+export function ToolbarMenu({ trigger, align = "left", title, dataTour, children }: ToolbarMenuProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
@@ -39,7 +41,7 @@ export function ToolbarMenu({ trigger, align = "left", title, children }: Toolba
   }, [open]);
 
   return (
-    <div className="relative shrink-0">
+    <div className="relative shrink-0" data-tour={dataTour}>
       <button
         onClick={() => setOpen((v) => !v)}
         title={title}
