@@ -6,10 +6,10 @@ import { useTourStore } from "@/store/tourStore";
 import { useAppStore } from "@/store/appStore";
 import { TOUR_STEPS, type TourStep } from "@/data/tourSteps";
 
-const CARD_W = 320;
-const CARD_EST_H = 210;
+const CARD_W = 384;
+const CARD_EST_H = 280;
 const PAD = 6; // spotlight padding around the target
-const GAP = 14; // gap between target and card
+const GAP = 16; // gap between target and card
 
 /** Make sure the UI region a step points at is actually visible before we
  *  try to measure it (open the sidebar on the right tab, or the right panel). */
@@ -160,69 +160,80 @@ export function ProductTour() {
 
       {/* The step card */}
       <div
-        className="fixed w-[320px] max-w-[calc(100vw-16px)] rounded-xl border border-zinc-700 bg-zinc-900 p-4 shadow-2xl"
+        className="fixed w-96 max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900 shadow-2xl ring-1 ring-black/30"
         style={cardStyle(rect, current.placement)}
       >
-        <div className="mb-2 flex items-start justify-between gap-2">
-          <h3 className="text-sm font-semibold text-zinc-100">{current.title}</h3>
-          <button
-            onClick={stop}
-            className="-mr-1 -mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-            aria-label="Skip tour"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <p className="text-xs leading-relaxed text-zinc-400">{current.body}</p>
+        {/* Accent bar */}
+        <div className="h-1 w-full bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500/20" />
 
-        {/* Progress dots */}
-        <div className="mt-4 flex items-center gap-1.5">
-          {TOUR_STEPS.map((_, i) => (
+        <div className="p-5">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 text-sm font-bold text-cyan-400 ring-1 ring-cyan-500/20">
+                {step + 1}
+              </span>
+              <h3 className="text-base font-semibold leading-snug text-zinc-100">{current.title}</h3>
+            </div>
             <button
-              key={i}
-              onClick={() => goTo(i)}
-              aria-label={`Go to step ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all ${
-                i === step ? "w-4 bg-cyan-400" : "w-1.5 bg-zinc-700 hover:bg-zinc-600"
-              }`}
-            />
-          ))}
-          <span className="ml-auto text-[10px] tabular-nums text-zinc-500">
-            {step + 1} / {TOUR_STEPS.length}
-          </span>
-        </div>
-
-        {/* Controls */}
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <button
-            onClick={stop}
-            className="text-[11px] font-medium text-zinc-500 transition-colors hover:text-zinc-300"
-          >
-            Skip
-          </button>
-          <div className="flex items-center gap-1.5">
-            {!isFirst && (
-              <button
-                onClick={prev}
-                className="flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Back
-              </button>
-            )}
-            <button
-              onClick={next}
-              className="flex items-center gap-1 rounded-md bg-cyan-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-cyan-400"
+              onClick={stop}
+              className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+              aria-label="Skip tour"
             >
-              {isLast ? (
-                <>
-                  Done <Check className="h-3.5 w-3.5" />
-                </>
-              ) : (
-                <>
-                  Next <ArrowRight className="h-3.5 w-3.5" />
-                </>
-              )}
+              <X className="h-4 w-4" />
             </button>
+          </div>
+
+          <p className="text-sm leading-relaxed text-zinc-300">{current.body}</p>
+
+          {/* Progress dots */}
+          <div className="mt-5 flex items-center gap-1.5">
+            {TOUR_STEPS.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                aria-label={`Go to step ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === step ? "w-5 bg-cyan-400" : "w-1.5 bg-zinc-700 hover:bg-zinc-600"
+                }`}
+              />
+            ))}
+            <span className="ml-auto text-[11px] font-medium tabular-nums text-zinc-500">
+              {step + 1} / {TOUR_STEPS.length}
+            </span>
+          </div>
+
+          {/* Controls */}
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <button
+              onClick={stop}
+              className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-300"
+            >
+              Skip tour
+            </button>
+            <div className="flex items-center gap-2">
+              {!isFirst && (
+                <button
+                  onClick={prev}
+                  className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </button>
+              )}
+              <button
+                onClick={next}
+                className="flex items-center gap-1.5 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-400"
+              >
+                {isLast ? (
+                  <>
+                    Done <Check className="h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    Next <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
