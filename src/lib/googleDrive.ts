@@ -129,7 +129,10 @@ export function requestToken(interactive: boolean): Promise<string> {
   if (!clientId) {
     return Promise.reject(new Error("Cloud sync isn't configured (missing Google client ID)."));
   }
-  const prompt = interactive ? "" : "none";
+  // Force the consent screen on an explicit sign-in so newly-granted scopes
+  // (e.g. Drive access) are actually attached to the token; silent refreshes
+  // stay prompt-less.
+  const prompt = interactive ? "consent" : "none";
 
   const client = ensureTokenClient();
   if (client) {
