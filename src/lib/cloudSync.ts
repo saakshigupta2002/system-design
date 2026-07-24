@@ -220,6 +220,10 @@ export function initCloudSync(): void {
   if (initialized || typeof window === "undefined") return;
   initialized = true;
 
+  // Load Google's sign-in library up front so the first Sign-in click can open
+  // its popup synchronously (browsers block popups opened after an async gap).
+  drive.preloadGis();
+
   lastKnownJson = JSON.stringify(buildBundle().data);
   for (const store of WATCHED_STORES) store.subscribe(() => scheduleSync());
 

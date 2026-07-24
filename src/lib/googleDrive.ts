@@ -69,34 +69,91 @@ function loadGis(): Promise<void> {
 
 let accessToken: string | null = null;
 let tokenExpiry = 0;
+let tokenClient: TokenClient | null = null;
+// The token callback is global to the client, so route each request's outcome
+// through these pending handlers.
+let pendingResolve: ((token: string) => void) | null = null;
+let pendingReject: ((err: unknown) => void) | null = null;
 
-/**
- * Request an access token. `interactive` shows the account/consent UI as needed;
- * otherwise it attempts a silent grant (`prompt: none`) that fails cleanly if the
- * user has no active Google session or hasn't granted access before.
- */
-export async function requestToken(interactive: boolean): Promise<string> {
+/** Build the GIS token client once. Returns null until GIS + client id are ready. */
+function ensureTokenClient(): TokenClient | null {
+  if (tokenClient) return tokenClient;
   const clientId = getClientId();
-  if (!clientId) throw new Error("Cloud sync isn't configured (missing Google client ID).");
-  await loadGis();
-  return new Promise<string>((resolve, reject) => {
-    const client = window.google!.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: SCOPE,
-      callback: (resp) => {
-        if (resp.error || !resp.access_token) {
-          reject(new Error(resp.error || "Authorization failed"));
-          return;
-        }
+  if (!clientId || !window.google?.accounts?.oauth2) return null;
+  tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: SCOPE,
+    callback: (resp) => {
+      if (resp.error || !resp.access_token) {
+        pendingReject?.(new Error(resp.error || "Authorization failed"));
+      } else {
         accessToken = resp.access_token;
         tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000 - 60_000;
-        resolve(resp.access_token);
-      },
-      error_callback: (err) =>
-        reject(err instanceof Error ? err : new Error("Sign-in was dismissed")),
-    });
-    client.requestAccessToken({ prompt: interactive ? "" : "none" });
+        pendingResolve?.(resp.access_token);
+      }
+      pendingResolve = pendingReject = null;
+    },
+    error_callback: (err) => {
+      const type = (err as { type?: string } | null)?.type;
+      const message =
+        type === "popup_failed_to_open"
+          ? "Couldn't open the Google sign-in popup — allow pop-ups for this site and try again."
+          : type === "popup_closed"
+            ? "Sign-in window was closed before finishing."
+            : "Google sign-in failed. Please try again.";
+      pendingReject?.(new Error(message));
+      pendingResolve = pendingReject = null;
+    },
   });
+  return tokenClient;
+}
+
+/**
+ * Eagerly load GIS and build the token client at app start, so the first
+ * Sign-in click can open the popup synchronously. Popups opened after an async
+ * gap (e.g. loading the script on click) get blocked by the browser.
+ */
+export function preloadGis(): void {
+  if (typeof window === "undefined" || !getClientId()) return;
+  void loadGis().then(() => ensureTokenClient()).catch(() => {});
+}
+
+/**
+ * Request an access token. When GIS is already loaded this calls
+ * requestAccessToken *synchronously* (inside the Promise executor) so the popup
+ * still counts as user-initiated. `interactive` shows the UI; otherwise a silent
+ * grant is attempted (`prompt: none`).
+ */
+export function requestToken(interactive: boolean): Promise<string> {
+  const clientId = getClientId();
+  if (!clientId) {
+    return Promise.reject(new Error("Cloud sync isn't configured (missing Google client ID)."));
+  }
+  const prompt = interactive ? "" : "none";
+
+  const client = ensureTokenClient();
+  if (client) {
+    return new Promise<string>((resolve, reject) => {
+      pendingResolve = resolve;
+      pendingReject = reject;
+      client.requestAccessToken({ prompt });
+    });
+  }
+
+  // GIS wasn't ready yet (very early click) — load it, then request.
+  return loadGis().then(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        const c = ensureTokenClient();
+        if (!c) {
+          reject(new Error("Google sign-in failed to initialize."));
+          return;
+        }
+        pendingResolve = resolve;
+        pendingReject = reject;
+        c.requestAccessToken({ prompt });
+      })
+  );
 }
 
 /** A currently-valid token, silently refreshed if the cached one has expired. */
