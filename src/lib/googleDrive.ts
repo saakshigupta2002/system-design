@@ -185,20 +185,37 @@ async function driveFetch(url: string, init?: DriveInit, retry = true): Promise<
   return res;
 }
 
+/** Build an Error from a failed Drive response, including Google's own reason. */
+async function driveError(res: Response, action: string): Promise<Error> {
+  let detail = "";
+  try {
+    const body = (await res.json()) as {
+      error?: { message?: string; errors?: { message?: string }[] };
+    };
+    detail = body.error?.message || body.error?.errors?.[0]?.message || "";
+  } catch {
+    /* body wasn't JSON */
+  }
+  if (res.status === 403 && !detail) {
+    detail = "Drive access denied — enable the Google Drive API and grant Drive access on sign-in.";
+  }
+  return new Error(`${action} failed (${res.status})${detail ? `: ${detail}` : ""}`);
+}
+
 /** Find our backup file (only app-created files are visible with drive.file). */
 export async function findBackupFile(): Promise<DriveFile | null> {
   const q = encodeURIComponent(`name='${FILE_NAME}' and trashed=false`);
   const res = await driveFetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)&pageSize=10`
   );
-  if (!res.ok) throw new Error(`Drive list failed (${res.status})`);
+  if (!res.ok) throw await driveError(res, "Drive list");
   const json = (await res.json()) as { files?: DriveFile[] };
   return json.files?.[0] ?? null;
 }
 
 export async function downloadFile(id: string): Promise<string> {
   const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`);
-  if (!res.ok) throw new Error(`Drive download failed (${res.status})`);
+  if (!res.ok) throw await driveError(res, "Drive download");
   return res.text();
 }
 
@@ -217,7 +234,7 @@ export async function createFile(content: string): Promise<string> {
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
     { method: "POST", headers: { "Content-Type": `multipart/related; boundary=${boundary}` }, body }
   );
-  if (!res.ok) throw new Error(`Drive create failed (${res.status})`);
+  if (!res.ok) throw await driveError(res, "Drive create");
   const json = (await res.json()) as { id: string };
   return json.id;
 }
@@ -227,7 +244,7 @@ export async function updateFile(id: string, content: string): Promise<void> {
     `https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,
     { method: "PATCH", headers: { "Content-Type": "application/json" }, body: content }
   );
-  if (!res.ok) throw new Error(`Drive update failed (${res.status})`);
+  if (!res.ok) throw await driveError(res, "Drive update");
 }
 
 /** The signed-in user's email, for display. Best-effort. */
